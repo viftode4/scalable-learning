@@ -47,6 +47,10 @@ data/
 # uv env
 .venv/
 
+# FederatedScope output dir (created in cwd by main.py)
+exp/
+*.ckpt
+
 # Results — everything except the placeholder
 results/*
 !results/.gitkeep
