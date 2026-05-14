@@ -50,6 +50,6 @@ def test_method_produces_curves(method: str, tiny_loaders) -> None:
     )
     assert len(losses) == 3
     assert len(accs) == 3
-    for l, a in zip(losses, accs, strict=True):
-        assert l > 0
-        assert 0.0 <= a <= 1.0
+    for loss, acc in zip(losses, accs, strict=True):
+        assert loss > 0
+        assert 0.0 <= acc <= 1.0

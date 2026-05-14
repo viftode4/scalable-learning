@@ -18,12 +18,12 @@ import mnist_fig2  # noqa: E402
 
 def test_lora_b_is_zero_at_init() -> None:
     model = mnist_fig2.MLP(rank=1)
-    for B in model.adapter_params("B"):
-        assert torch.equal(B, torch.zeros_like(B)), "FFA-LoRA convention: B must be 0"
+    for b_param in model.adapter_params("B"):
+        assert torch.equal(b_param, torch.zeros_like(b_param)), "FFA-LoRA convention: B must be 0"
 
 
 def test_lora_a_is_non_zero_at_init() -> None:
     torch.manual_seed(0)
     model = mnist_fig2.MLP(rank=1)
-    for A in model.adapter_params("A"):
-        assert A.abs().max().item() > 0.0, "A must be non-zero (Kaiming uniform)"
+    for a_param in model.adapter_params("A"):
+        assert a_param.abs().max().item() > 0.0, "A must be non-zero (Kaiming uniform)"

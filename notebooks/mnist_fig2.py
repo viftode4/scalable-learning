@@ -88,7 +88,6 @@ def broadcast(server: MLP, clients: list[MLP], factor: str) -> None:
 
 def average_factor(server: MLP, clients: list[MLP], factor: str) -> None:
     """Set server's ``factor`` to the per-tensor mean across clients."""
-    n = len(clients)
     for s_i, params in enumerate(server.adapter_params(factor)):
         stack = torch.stack([client.adapter_params(factor)[s_i].data for client in clients])
         params.data.copy_(stack.mean(dim=0))
@@ -171,8 +170,8 @@ def run_method(
     torch.manual_seed(seed)
     server = MLP(rank).to(device)
     # Sanity: FFA-LoRA convention is B=0 (zero adapter at init).
-    for B in server.adapter_params("B"):
-        assert torch.equal(B, torch.zeros_like(B))
+    for b_param in server.adapter_params("B"):
+        assert torch.equal(b_param, torch.zeros_like(b_param))
 
     clients: list[MLP] = [copy.deepcopy(server) for _ in train_sets]
     client_loaders = [
@@ -194,13 +193,13 @@ def run_method(
             assert_factor_identical(server, clients, "A")
             active_factors = ("B",)
         else:  # rolora
-            train_B = r % 2 == 0  # even rounds train B, odd rounds train A
+            train_b = r % 2 == 0  # even rounds train B, odd rounds train A
             for client in clients:
-                set_factor_trainable(client, "A", trainable=not train_B)
-                set_factor_trainable(client, "B", trainable=train_B)
-            frozen = "A" if train_B else "B"
+                set_factor_trainable(client, "A", trainable=not train_b)
+                set_factor_trainable(client, "B", trainable=train_b)
+            frozen = "A" if train_b else "B"
             assert_factor_identical(server, clients, frozen)
-            active_factors = ("B",) if train_B else ("A",)
+            active_factors = ("B",) if train_b else ("A",)
 
         for client, loader in zip(clients, client_loaders, strict=True):
             local_train(client, loader, steps=local_steps, lr=lr, device=device, grad_clip=grad_clip)

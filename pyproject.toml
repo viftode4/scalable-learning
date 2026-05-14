@@ -33,10 +33,21 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+extend-exclude = [
+    "code/harness/fedsa-lora",
+    "code/harness/rolora-supplement",
+    "data",
+    "exp",
+    "results",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "SIM"]
-ignore = ["E501"]
+ignore = [
+    "E501",
+    # PyTorch convention: import torch.nn.functional as F.
+    "N812",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
