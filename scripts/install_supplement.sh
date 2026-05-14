@@ -47,13 +47,16 @@ fi
 "$VENV/bin/python" -m pip install --no-build-isolation "$SUPP"
 
 # 4. Install the LLM-extra pins.
+# Note: `datasets` is required by the dataset-prep scripts in sst2/ but is NOT in
+# the supplement's [llm] extras (it's only in [app]). We add it explicitly.
 "$VENV/bin/python" -m pip install --no-build-isolation \
     'torch>=2.0,<2.4' \
     'transformers==4.29.2' \
     'tokenizers==0.13.3' \
     'accelerate==0.20.3' \
     'peft==0.3.0' \
-    'sentencepiece==0.1.99'
+    'sentencepiece==0.1.99' \
+    'datasets'
 
 # 5. Import sanity check.
 "$VENV/bin/python" - <<'PY'

@@ -1,0 +1,63 @@
+# Smoke config for the OpenReview supplement harness.
+# Tiny everything: roberta-base (not large), 2 clients, 2 rounds, 2 local batches.
+# Goal: verify the patched trainer actually runs end-to-end on CPU. NOT a real experiment.
+#
+# Run (from repo root):
+#   SUPP=code/harness/rolora-supplement/RoLoRA-code
+#   SLS_ALTERNATION_MODE=rolora \
+#     $SUPP/.venv-supplement/bin/python $SUPP/federatedscope/main.py \
+#     --cfg experiments/configs/smoke_supplement.yaml
+#
+# Repeat with SLS_ALTERNATION_MODE=lora and =ffa_lora to exercise the patch's
+# three branches.
+
+use_gpu: False
+device: -1
+early_stop:
+  patience: 0
+
+federate:
+  mode: standalone
+  total_round_num: 2
+  save_to: "smoke.ckpt"
+  client_num: 2
+  share_local_model: True
+
+data:
+  root: code/harness/rolora-supplement/RoLoRA-code/sst2/
+  type: 'qnli.json@llm'
+  splits: [0.89, 0.1, 0.01]
+  splitter: 'iid'
+
+llm:
+  tok_len: 64
+  chat:
+    max_len: 256
+    max_history_len: 4
+  adapter:
+    use: True
+    args: [ { 'adapter_package': 'peft', 'adapter_method': 'lora', 'r': 4, 'lora_alpha': 16, 'lora_dropout': 0.1 } ]
+
+dataloader:
+  batch_size: 4
+
+model:
+  type: 'roberta-base@huggingface_llm'
+
+train:
+  local_update_steps: 2
+  batch_or_epoch: batch
+  optimizer:
+    lr: 0.005
+    weight_decay: 0.0002
+  is_enable_half: False
+
+trainer:
+  type: llmtrainer
+criterion:
+  type: CrossEntropyLoss
+
+eval:
+  freq: 2
+  metrics: ['loss', 'acc']
+  best_res_update_round_wise_key: val_loss
