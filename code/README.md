@@ -1,25 +1,42 @@
 # Code
 
-This directory will hold the federated-LoRA training code: a fork of FedSA-LoRA (see `harness/`) plus our additions implementing RoLoRA's odd/even alternation and the chosen improvement angle.
+Our Python code, the harness checkouts, and the configs that drive them.
 
-## Planned layout (after kickoff)
+## Layout
 ```
 code/
-  harness/               # Fork of Pengxin-Guo/FedSA-LoRA (git submodule)
-  src/
-    rolora/              # Our alternation logic on top of the harness
-    improvements/        # Partial-participation + comm-time-aware scheduling
-    eval/                # GLUE eval + plotting helpers
-  tests/                 # Unit tests + exactness asserts (torch.equal of frozen factors across clients)
+  harness/
+    fedsa-lora/          # Git submodule: our fork of Pengxin-Guo/FedSA-LoRA
+    rolora-supplement/   # OpenReview supplementary zip extract — gitignored, user-fetched
+    README.md
 ```
 
-## Env (planned)
-- Python 3.10+
-- PyTorch 2.x with CUDA matching DelftBlue's `gpu-a100-small` partition
-- `transformers`, `peft`, `datasets`, `accelerate`
-- Pinned via `requirements.txt` or `pyproject.toml` once the harness is added.
+The Python package itself (`sls_rolora`) lands here in the next iteration once we have a federated training entrypoint. For now this directory holds the harness checkouts only.
 
-## Not in scope here
-- Slurm job scripts live in `slurm/`.
-- Experiment configs live in `experiments/configs/`.
-- Outputs land in `results/` (gitignored).
+## Environment setup
+The repo is uv-managed (`pyproject.toml` + `uv.lock`).
+
+```bash
+# Install uv once: https://github.com/astral-sh/uv (curl install or brew)
+uv sync                              # creates .venv/ and installs pinned deps
+uv run python -c "import torch, peft; print(torch.__version__, peft.__version__)"
+```
+
+Expected output: `torch 2.x.x 0.10.0` (peft pinned at 0.10.0 — see ADR 0002).
+
+## Adding / updating deps
+```bash
+uv add <package>                     # adds + relocks
+uv add --dev <package>               # dev-only
+uv lock --upgrade                    # bumps everything to latest compatible
+```
+
+Always commit `pyproject.toml` and `uv.lock` together.
+
+## Running things
+- MNIST Figure-2: `uv run python notebooks/mnist_fig2.py`
+- Tests: `uv run pytest`
+- Lint: `uv run ruff check .`
+
+## On the cluster
+See `docs/setup/delftblue.md` (currently waiting on TA instructions). uv works without sudo and produces a hermetic env, so the local workflow should carry over.

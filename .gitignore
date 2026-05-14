@@ -35,6 +35,18 @@ report/build/
 # OMC tool state
 .omc/
 
+# Author code from OpenReview supplement (may not be redistributable)
+code/harness/rolora-supplement/
+
+# Slurm job outputs
+slurm-*.out
+
+# Local dataset cache
+data/
+
+# uv env
+.venv/
+
 # Results — everything except the placeholder
 results/*
 !results/.gitkeep
