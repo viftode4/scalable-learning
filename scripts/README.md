@@ -17,7 +17,6 @@ Common commands:
 ```bash
 make check
 make mnist-smoke
-make supplement
 make install-supplement
 make supplement-smoke-all
 make table1-pilot MODE=rolora

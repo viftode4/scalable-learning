@@ -7,20 +7,19 @@ The OpenReview supplementary zip for RoLoRA (forum `u4mobiHTJl`). Required by th
 
 **Audit summary** (see `docs/decisions/0004-supplement-audit.md` for the full audit):
 - Zip SHA256 (verify after download): `ca9a64cb64bb48bb0a6dc35179760fe0e561dd566a474877ab42f65453aa4c11`.
-- License: **Apache 2.0** (redistributable, though we keep it gitignored to avoid bloat).
+- License: **Apache 2.0** (redistributable; vendored here so teammates get the same source).
 - Built on **FederatedScope-LLM** (~800 Python files, 16 MB).
 - `federatedscope/llm/trainer/trainer.py` contains the alternation logic, gated on a hardcoded `self.save_mode = True` flag with `step_count`-parity for round selection.
 - **No LoRA / FFA-LoRA baseline modes** in the supplement — the alternation is the only path. The tracked `rolora-supplement.patch` adds `rolora` / `lora` / `ffa_lora` modes so all three branches can run in the same harness.
 - Example config: `federatedscope/llm/baseline/test_glue.yaml` (RoBERTa-Large, QNLI, 50 clients, rank 8, 30 rounds).
 - Suggests Python 3.9 + PyTorch 2.0; our main env is 3.11 + 2.3. The isolated `.venv-supplement` env is created by `make install-supplement`.
 
-**Not in git** — see `.gitignore`. To get it on a fresh clone:
+**Vendored in git.** Fresh clones already contain the authors' code. Build the isolated runtime with:
 ```bash
-# 1. download the zip per docs/setup/openreview-supplement.md (one-time, user-driven)
-bash scripts/extract_supplement.sh "/path/to/5662_Robust_Federated_Finetuni_Supplementary Material.zip"
-# 2. build isolated venv + apply sls-rolora trainer patch + import-test
 bash scripts/install_supplement.sh
 ```
+
+To refresh from the original OpenReview zip, use `bash scripts/extract_supplement.sh /path/to/zip` and re-run the audit.
 
 Run local smoke checks with our mode switch:
 ```bash

@@ -67,12 +67,13 @@ make check
 make mnist-smoke
 ```
 
-To enable the authors' OpenReview harness after downloading the zip:
+The authors' OpenReview supplement is vendored in this repo. To enable its isolated runtime:
 ```bash
-make supplement
 make install-supplement
 make supplement-smoke-all
 ```
+
+`make supplement` remains available only to refresh the vendored copy from the original OpenReview zip.
 
 See [`docs/setup/environment.md`](docs/setup/environment.md) for the full setup, [`docs/setup/openreview-supplement.md`](docs/setup/openreview-supplement.md) for fetching the authors' code, [`docs/setup/delftblue.md`](docs/setup/delftblue.md) for cluster access (TA-driven), and [`experiments/ledger/README.md`](experiments/ledger/README.md) for run evidence.
 

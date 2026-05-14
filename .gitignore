@@ -35,8 +35,8 @@ report/build/
 # OMC tool state
 .omc/
 
-# Author/vendor code from OpenReview supplement (extracted locally)
-code/harness/rolora-supplement/
+# Local virtualenv inside vendored OpenReview supplement
+code/harness/rolora-supplement/RoLoRA-code/.venv-supplement/
 
 # Local data and run outputs
 data/
@@ -49,3 +49,6 @@ slurm-*.out
 wandb/
 runs/
 mlruns/
+# HuggingFace cache accidentally created under supplement data dir
+code/harness/rolora-supplement/RoLoRA-code/sst2/models--*/
+code/harness/rolora-supplement/RoLoRA-code/sst2/.locks/

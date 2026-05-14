@@ -18,8 +18,9 @@ VENV="$SUPP/.venv-supplement"
 PATCH="$REPO/code/harness/rolora-supplement.patch"
 
 if [[ ! -d "$SUPP" ]]; then
-    echo "error: supplement not extracted at $SUPP"
-    echo "  run scripts/extract_supplement.sh first"
+    echo "error: vendored supplement missing at $SUPP"
+    echo "  run: git pull && git submodule update --init --recursive"
+    echo "  optional refresh path: scripts/extract_supplement.sh /path/to/OpenReview.zip"
     exit 1
 fi
 
