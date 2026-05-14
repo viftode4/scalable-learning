@@ -7,6 +7,7 @@ Use this as the agenda for the first meeting. Items already resolved (grading sp
 - **Paper-presentation paper:** RoLoRA itself (same as project paper).
 - **Improvement directions:** three committed in the proposal — improved init / separate LRs / adaptive server-side optimization.
 - **Harness:** primary = OpenReview supplement; fallback = FedSA-LoRA fork (submodule).
+- **Supplement setup:** downloaded, audited, installed in isolated Python 3.9 env, smoke-tested locally.
 - **Env:** uv-managed Python 3.11, `peft==0.10.0` pinned.
 
 ## Open items
@@ -16,15 +17,10 @@ Use this as the agenda for the first meeting. Items already resolved (grading sp
 - **TODO:** designate one team member to track BrightSpace + course email for the announcement. If nothing arrives by mid-W4, ping Dennis directly.
 - Do **not** file a TOPdesk request without TA guidance.
 
-### 2. OpenReview supplement — action item this week
-- The proposal commits to using authors' code. The supplementary zip is on OpenReview forum `u4mobiHTJl`.
-- **TODO:** one team member logs into OpenReview, downloads the zip to `~/Downloads/rolora-supplement.zip`, runs `make supplement`. See `docs/setup/openreview-supplement.md`.
-- If the supplement is broken or doesn't contain runnable code, we fall back to FedSA-LoRA + email the authors (`akhisti@ece.utoronto.ca`; draft in `docs/templates/author-email.md`).
-
-### 3. Time commitment
+### 2. Time commitment
 - **TODO:** realistic hours/week per person. Honest answers — a 6h/week and 20h/week split needs different ownership.
 
-### 4. Team split by ownership layer
+### 3. Team split by ownership layer
 Default (recommended by the deep-research plan):
 - **Infrastructure & baselines** — harness, datasets, logging, plotting.
 - **Algorithm & ablations** — RoLoRA / FFA-LoRA / LoRA implementations; alternation correctness; exactness asserts.
@@ -32,29 +28,29 @@ Default (recommended by the deep-research plan):
 
 **TODO:** map names to layers. Discuss whether one person should own all three improvement angles or whether to split (e.g., one person per angle).
 
-### 5. Tech-lead / tiebreaker
+### 4. Tech-lead / tiebreaker
 **TODO:** designate.
 
-### 6. Paper-presentation prep (W7-8)
+### 5. Paper-presentation prep (W7-8)
 - 15-18 min slot on the RoLoRA paper (10-12 present + 5-6 Q&A).
 - Rubric: motivation 20% / solution 40% / evaluation 25% / discussion-leading 15%.
 - Outline scaffold lives in `docs/templates/paper-presentation-outline.md`.
 - **TODO:** assign roles — who leads slides, who runs Q&A.
 
-### 7. Individual homeworks (W4 and W5)
+### 6. Individual homeworks (W4 and W5)
 - Two written homeworks, individual deliverables, 20% of the grade.
 - They eat hours that would otherwise go to the project.
 - **TODO:** flag on calendar; coordinate so reproduction sprints don't collide with homework deadlines.
 
-### 8. Communication + cadence
+### 7. Communication + cadence
 Default: 2× weekly, 30 minutes. Once early in the week to plan, once mid-week to unblock.
 **TODO:** channel (Discord / Slack / WhatsApp / Telegram)? Meeting time?
 
-### 9. Git workflow
+### 8. Git workflow
 Default: branches per person, PRs reviewed by ≥1 other before merge to `main`.
 **TODO:** confirm.
 
-### 10. Reproduction milestones (per deep-research roadmap)
+### 9. Reproduction milestones (per deep-research roadmap)
 - W4 setup + literature review (parallel).
 - W5 reproduction runs start (LoRA baseline on 3-client MNLI within ±2% of paper).
 - W6 reproduction at scale + improvement work begins.

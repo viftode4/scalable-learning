@@ -50,7 +50,7 @@ docs/        Source documents, kickoff agenda, decision log, setup guides, templ
 code/        Our code + harness checkouts (FedSA-LoRA submodule, RoLoRA supplement)
 experiments/ YAML configs that map to runs
 notebooks/   MNIST Figure-2 sanity check and exploration
-scripts/     One-off prep utilities (dataset prep, supplement extraction)
+scripts/     Setup and run utilities (dataset prep, supplement extraction/smoke)
 slurm/       DelftBlue / DAIC job templates
 results/     Output artifacts (gitignored)
 report/      LaTeX writeup
@@ -62,11 +62,28 @@ tests/       pytest suite (aggregation math, invariants)
 git clone <this-repo>
 cd scalable-learning
 git submodule update --init --recursive
-uv sync
-uv run python notebooks/mnist_fig2.py
+make sync
+make check
+make mnist-smoke
+```
+
+To enable the authors' OpenReview harness after downloading the zip:
+```bash
+make supplement
+make install-supplement
+make supplement-smoke-all
 ```
 
 See [`docs/setup/environment.md`](docs/setup/environment.md) for the full setup, [`docs/setup/openreview-supplement.md`](docs/setup/openreview-supplement.md) for fetching the authors' code, [`docs/setup/delftblue.md`](docs/setup/delftblue.md) for cluster access (TA-driven).
 
+## Local commands
+| Command | Purpose |
+|---|---|
+| `make check` | Run first-party tests + lint. |
+| `make mnist-smoke` | Fast MNIST sanity check. |
+| `make mnist` | Full local MNIST Figure-2 reproduction. |
+| `make supplement-smoke-all` | Run the tiny supplement smoke config in `rolora`, `lora`, and `ffa_lora` modes. |
+| `make clean` | Remove local outputs/caches while preserving tracked placeholders. |
+
 ## Status
-**Week 3 — pre-launch.** Repo scaffolded, env pinned, MNIST sanity check runnable on a laptop. RoBERTa training entrypoint and the improvement experiments start in W4. See [`docs/kickoff.md`](docs/kickoff.md) for the open items.
+**Week 3 — pre-launch.** Main env is pinned, MNIST sanity checks run locally, and the authors' supplement is installed in an isolated Python 3.9 env with a tiny RoBERTa-base smoke config. Full RoBERTa-Large reproduction starts once DelftBlue/DAIC access is available. See [`docs/kickoff.md`](docs/kickoff.md) for the remaining team/process items.

@@ -10,9 +10,9 @@ The OpenReview supplementary zip for RoLoRA (forum `u4mobiHTJl`). Required by th
 - License: **Apache 2.0** (redistributable, though we keep it gitignored to avoid bloat).
 - Built on **FederatedScope-LLM** (~800 Python files, 16 MB).
 - `federatedscope/llm/trainer/trainer.py` contains the alternation logic, gated on a hardcoded `self.save_mode = True` flag with `step_count`-parity for round selection.
-- **No LoRA / FFA-LoRA baseline modes** in the supplement — the alternation is the only path. To run the headline LoRA-cliff comparison we must add the two baseline branches ourselves (planned ~50 LOC patch to `trainer.py`).
+- **No LoRA / FFA-LoRA baseline modes** in the supplement — the alternation is the only path. The tracked `rolora-supplement.patch` adds `rolora` / `lora` / `ffa_lora` modes so all three branches can run in the same harness.
 - Example config: `federatedscope/llm/baseline/test_glue.yaml` (RoBERTa-Large, QNLI, 50 clients, rank 8, 30 rounds).
-- Suggests Python 3.9 + PyTorch 2.0; our main env is 3.11 + 2.3. A secondary uv env may be needed if compat breaks.
+- Suggests Python 3.9 + PyTorch 2.0; our main env is 3.11 + 2.3. The isolated `.venv-supplement` env is created by `make install-supplement`.
 
 **Not in git** — see `.gitignore`. To get it on a fresh clone:
 ```bash
@@ -22,15 +22,13 @@ bash scripts/extract_supplement.sh "/path/to/5662_Robust_Federated_Finetuni_Supp
 bash scripts/install_supplement.sh
 ```
 
-Run an experiment with our mode switch:
+Run local smoke checks with our mode switch:
 ```bash
-SLS_ALTERNATION_MODE=rolora \
-  code/harness/rolora-supplement/RoLoRA-code/.venv-supplement/bin/python \
-  code/harness/rolora-supplement/RoLoRA-code/federatedscope/main.py \
-  --cfg code/harness/rolora-supplement/RoLoRA-code/federatedscope/llm/baseline/test_glue.yaml
+make supplement-smoke MODE=rolora
+make supplement-smoke-all
 ```
 
-Swap `SLS_ALTERNATION_MODE` between `rolora`, `lora`, `ffa_lora` to compare the three methods on the same harness. The patch lives at `code/harness/rolora-supplement.patch` (tracked in git, idempotently re-applied by `install_supplement.sh`).
+Swap `SLS_ALTERNATION_MODE` / `MODE` between `rolora`, `lora`, `ffa_lora` to compare the three methods on the same harness. The patch lives at `code/harness/rolora-supplement.patch` (tracked in git, idempotently re-applied by `install_supplement.sh`). Use `scripts/run_supplement.py` instead of calling `federatedscope/main.py` directly on macOS; it preserves the upstream behavior but avoids the hostname-resolution crash in FederatedScope logging.
 
 ## `fedsa-lora/` — backup harness (git submodule)
 Git submodule pointing at our fork `viftode4/FedSA-LoRA` (upstream: `Pengxin-Guo/FedSA-LoRA`, ICLR 2025).

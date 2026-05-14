@@ -8,26 +8,22 @@ The submitted proposal commits to using the authors' released code as the starti
 3. Scroll to the **Code** attachment under the Author-provided supplementary materials. Download the zip — it's named `5662_Robust_Federated_Finetuni_Supplementary Material.zip` (~16 MB).
 4. From the repo root, run:
    ```bash
-   bash scripts/extract_supplement.sh "$HOME/Downloads/5662_Robust_Federated_Finetuni_Supplementary Material.zip"
-   bash scripts/install_supplement.sh
+   make supplement
+   make install-supplement
+   make supplement-smoke-all
    ```
-   First script unpacks into `code/harness/rolora-supplement/` and prints SHA256 + a sanity check. Second script creates an isolated Python 3.9 venv at `code/harness/rolora-supplement/RoLoRA-code/.venv-supplement`, applies `code/harness/rolora-supplement.patch` (adds the `SLS_ALTERNATION_MODE` env-var switch — see ADR 0004 and the patch file itself), installs the pinned LLM deps, and import-tests the result.
+   `make supplement` auto-detects the real OpenReview filename in `~/Downloads` (or pass `SUPPLEMENT_ZIP=/path/to/zip`). `make install-supplement` creates an isolated Python 3.9 venv at `code/harness/rolora-supplement/RoLoRA-code/.venv-supplement`, applies `code/harness/rolora-supplement.patch` (adds the `SLS_ALTERNATION_MODE` switch), installs pinned LLM deps, and import-tests the result. `make supplement-smoke-all` runs the tiny RoBERTa-base smoke config in all three modes.
 
 ## Expected contents (confirmed 2026-05-14)
 The audit (`docs/decisions/0004-supplement-audit.md`) found:
 - **Zip filename** on OpenReview: `5662_Robust_Federated_Finetuni_Supplementary Material.zip`.
 - **SHA256:** `ca9a64cb64bb48bb0a6dc35179760fe0e561dd566a474877ab42f65453aa4c11` — verify locally after download.
 - 845 files, 16 MB, **Apache 2.0** license.
-- Built on FederatedScope-LLM. Example run:
-  ```bash
-  cd code/harness/rolora-supplement/RoLoRA-code
-  cd sst2 && python qnli2json.py && cd ..
-  python federatedscope/main.py --cfg federatedscope/llm/baseline/test_glue.yaml
-  ```
-- **Caveat:** RoLoRA alternation is hardcoded (no LoRA / FFA-LoRA baseline modes in-tree). Plan is to patch `federatedscope/llm/trainer/trainer.py` to add config-driven baseline selection (see ADR 0004).
+- Built on FederatedScope-LLM. Use `make supplement-smoke MODE=rolora` for a local RoBERTa-base smoke run.
+- **Caveat:** Upstream RoLoRA alternation is hardcoded (no LoRA / FFA-LoRA baseline modes in-tree). Our tracked patch adds the three-mode switch used by the smoke config (see ADR 0004).
 
 ## Why this is gitignored
-`code/harness/rolora-supplement/` is in `.gitignore`. Author code may not be redistributable (license unclear from the OpenReview page). Each teammate fetches the supplement locally. The SHA256 hash of the zip is the only artifact we share — it lets us verify everyone is using the same source.
+`code/harness/rolora-supplement/` is in `.gitignore`. Author code is Apache-2.0 per audit, but still kept out of git to avoid vendoring a large external tree. Each teammate fetches the supplement locally. The SHA256 hash of the zip is the only artifact we share — it lets us verify everyone is using the same source.
 
 ## If the supplement is broken or unusable
 The audit (ADR 0004) confirms the supplement runs and is the authors' real code. If FederatedScope-LLM proves too painful to wire up on DelftBlue (the deep-research plan flagged it as heavy), the contingency:

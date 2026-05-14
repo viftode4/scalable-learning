@@ -71,7 +71,6 @@ PY
 
 echo
 echo "Done. Activate with:  source $VENV/bin/activate"
-echo "Run an experiment:"
-echo "  SLS_ALTERNATION_MODE=rolora \\"
-echo "  $VENV/bin/python $SUPP/federatedscope/main.py \\"
-echo "    --cfg $SUPP/federatedscope/llm/baseline/test_glue.yaml"
+echo "Run the local smoke config:"
+echo "  make supplement-smoke MODE=rolora"
+echo "  make supplement-smoke-all"

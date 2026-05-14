@@ -1,5 +1,5 @@
-# Template config for the (not-yet-implemented) RoBERTa-Large federated training entrypoint.
-# Documents the schema; the training script will be added in the next iteration.
+# Reference config for the full RoBERTa-Large reproduction target.
+# The tiny local executable config is experiments/configs/smoke_supplement.yaml.
 
 model:
   name: roberta-large

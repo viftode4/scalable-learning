@@ -1,18 +1,18 @@
-# Python
+# Python/cache
 __pycache__/
 *.py[cod]
 *.egg-info/
-.venv/
-venv/
-env/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.venv/
+venv/
+env/
 
 # Notebooks
 .ipynb_checkpoints/
 
-# LaTeX (build artifacts only — keep source .tex/.bib)
+# LaTeX build artifacts (keep source .tex/.bib)
 report/build/
 *.aux
 *.log
@@ -24,7 +24,7 @@ report/build/
 *.fls
 *.fdb_latexmk
 
-# IDE / editor
+# IDE/editor
 .idea/
 .vscode/
 *.swp
@@ -35,27 +35,15 @@ report/build/
 # OMC tool state
 .omc/
 
-# Author code from OpenReview supplement (may not be redistributable)
+# Author/vendor code from OpenReview supplement (extracted locally)
 code/harness/rolora-supplement/
 
-# Slurm job outputs
-slurm-*.out
-
-# Local dataset cache
+# Local data and run outputs
 data/
-
-# uv env
-.venv/
-
-# FederatedScope output dir (created in cwd by main.py)
 exp/
-*.ckpt
-
-# Results — everything except the placeholder
 results/*
 !results/.gitkeep
-
-# Experiment outputs that may leak into the repo
+slurm-*.out
 *.ckpt
 *.pt
 wandb/

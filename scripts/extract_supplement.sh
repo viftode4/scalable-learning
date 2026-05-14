@@ -1,21 +1,43 @@
 #!/usr/bin/env bash
 # Unpack the OpenReview supplementary zip for RoLoRA into code/harness/rolora-supplement/.
 # Usage:
-#   bash scripts/extract_supplement.sh [path/to/zip]   # default: ~/Downloads/rolora-supplement.zip
+#   bash scripts/extract_supplement.sh [path/to/zip]
 set -euo pipefail
 
-ZIP_PATH="${1:-$HOME/Downloads/rolora-supplement.zip}"
 DEST="code/harness/rolora-supplement"
 
-if [[ ! -f "$ZIP_PATH" ]]; then
-    echo "error: zip not found at $ZIP_PATH"
-    echo "  follow docs/setup/openreview-supplement.md to download it first."
+if [[ $# -gt 0 ]]; then
+    ZIP_PATH="$1"
+else
+    candidates=(
+        "$HOME/Downloads/5662_Robust_Federated_Finetuni_Supplementary Material.zip"
+        "$HOME/Downloads/rolora-supplement.zip"
+        "$HOME/Downloads/supplement.zip"
+        "$HOME/Downloads/code.zip"
+    )
+    ZIP_PATH=""
+    for candidate in "${candidates[@]}"; do
+        if [[ -f "$candidate" ]]; then
+            ZIP_PATH="$candidate"
+            break
+        fi
+    done
+fi
+
+if [[ -z "${ZIP_PATH:-}" || ! -f "$ZIP_PATH" ]]; then
+    echo "error: supplement zip not found."
+    echo "  expected one of:"
+    echo "    ~/Downloads/5662_Robust_Federated_Finetuni_Supplementary Material.zip"
+    echo "    ~/Downloads/rolora-supplement.zip"
+    echo "  or pass an explicit path: bash scripts/extract_supplement.sh /path/to/zip"
     exit 1
 fi
 
 mkdir -p "$DEST"
 echo "extracting $ZIP_PATH -> $DEST"
 unzip -q -o "$ZIP_PATH" -d "$DEST"
+find "$DEST" -name '.DS_Store' -delete
+rm -rf "$DEST/__MACOSX"
 
 echo
 echo "contents:"
