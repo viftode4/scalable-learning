@@ -1,0 +1,30 @@
+# Template config for the (not-yet-implemented) RoBERTa-Large federated training entrypoint.
+# Documents the schema; the training script will be added in the next iteration.
+
+model:
+  name: roberta-large
+  num_labels: 3                 # MNLI has 3 classes (QQP/QNLI = 2; override per task)
+
+task: mnli                       # mnli | qqp | qnli (start with mnli per proposal)
+method: rolora                   # lora | ffa_lora | rolora
+rank: 4                          # paper headline runs use rank 4 (also 1, 8 for ablations)
+
+federation:
+  clients: 3                     # 3 (easy) → 20 → 50 (headline cliff)
+  dirichlet_alpha: null          # null = IID (3-client); set 0.1–1.0 for non-IID at scale
+  local_epochs: 20               # paper says "20 local epochs"; verify the harness's semantics
+  rounds: 30                     # communication rounds
+
+optim:
+  lr_a: 1.0e-3                   # LoRA-A learning rate (per LoRA+ ablation: keep symmetric initially)
+  lr_b: 1.0e-3                   # LoRA-B learning rate
+  weight_decay: 0.0
+  batch_size: 32
+
+data:
+  seq_len: 128
+  tokenizer: roberta-large
+  cache_dir: ${SLS_DATA_DIR:-./data}
+
+seed: 0
+output_dir: ${SLS_RESULTS_DIR:-./results}/roberta_mnli_${method}_${federation.clients}c_${rank}r_${seed}s

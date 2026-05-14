@@ -1,0 +1,14 @@
+# Template config for notebooks/mnist_fig2.py.
+# Pass via CLI flags (the script doesn't read YAML directly yet) — this file documents
+# the knobs and their sane defaults for laptop-CPU reproduction.
+
+clients: 5             # number of federated clients (paper Fig. 2 uses 5 / 10)
+rounds: 100            # communication rounds (laptop-feasible; paper uses ~200+)
+local_steps: 20        # local SGD steps per client per round
+rank: 1                # LoRA rank — Fig. 2 specifically uses rank 1
+lr: 0.05               # SGD learning rate (SAME for A and B in this toy)
+batch_size: 64
+seed: 0
+data_dir: data         # MNIST cache location
+out: results/mnist_fig2.png
+subset: 0              # 0 = full 60k MNIST train; >0 truncates for fast smoke tests

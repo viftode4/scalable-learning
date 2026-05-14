@@ -1,14 +1,22 @@
-# Slurm scripts — DelftBlue + DAIC
+# Slurm templates — DelftBlue + DAIC
 
-Job scripts for the TU Delft DelftBlue and DAIC clusters.
+Templates for the two partitions we expect to use most.
 
-## DelftBlue partitions we'll use
-- `gpu-a100-small` — 10 GB MIG slice, ≤4h jobs, ≤1 GPU. **Default for RoBERTa-Large LoRA** (≤6 GB at fp16/bs=16). Fastest queue.
-- `gpu-v100` — 32 GB V100s. Backup if A100 small queue is saturated.
-- `gpu-a100` — full 80 GB A100. Reserved for the Llama-2-7B stretch target only.
+| File | Partition | When |
+|---|---|---|
+| `gpu-a100-small.sbatch` | DelftBlue `gpu-a100-small` (10 GB MIG slice, ≤4h) | Default for RoBERTa-Large LoRA — fastest queue |
+| `gpu-v100.sbatch` | DelftBlue `gpu-v100` (32 GB) | Backup when A100-small queue saturated or VRAM tight |
 
-## DAIC
-Backup capacity. INSY useful for 4h iteration jobs.
+## Status — UNCONFIRMED
+Partition names and `module load` lines are placeholders. They are based on the deep-research plan, **not** on TA instructions (which haven't arrived). When Dennis Heijmans / Rui Wang send the access flow, update both `.sbatch` files and remove this banner.
 
-## Get a faculty share early
-Default low-priority jobs may queue 8–24h on busy days. Request a faculty share via TOPdesk in week 1 — see `docs/kickoff.md` for the action item.
+## Usage
+```bash
+sbatch slurm/gpu-a100-small.sbatch experiments/configs/template_roberta_mnli.yaml
+```
+
+`slurm-<jobid>.out` files are gitignored.
+
+## Do not use yet
+- `gpu-a100` (full 80 GB) — longest queues; reserved for Llama-7B stretch only.
+- DAIC — backup capacity; we'll add a template if we actually hit DelftBlue limits.
