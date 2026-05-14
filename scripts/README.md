@@ -19,6 +19,8 @@ make mnist-smoke
 make supplement
 make install-supplement
 make supplement-smoke-all
+make table1-pilot MODE=rolora
+make table1-pilot-all
 make full-local
 uv run python scripts/local_suite.py full-local --dry-run
 uv run python scripts/prep_glue.py --task mnli --dry-run

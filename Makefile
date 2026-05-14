@@ -1,4 +1,4 @@
-.PHONY: sync test lint check mnist mnist-paper mnist-smoke local-smoke full-local supplement install-supplement supplement-smoke supplement-smoke-all data clean
+.PHONY: sync test lint check mnist mnist-paper mnist-smoke local-smoke full-local table1-pilot table1-pilot-all supplement install-supplement supplement-smoke supplement-smoke-all data clean
 
 MODE ?= rolora
 SUPPLEMENT_ZIP ?=
@@ -38,6 +38,12 @@ supplement-smoke:
 
 supplement-smoke-all:
 	bash scripts/smoke_supplement.sh rolora lora ffa_lora
+
+table1-pilot:
+	CONFIG=experiments/configs/table1_local_pilot.yaml LOG_PREFIX=table1_pilot bash scripts/smoke_supplement.sh $(MODE)
+
+table1-pilot-all:
+	CONFIG=experiments/configs/table1_local_pilot.yaml LOG_PREFIX=table1_pilot bash scripts/smoke_supplement.sh rolora lora ffa_lora
 
 local-smoke:
 	uv run python scripts/local_suite.py smoke

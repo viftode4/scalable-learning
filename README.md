@@ -84,6 +84,8 @@ See [`docs/setup/environment.md`](docs/setup/environment.md) for the full setup,
 | `make mnist` | Default local MNIST Figure-2 run. |
 | `make mnist-paper` | Stronger 200-round MNIST Figure-2 run used as the local paper-sanity check. |
 | `make supplement-smoke-all` | Run the tiny supplement smoke config in `rolora`, `lora`, and `ffa_lora` modes. |
+| `make table1-pilot MODE=rolora` | Run a 3-client QNLI RoBERTa-base local pilot for one mode. |
+| `make table1-pilot-all` | Run the local Table-1-shaped pilot for all three modes. |
 | `make local-smoke` | Full fast local evidence chain: checks, MNIST smoke, supplement smoke-all. |
 | `make full-local` | Strongest laptop-feasible evidence chain: checks, 200-round MNIST, supplement smoke-all. |
 | `make clean` | Remove local outputs/caches while preserving tracked placeholders. |

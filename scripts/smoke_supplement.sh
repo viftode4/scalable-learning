@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
-# Run the tiny OpenReview-supplement smoke config through our patched trainer.
+# Run a supplement config through our patched trainer.
 # Usage:
 #   bash scripts/smoke_supplement.sh [rolora|lora|ffa_lora|all ...]
 #   MODE=all make supplement-smoke
+#   CONFIG=experiments/configs/table1_local_pilot.yaml LOG_PREFIX=table1_pilot bash scripts/smoke_supplement.sh all
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 SUPP="$REPO/code/harness/rolora-supplement/RoLoRA-code"
 VENV="$SUPP/.venv-supplement"
-CONFIG="$REPO/experiments/configs/smoke_supplement.yaml"
+CONFIG=${CONFIG:-"$REPO/experiments/configs/smoke_supplement.yaml"}
+LOG_PREFIX=${LOG_PREFIX:-smoke}
 RESULTS="$REPO/results"
 
 if [[ ! -x "$VENV/bin/python" ]]; then
@@ -43,7 +45,7 @@ for mode in "${modes[@]}"; do
             ;;
     esac
 
-    log="$RESULTS/smoke_${mode}.log"
+    log="$RESULTS/${LOG_PREFIX}_${mode}.log"
     echo "[smoke] $mode -> $log"
 
     if (
