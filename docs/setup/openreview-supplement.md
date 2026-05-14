@@ -15,17 +15,24 @@ The submitted proposal commits to using the authors' released code as the starti
    ```
    The script unpacks into `code/harness/rolora-supplement/`, prints SHA256 + a content sanity check.
 
-## Expected contents
-The extractor warns and exits non-zero if no Python files are found. Typical RoLoRA supplements include:
-- A training entrypoint (FederatedScope-LLM style or a custom federated loop).
-- LoRA / FFA-LoRA / RoLoRA implementations.
-- Configs / shell scripts that reproduce paper tables.
+## Expected contents (confirmed 2026-05-14)
+The audit (`docs/decisions/0004-supplement-audit.md`) found:
+- **Zip filename** on OpenReview: `5662_Robust_Federated_Finetuni_Supplementary Material.zip`.
+- **SHA256:** `ca9a64cb64bb48bb0a6dc35179760fe0e561dd566a474877ab42f65453aa4c11` — verify locally after download.
+- 845 files, 16 MB, **Apache 2.0** license.
+- Built on FederatedScope-LLM. Example run:
+  ```bash
+  cd code/harness/rolora-supplement/RoLoRA-code
+  cd sst2 && python qnli2json.py && cd ..
+  python federatedscope/main.py --cfg federatedscope/llm/baseline/test_glue.yaml
+  ```
+- **Caveat:** RoLoRA alternation is hardcoded (no LoRA / FFA-LoRA baseline modes in-tree). Plan is to patch `federatedscope/llm/trainer/trainer.py` to add config-driven baseline selection (see ADR 0004).
 
 ## Why this is gitignored
 `code/harness/rolora-supplement/` is in `.gitignore`. Author code may not be redistributable (license unclear from the OpenReview page). Each teammate fetches the supplement locally. The SHA256 hash of the zip is the only artifact we share — it lets us verify everyone is using the same source.
 
 ## If the supplement is broken or unusable
-This is plausible — the deep-research plan flags RoLoRA's code as likely a "research-grade dump rather than a polished release." The contingency:
-1. Try the FedSA-LoRA submodule at `code/harness/fedsa-lora/` — it implements LoRA / FFA-LoRA / FedSA-LoRA on RoBERTa+GLUE and is well-suited as a baseline harness.
-2. Email the authors (use the draft in `docs/templates/author-email.md`); the deep-research plan points at `akhisti@ece.utoronto.ca`.
-3. Record the pivot in `docs/decisions/` (new ADR).
+The audit (ADR 0004) confirms the supplement runs and is the authors' real code. If FederatedScope-LLM proves too painful to wire up on DelftBlue (the deep-research plan flagged it as heavy), the contingency:
+1. Use `code/harness/fedsa-lora/` (the submodule) for vanilla LoRA / FFA-LoRA baselines and port the supplement's `trainer.py` alternation into FedSA-LoRA for the RoLoRA arm.
+2. Email the authors with the draft in `docs/templates/author-email.md` if a deeper bug needs clarification.
+3. Record the harness pivot as a new ADR.

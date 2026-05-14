@@ -5,13 +5,22 @@ Two harnesses, used in priority order. See `docs/decisions/0001-harness-strategy
 ## `rolora-supplement/` — primary (authors' code)
 The OpenReview supplementary zip for RoLoRA (forum `u4mobiHTJl`). Required by the project proposal ("we will use the authors' released code as the starting point").
 
-**Not in git** — see `.gitignore`. Author code may not be redistributable; we track it locally only.
+**Audit summary** (see `docs/decisions/0004-supplement-audit.md` for the full audit):
+- Zip SHA256 (verify after download): `ca9a64cb64bb48bb0a6dc35179760fe0e561dd566a474877ab42f65453aa4c11`.
+- License: **Apache 2.0** (redistributable, though we keep it gitignored to avoid bloat).
+- Built on **FederatedScope-LLM** (~800 Python files, 16 MB).
+- `federatedscope/llm/trainer/trainer.py` contains the alternation logic, gated on a hardcoded `self.save_mode = True` flag with `step_count`-parity for round selection.
+- **No LoRA / FFA-LoRA baseline modes** in the supplement — the alternation is the only path. To run the headline LoRA-cliff comparison we must add the two baseline branches ourselves (planned ~50 LOC patch to `trainer.py`).
+- Example config: `federatedscope/llm/baseline/test_glue.yaml` (RoBERTa-Large, QNLI, 50 clients, rank 8, 30 rounds).
+- Suggests Python 3.9 + PyTorch 2.0; our main env is 3.11 + 2.3. A secondary uv env may be needed if compat breaks.
 
-To get it on a fresh clone, follow `docs/setup/openreview-supplement.md`. After extraction:
+**Not in git** — see `.gitignore`. To get it on a fresh clone:
 ```bash
-find code/harness/rolora-supplement -name '*.py' | head
+# 1. follow docs/setup/openreview-supplement.md to download the zip
+bash scripts/extract_supplement.sh
+# 2. sanity-check
+find code/harness/rolora-supplement -name '*.py' | wc -l   # expect ~845
 ```
-should list Python files. If empty, the supplement download failed — re-check the OpenReview steps.
 
 ## `fedsa-lora/` — backup harness (git submodule)
 Git submodule pointing at our fork `viftode4/FedSA-LoRA` (upstream: `Pengxin-Guo/FedSA-LoRA`, ICLR 2025).
