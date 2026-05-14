@@ -5,15 +5,13 @@ The submitted proposal commits to using the authors' released code as the starti
 ## Action items
 1. Log into [openreview.net](https://openreview.net).
 2. Navigate to the RoLoRA submission: `https://openreview.net/forum?id=u4mobiHTJl`.
-3. Scroll to the **Code** attachment under the Author-provided supplementary materials. Download the zip.
-4. Drop the zip at `~/Downloads/rolora-supplement.zip` (or pass an explicit path to the extractor in step 5).
-5. From the repo root:
+3. Scroll to the **Code** attachment under the Author-provided supplementary materials. Download the zip — it's named `5662_Robust_Federated_Finetuni_Supplementary Material.zip` (~16 MB).
+4. From the repo root, run:
    ```bash
-   bash scripts/extract_supplement.sh
-   # or, with a custom path:
-   bash scripts/extract_supplement.sh /path/to/zip
+   bash scripts/extract_supplement.sh "$HOME/Downloads/5662_Robust_Federated_Finetuni_Supplementary Material.zip"
+   bash scripts/install_supplement.sh
    ```
-   The script unpacks into `code/harness/rolora-supplement/`, prints SHA256 + a content sanity check.
+   First script unpacks into `code/harness/rolora-supplement/` and prints SHA256 + a sanity check. Second script creates an isolated Python 3.9 venv at `code/harness/rolora-supplement/RoLoRA-code/.venv-supplement`, applies `code/harness/rolora-supplement.patch` (adds the `SLS_ALTERNATION_MODE` env-var switch — see ADR 0004 and the patch file itself), installs the pinned LLM deps, and import-tests the result.
 
 ## Expected contents (confirmed 2026-05-14)
 The audit (`docs/decisions/0004-supplement-audit.md`) found:

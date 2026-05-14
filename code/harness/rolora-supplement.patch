@@ -1,0 +1,78 @@
+--- a/federatedscope/llm/trainer/trainer.py
++++ b/federatedscope/llm/trainer/trainer.py
+@@ -1,4 +1,5 @@
+ import torch
++import os
+ import logging
+ try:
+     import deepspeed
+@@ -23,7 +24,13 @@
+         super(LLMTrainer, self).__init__(*args, **kwargs)
+         print("Load CustomSeq2SeqTrainer...")
+         self.step_count = 0
+-        self.save_mode = True
++        # sls-rolora: baseline-mode switch (rolora | lora | ffa_lora).
++        # Read once from the SLS_ALTERNATION_MODE env var; default 'rolora'
++        # preserves the upstream behaviour.
++        self.alternation_mode = os.environ.get(
++            'SLS_ALTERNATION_MODE', 'rolora').lower()
++        assert self.alternation_mode in ('rolora', 'lora', 'ffa_lora'), \
++            f"unknown SLS_ALTERNATION_MODE: {self.alternation_mode!r}"
+ 
+     def _hook_on_fit_start_numerical_precision(self, ctx):
+         if self.cfg.train.is_enable_half:
+@@ -60,28 +67,32 @@
+                 ctx.scheduler = get_scheduler(
+                     ctx.optimizer, **ctx.cfg[ctx.cur_mode].scheduler)
+         # print("Train number of epoch",ctx.num_train_epoch)
+-        if self.save_mode:
+-
+-            if (self.step_count%2)==0:
+-                print("Freeze A")
+-                for name, param in ctx.model.named_parameters():
+-                    # print(name)
+-                    if 'lora_B' in name:
+-                        param.requires_grad = True
+-                    elif 'lora_A' in name:
+-                        param.requires_grad = False
+-                    # elif 'classifier' in name:
+-                    #    param.requires_grad = False
+-                        
+-            else:
+-                print("Freeze B")
+-                for name, param in ctx.model.named_parameters():
+-                    if 'lora_B' in name:
+-                        param.requires_grad = False
+-                    elif 'lora_A' in name:
+-                        param.requires_grad = True
+-                    # elif 'classifier' in name:
+-                    #    param.requires_grad = False
++        # sls-rolora: per-mode factor-freezing strategy.
++        if self.alternation_mode == 'rolora':
++            train_b = (self.step_count % 2) == 0
++            print(f"[sls-rolora] RoLoRA round {self.step_count}: "
++                  f"train {'B' if train_b else 'A'}")
++            for name, param in ctx.model.named_parameters():
++                if 'lora_A' in name:
++                    param.requires_grad = not train_b
++                elif 'lora_B' in name:
++                    param.requires_grad = train_b
++        elif self.alternation_mode == 'lora':
++            # Train both factors every round; the aggregator averages A and B
++            # independently — this is the math-bug baseline the paper attacks.
++            print(f"[sls-rolora] LoRA round {self.step_count}: train both")
++            for name, param in ctx.model.named_parameters():
++                if 'lora_A' in name or 'lora_B' in name:
++                    param.requires_grad = True
++        elif self.alternation_mode == 'ffa_lora':
++            # Freeze A at init forever; only B is trained and aggregated.
++            print(f"[sls-rolora] FFA-LoRA round {self.step_count}: "
++                  f"A frozen, train B")
++            for name, param in ctx.model.named_parameters():
++                if 'lora_A' in name:
++                    param.requires_grad = False
++                elif 'lora_B' in name:
++                    param.requires_grad = True
+         if self.step_count==0:
+             print("Freeze classifier")
+             for name, param in ctx.model.named_parameters():

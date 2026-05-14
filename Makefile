@@ -1,4 +1,4 @@
-.PHONY: sync test lint mnist supplement data clean
+.PHONY: sync test lint mnist supplement install-supplement data clean
 
 sync:
 	uv sync
@@ -14,6 +14,9 @@ mnist:
 
 supplement:
 	bash scripts/extract_supplement.sh
+
+install-supplement:
+	bash scripts/install_supplement.sh
 
 data:
 	uv run python scripts/prep_glue.py --task mnli

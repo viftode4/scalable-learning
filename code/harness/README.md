@@ -16,11 +16,21 @@ The OpenReview supplementary zip for RoLoRA (forum `u4mobiHTJl`). Required by th
 
 **Not in git** — see `.gitignore`. To get it on a fresh clone:
 ```bash
-# 1. follow docs/setup/openreview-supplement.md to download the zip
-bash scripts/extract_supplement.sh
-# 2. sanity-check
-find code/harness/rolora-supplement -name '*.py' | wc -l   # expect ~845
+# 1. download the zip per docs/setup/openreview-supplement.md (one-time, user-driven)
+bash scripts/extract_supplement.sh "/path/to/5662_Robust_Federated_Finetuni_Supplementary Material.zip"
+# 2. build isolated venv + apply sls-rolora trainer patch + import-test
+bash scripts/install_supplement.sh
 ```
+
+Run an experiment with our mode switch:
+```bash
+SLS_ALTERNATION_MODE=rolora \
+  code/harness/rolora-supplement/RoLoRA-code/.venv-supplement/bin/python \
+  code/harness/rolora-supplement/RoLoRA-code/federatedscope/main.py \
+  --cfg code/harness/rolora-supplement/RoLoRA-code/federatedscope/llm/baseline/test_glue.yaml
+```
+
+Swap `SLS_ALTERNATION_MODE` between `rolora`, `lora`, `ffa_lora` to compare the three methods on the same harness. The patch lives at `code/harness/rolora-supplement.patch` (tracked in git, idempotently re-applied by `install_supplement.sh`).
 
 ## `fedsa-lora/` — backup harness (git submodule)
 Git submodule pointing at our fork `viftode4/FedSA-LoRA` (upstream: `Pengxin-Guo/FedSA-LoRA`, ICLR 2025).
