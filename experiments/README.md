@@ -15,3 +15,8 @@ Example: `rolora_mnli_50c_4r_0s.yaml`.
 - MNIST 2-layer toy (Fig. 2) for cheap sanity checking — lives in `notebooks/`, not here.
 
 See `docs/research/deep-research-plan.md` for the full GPU-hour budget (~600–900 GPU-h on V100/A40 for the headline table).
+
+
+## Local evidence suites
+
+Use `make local-smoke` for a fast setup check and `make full-local` for the strongest laptop-feasible run before moving to cluster experiments. `full-local` runs first-party tests/lint, the 200-round MNIST Figure-2 sanity check, and all three patched supplement modes on the tiny RoBERTa-base config.

@@ -1,4 +1,4 @@
-.PHONY: sync test lint check mnist mnist-smoke supplement install-supplement supplement-smoke supplement-smoke-all data clean
+.PHONY: sync test lint check mnist mnist-paper mnist-smoke local-smoke full-local supplement install-supplement supplement-smoke supplement-smoke-all data clean
 
 MODE ?= rolora
 SUPPLEMENT_ZIP ?=
@@ -16,6 +16,9 @@ check: test lint
 
 mnist:
 	uv run python notebooks/mnist_fig2.py
+
+mnist-paper:
+	uv run python notebooks/mnist_fig2.py --rounds 200 --clients 5 --rank 1 --local-steps 20 --out results/mnist_fig2.png
 
 mnist-smoke:
 	uv run python notebooks/mnist_fig2.py --rounds 15 --clients 5 --rank 1 --local-steps 10 --subset 5000 --out results/mnist_fig2_smoke.png
@@ -35,6 +38,12 @@ supplement-smoke:
 
 supplement-smoke-all:
 	bash scripts/smoke_supplement.sh rolora lora ffa_lora
+
+local-smoke:
+	uv run python scripts/local_suite.py smoke
+
+full-local:
+	uv run python scripts/local_suite.py full-local
 
 data:
 	uv run python scripts/prep_glue.py --task mnli
