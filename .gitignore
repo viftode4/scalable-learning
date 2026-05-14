@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# LaTeX (build artifacts only — keep source .tex/.bib)
+report/build/
+*.aux
+*.log
+*.out
+*.synctex.gz
+*.toc
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+
+# macOS
+.DS_Store
+
+# OMC tool state
+.omc/
+
+# Results — everything except the placeholder
+results/*
+!results/.gitkeep
+
+# Experiment outputs that may leak into the repo
+*.ckpt
+*.pt
+wandb/
+runs/
+mlruns/
