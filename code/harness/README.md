@@ -1,28 +1,39 @@
-# Harness — FedSA-LoRA fork (stub)
+# Harness checkouts
 
-This directory will hold a **git submodule** pointing to our fork of `Pengxin-Guo/FedSA-LoRA`. The fork has not been created yet — the actual `gh repo fork` and `git submodule add` is deferred until the team confirms in or after the kickoff meeting.
+Two harnesses, used in priority order. See `docs/decisions/0001-harness-strategy.md` for the rationale.
 
-## Why FedSA-LoRA
-The deep-research plan (see `docs/research/deep-research-plan.md`) selected this as the harness because it:
-- already implements LoRA, FFA-LoRA, and FedSA-LoRA baselines on RoBERTa-base/large for GLUE,
-- supports FedAvg with Dirichlet-α non-IID client splits out of the box,
-- is small, public (ICLR 2025), Python 3.10 + PyTorch 2.1,
-- requires roughly 50 lines of code to add RoLoRA's odd/even alternation.
+## `rolora-supplement/` — primary (authors' code)
+The OpenReview supplementary zip for RoLoRA (forum `u4mobiHTJl`). Required by the project proposal ("we will use the authors' released code as the starting point").
 
-We will cross-check against `CERT-Lab/fed-sb` (which contains a third-party RoLoRA implementation) for numerical sanity.
+**Not in git** — see `.gitignore`. Author code may not be redistributable; we track it locally only.
 
-## Intended commands (do not run yet)
+To get it on a fresh clone, follow `docs/setup/openreview-supplement.md`. After extraction:
 ```bash
-# 1. Fork the upstream repo on GitHub
-gh repo fork Pengxin-Guo/FedSA-LoRA --clone=false --org=viftode4
+find code/harness/rolora-supplement -name '*.py' | head
+```
+should list Python files. If empty, the supplement download failed — re-check the OpenReview steps.
 
-# 2. Add as submodule under this directory
-git submodule add git@github.com:viftode4/FedSA-LoRA.git code/harness/fedsa-lora
+## `fedsa-lora/` — backup harness (git submodule)
+Git submodule pointing at our fork `viftode4/FedSA-LoRA` (upstream: `Pengxin-Guo/FedSA-LoRA`, ICLR 2025).
+
+Why it's here: FedSA-LoRA already implements LoRA, FFA-LoRA, and FedSA-LoRA on RoBERTa-base/large for GLUE under FedAvg with Dirichlet-α non-IID splits. The deep-research plan flags that the OpenReview supplement may be a research-grade dump; FedSA-LoRA is a vetted public alternative that the W2 kill criterion explicitly authorizes us to pivot to.
+
+```bash
+# Initialize after clone
 git submodule update --init --recursive
+
+# Pull upstream changes from Pengxin-Guo/FedSA-LoRA into our fork:
+cd code/harness/fedsa-lora
+git remote add upstream https://github.com/Pengxin-Guo/FedSA-LoRA.git  # one-time
+git fetch upstream
+git merge upstream/main          # or rebase
+git push                          # pushes to viftode4/FedSA-LoRA
+cd ../../..
+git add code/harness/fedsa-lora && git commit  # records the new submodule SHA
 ```
 
-After execution, capture the decision (submodule vs. vendor, fork ownership, branch strategy) in `docs/decisions/`.
+When we start modifying the submodule, create a branch in `viftode4/FedSA-LoRA` named `sls-rolora/main` and point the submodule at it.
 
-## Do NOT
-- Clone `HuangOwen/RoLoRA` — different paper (EMNLP'24, quantization).
-- Adopt FederatedScope-LLM as the main vehicle — heavy dependency footprint, older than FedSA-LoRA, would burn week 1.
+## Do not clone
+- `HuangOwen/RoLoRA` — different paper (EMNLP'24, quantization).
+- `alibaba/FederatedScope/tree/llm` — heavy, older codebase; the deep-research plan rejects it as the main vehicle.
