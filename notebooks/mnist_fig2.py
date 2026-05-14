@@ -96,6 +96,12 @@ def average_factor(server: MLP, clients: list[MLP], factor: str) -> None:
 
 def assert_factor_identical(server: MLP, clients: list[MLP], factor: str) -> None:
     src = server.adapter_params(factor)
+    for s_i, sp in enumerate(src):
+        if torch.isnan(sp.data).any():
+            raise RuntimeError(
+                f"server {factor}[{s_i}] contains NaN — training diverged. "
+                "Lower the learning rate or strengthen gradient clipping."
+            )
     for client in clients:
         for cp, sp in zip(client.adapter_params(factor), src, strict=True):
             assert torch.equal(cp.data, sp.data), f"client {factor} drifted from server"
@@ -114,6 +120,7 @@ def local_train(
     steps: int,
     lr: float,
     device: torch.device,
+    grad_clip: float = 1.0,
 ) -> None:
     trainable = [p for p in model.parameters() if p.requires_grad]
     opt = torch.optim.SGD(trainable, lr=lr)
@@ -125,6 +132,8 @@ def local_train(
             opt.zero_grad()
             loss = F.cross_entropy(model(x), y)
             loss.backward()
+            if grad_clip > 0:
+                torch.nn.utils.clip_grad_norm_(trainable, grad_clip)
             opt.step()
             seen += 1
             if seen >= steps:
@@ -156,6 +165,7 @@ def run_method(
     batch_size: int,
     seed: int,
     device: torch.device,
+    grad_clip: float = 1.0,
 ) -> tuple[list[float], list[float]]:
     assert method in METHODS
     torch.manual_seed(seed)
@@ -193,7 +203,7 @@ def run_method(
             active_factors = ("B",) if train_B else ("A",)
 
         for client, loader in zip(clients, client_loaders, strict=True):
-            local_train(client, loader, steps=local_steps, lr=lr, device=device)
+            local_train(client, loader, steps=local_steps, lr=lr, device=device, grad_clip=grad_clip)
 
         for f in active_factors:
             average_factor(server, clients, f)
@@ -214,7 +224,8 @@ def main() -> None:
     p.add_argument("--rounds", type=int, default=100)
     p.add_argument("--local-steps", type=int, default=20)
     p.add_argument("--rank", type=int, default=1)
-    p.add_argument("--lr", type=float, default=0.05)
+    p.add_argument("--lr", type=float, default=0.02)
+    p.add_argument("--grad-clip", type=float, default=1.0)
     p.add_argument("--batch-size", type=int, default=64)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--data-dir", type=Path, default=Path("data"))
@@ -252,6 +263,7 @@ def main() -> None:
             batch_size=args.batch_size,
             seed=args.seed,
             device=device,
+            grad_clip=args.grad_clip,
         )
 
     fig, (ax_loss, ax_acc) = plt.subplots(1, 2, figsize=(10, 4))
