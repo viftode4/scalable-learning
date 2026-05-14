@@ -1,4 +1,4 @@
-.PHONY: sync test lint check mnist mnist-paper mnist-smoke local-smoke full-local table1-pilot table1-pilot-all supplement install-supplement supplement-smoke supplement-smoke-all data clean
+.PHONY: sync test lint check mnist mnist-paper mnist-smoke local-smoke full-local table1-pilot table1-pilot-all table1-pilot-summary table1-medium table1-medium-all table1-medium-summary supplement install-supplement supplement-smoke supplement-smoke-all data clean
 
 MODE ?= rolora
 SUPPLEMENT_ZIP ?=
@@ -44,6 +44,18 @@ table1-pilot:
 
 table1-pilot-all:
 	CONFIG=experiments/configs/table1_local_pilot.yaml LOG_PREFIX=table1_pilot bash scripts/smoke_supplement.sh rolora lora ffa_lora
+
+table1-pilot-summary:
+	uv run python scripts/summarize_supplement.py --prefix table1_pilot
+
+table1-medium:
+	CONFIG=experiments/configs/table1_local_medium.yaml LOG_PREFIX=table1_medium bash scripts/smoke_supplement.sh $(MODE)
+
+table1-medium-all:
+	CONFIG=experiments/configs/table1_local_medium.yaml LOG_PREFIX=table1_medium bash scripts/smoke_supplement.sh rolora lora ffa_lora
+
+table1-medium-summary:
+	uv run python scripts/summarize_supplement.py --prefix table1_medium
 
 local-smoke:
 	uv run python scripts/local_suite.py smoke

@@ -48,12 +48,17 @@ for mode in "${modes[@]}"; do
     log="$RESULTS/${LOG_PREFIX}_${mode}.log"
     echo "[smoke] $mode -> $log"
 
-    if (
+    if {
+        echo "# repo: $REPO"
+        echo "# git_sha: $(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+        echo "# config: $CONFIG"
+        echo "# mode: $mode"
+        echo "# started_at_utc: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
         cd "$REPO"
         NO_COLOR=1 SLS_ALTERNATION_MODE="$mode" \
             "$VENV/bin/python" scripts/run_supplement.py \
             --cfg "$CONFIG"
-    ) >"$log" 2>&1; then
+    } >"$log" 2>&1; then
         marker="$(grep -F "[sls-rolora]" "$log" | tail -1 | perl -pe 's/\e\[[0-9;]*m//g' || true)"
         final="$(grep -E "Results_raw|Results_avg|Results_weighted_avg" "$log" | tail -1 | perl -pe 's/\e\[[0-9;]*m//g' || true)"
         if [[ -z "$marker" ]]; then

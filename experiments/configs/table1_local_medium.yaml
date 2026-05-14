@@ -1,0 +1,60 @@
+# Stronger local Table-1-shaped pilot for the OpenReview supplement harness.
+#
+# Still not paper Table 1:
+# - roberta-base instead of roberta-large
+# - QNLI only
+# - 3 clients, 10 rounds, 5 local batches
+#
+# Goal: check whether the real supplement pipeline keeps running when we move
+# past smoke scale. Expect this to take materially longer than table1_local_pilot.
+
+use_gpu: False
+device: -1
+early_stop:
+  patience: 0
+
+federate:
+  mode: standalone
+  total_round_num: 10
+  save_to: "table1-local-medium.ckpt"
+  client_num: 3
+  share_local_model: True
+
+data:
+  root: code/harness/rolora-supplement/RoLoRA-code/sst2/
+  type: 'qnli.json@llm'
+  splits: [0.89, 0.1, 0.01]
+  splitter: 'iid'
+
+llm:
+  tok_len: 96
+  chat:
+    max_len: 384
+    max_history_len: 4
+  adapter:
+    use: True
+    args: [ { 'adapter_package': 'peft', 'adapter_method': 'lora', 'r': 4, 'lora_alpha': 16, 'lora_dropout': 0.1 } ]
+
+dataloader:
+  batch_size: 4
+
+model:
+  type: 'roberta-base@huggingface_llm'
+
+train:
+  local_update_steps: 5
+  batch_or_epoch: batch
+  optimizer:
+    lr: 0.005
+    weight_decay: 0.0002
+  is_enable_half: False
+
+trainer:
+  type: llmtrainer
+criterion:
+  type: CrossEntropyLoss
+
+eval:
+  freq: 5
+  metrics: ['loss', 'acc']
+  best_res_update_round_wise_key: val_loss

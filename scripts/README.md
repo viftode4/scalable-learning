@@ -10,6 +10,7 @@ Small setup/run utilities. Run from the repo root.
 | `run_supplement.py` | Launcher for the supplement's `federatedscope/main.py`; keeps a small macOS hostname compatibility patch outside the vendored code. |
 | `smoke_supplement.sh` | Run `experiments/configs/smoke_supplement.yaml` for one or more modes: `rolora`, `lora`, `ffa_lora`, or `all`. |
 | `local_suite.py` | Orchestrate local evidence suites: `smoke` and `full-local`. Use `--dry-run` to print the exact commands. |
+| `summarize_supplement.py` | Parse supplement logs into a compact markdown metrics table. |
 
 Common commands:
 
@@ -21,6 +22,9 @@ make install-supplement
 make supplement-smoke-all
 make table1-pilot MODE=rolora
 make table1-pilot-all
+make table1-pilot-summary
+make table1-medium MODE=rolora
+make table1-medium-summary
 make full-local
 uv run python scripts/local_suite.py full-local --dry-run
 uv run python scripts/prep_glue.py --task mnli --dry-run

@@ -22,3 +22,6 @@ See `docs/research/deep-research-plan.md` for the full GPU-hour budget (~600–9
 Use `make local-smoke` for a fast setup check and `make full-local` for the strongest laptop-feasible run before moving to cluster experiments. `full-local` runs first-party tests/lint, the 200-round MNIST Figure-2 sanity check, and all three patched supplement modes on the tiny RoBERTa-base config.
 
 Use `make table1-pilot MODE=rolora` or `make table1-pilot-all` for the next local rung: QNLI, RoBERTa-base, 3 clients, 3 communication rounds, and 3 local batches. This proves the Table-1-shaped pipeline locally without claiming paper-comparable RoBERTa-Large numbers.
+
+
+`table1_local_medium.yaml` is the stronger local rung: same RoBERTa-base QNLI setup as the pilot, but 10 rounds and 5 local batches. Run one mode first with `make table1-medium MODE=rolora`; run all modes only if runtime is acceptable.

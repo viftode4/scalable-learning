@@ -50,7 +50,7 @@ docs/        Source documents, kickoff agenda, decision log, setup guides, templ
 code/        Our code + harness checkouts (FedSA-LoRA submodule, RoLoRA supplement)
 experiments/ YAML configs that map to runs
 notebooks/   MNIST Figure-2 sanity check and exploration
-scripts/     Setup and run utilities (dataset prep, supplement extraction/smoke)
+scripts/     Setup and run utilities (dataset prep, supplement extraction/smoke/summary)
 slurm/       DelftBlue / DAIC job templates
 results/     Output artifacts (gitignored)
 report/      LaTeX writeup
@@ -74,7 +74,7 @@ make install-supplement
 make supplement-smoke-all
 ```
 
-See [`docs/setup/environment.md`](docs/setup/environment.md) for the full setup, [`docs/setup/openreview-supplement.md`](docs/setup/openreview-supplement.md) for fetching the authors' code, [`docs/setup/delftblue.md`](docs/setup/delftblue.md) for cluster access (TA-driven).
+See [`docs/setup/environment.md`](docs/setup/environment.md) for the full setup, [`docs/setup/openreview-supplement.md`](docs/setup/openreview-supplement.md) for fetching the authors' code, [`docs/setup/delftblue.md`](docs/setup/delftblue.md) for cluster access (TA-driven), and [`experiments/ledger/README.md`](experiments/ledger/README.md) for run evidence.
 
 ## Local commands
 | Command | Purpose |
@@ -86,9 +86,26 @@ See [`docs/setup/environment.md`](docs/setup/environment.md) for the full setup,
 | `make supplement-smoke-all` | Run the tiny supplement smoke config in `rolora`, `lora`, and `ffa_lora` modes. |
 | `make table1-pilot MODE=rolora` | Run a 3-client QNLI RoBERTa-base local pilot for one mode. |
 | `make table1-pilot-all` | Run the local Table-1-shaped pilot for all three modes. |
+| `make table1-pilot-summary` | Parse `results/table1_pilot_*.log` into a metrics table. |
+| `make table1-medium MODE=rolora` | Stronger local pilot: 3-client QNLI RoBERTa-base, 10 rounds, 5 local batches. |
+| `make table1-medium-all` | Run the stronger local pilot for all three modes. |
+| `make table1-medium-summary` | Parse `results/table1_medium_*.log` into a metrics table. |
 | `make local-smoke` | Full fast local evidence chain: checks, MNIST smoke, supplement smoke-all. |
 | `make full-local` | Strongest laptop-feasible evidence chain: checks, 200-round MNIST, supplement smoke-all. |
 | `make clean` | Remove local outputs/caches while preserving tracked placeholders. |
 
+## What works locally now
+
+- `make check` — first-party tests and lint.
+- `make mnist-paper` — 200-round MNIST paper-sanity run; latest local result: RoLoRA `0.4794` > LoRA `0.4631` > FFA-LoRA `0.3767`.
+- `make supplement-smoke-all` — authors' FederatedScope supplement runs locally in `rolora`, `lora`, and `ffa_lora` modes.
+- `make table1-pilot-all` — Table-1-shaped local QNLI pilot: RoBERTa-base, 3 clients, 3 rounds, 3 local batches.
+- `make table1-pilot-summary` — parses local pilot logs into a metrics table.
+- `make table1-medium MODE=rolora` — stronger local pilot; verified for `rolora` on 2026-05-14. Run `make table1-medium-all` when ready to spend more local runtime.
+
+## What is not local yet
+
+Full paper Table 1 is RoBERTa-Large across MNLI/QQP/QNLI, 3/20/50 clients, three methods, and multiple seeds. The plan estimates hundreds of GPU-hours, so local runs are pipeline and mechanism evidence, not paper-comparable Table 1 numbers.
+
 ## Status
-**Week 3 — pre-launch.** Main env is pinned, MNIST sanity checks run locally, and the authors' supplement is installed in an isolated Python 3.9 env with a tiny RoBERTa-base smoke config. Full RoBERTa-Large reproduction starts once DelftBlue/DAIC access is available. See [`docs/kickoff.md`](docs/kickoff.md) for the remaining team/process items.
+**Week 3 — pre-launch.** Main env is pinned, MNIST sanity checks run locally, the authors' supplement is installed in an isolated Python 3.9 env, and local Table-1-shaped pilots are runnable. Next local step: `make table1-medium-all` if runtime is acceptable; after that, try a one-round RoBERTa-Large feasibility probe. Full RoBERTa-Large reproduction starts once DelftBlue/DAIC access is available. See [`docs/kickoff.md`](docs/kickoff.md) for the remaining team/process items.
