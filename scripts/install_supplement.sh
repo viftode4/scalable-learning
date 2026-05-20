@@ -47,7 +47,24 @@ fi
 # 3. Install federatedscope core (no editable; old setup.py doesn't support PEP 660).
 "$VENV/bin/python" -m pip install --no-build-isolation "$SUPP"
 
-# 4. Install the LLM-extra pins.
+# 4. Backfill federatedscope/core/data/ from the FederatedScope llm branch.
+# The supplement zip ships an incomplete fork of FederatedScope that is missing
+# core/data/ entirely. That module was added in the llm branch and is required
+# by data_builder.py at import time. Without this step the supplement crashes
+# with "No module named 'federatedscope.core.data'" on every run.
+CORE_DATA="$SUPP/federatedscope/core/data"
+FS_LLM="https://raw.githubusercontent.com/alibaba/FederatedScope/llm/federatedscope/core/data"
+mkdir -p "$CORE_DATA"
+for f in __init__ utils base_data base_translator dummy_translator raw_translator wrap_dataset; do
+    if [[ ! -f "$CORE_DATA/${f}.py" ]]; then
+        echo "[backfill] core/data/${f}.py"
+        curl -fsSL "$FS_LLM/${f}.py" -o "$CORE_DATA/${f}.py"
+    else
+        echo "[skip] core/data/${f}.py already present"
+    fi
+done
+
+# 5. Install the LLM-extra pins.
 # Note: `datasets` is required by the dataset-prep scripts in sst2/ but is NOT in
 # the supplement's [llm] extras (it's only in [app]). We add it explicitly.
 "$VENV/bin/python" -m pip install --no-build-isolation \
@@ -59,7 +76,7 @@ fi
     'sentencepiece==0.1.99' \
     'datasets'
 
-# 5. Import sanity check.
+# 6. Import sanity check.
 "$VENV/bin/python" - <<'PY'
 import federatedscope, torch, transformers, peft, accelerate
 print("OK:",
