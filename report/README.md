@@ -57,7 +57,7 @@ active-factor server-optimization choices.
    - What reproduced, what did not, and why.
    - What diagnostics explain.
    - Compute limits and external-validity limits.
-   - Why no TrustChain / no partial-participation pivot in the main story.
+   - Why no unrelated prior-project framing or partial-participation pivot in the main story.
 
 9. **Conclusion**
    - Reproduction status.

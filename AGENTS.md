@@ -6,7 +6,7 @@ TU Delft **CS 4725** research seminar — 9 course weeks, currently in **week 3*
 See `README.md` for orientation and `docs/research/` for canonical source docs.
 
 ## Hard constraints
-- **No TrustChain framing** — explicitly excluded.
+- **No unrelated prior-project framing** — keep the project centered on RoLoRA reproduction and the submitted proposal scope.
 - **W7-8 paper presentation is on the SAME RoLoRA paper** as the project — not a separate paper.
 - **Compute** is DelftBlue + DAIC + local laptops. Plan from low- to high-cost. Llama-2-7B is a stretch goal only, not a baseline path.
 - **Cluster access is TA-driven** (Dennis Heijmans / Rui Wang). Do NOT file a TOPdesk request without their guidance. Treat DelftBlue partition info in the deep-research plan as *unconfirmed* until TA instructions arrive.

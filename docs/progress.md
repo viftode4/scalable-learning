@@ -18,7 +18,7 @@ alternating aggregation.
 - **Primary dataset:** MNLI.
 - **Fallback dataset:** QNLI, because the supplement pipeline is already wired
   and locally verified there.
-- **Forbidden pivots:** TrustChain framing, a different paper-presentation paper,
+- **Forbidden pivots:** unrelated prior-project framing, a different paper-presentation paper,
   TOPdesk-before-TA cluster requests, or Llama-2-7B as a baseline path.
 
 ## Fallback triggers
