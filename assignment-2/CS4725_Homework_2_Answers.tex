@@ -1,0 +1,403 @@
+\documentclass[11pt]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{fancyhdr}
+\usepackage{tcolorbox}
+\usepackage{enumitem}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+\tcbuselibrary{skins,breakable}
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\small CS4725 Scalable Learning Systems}
+\rhead{\small \textbf{Deadline:} 19 May, 23:59}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\newtcolorbox{stepbox}{
+    enhanced,
+    breakable,
+    colback=gray!6,
+    colframe=gray!40,
+    boxrule=0.6pt,
+    arc=1pt,
+    left=8pt, right=8pt, top=6pt, bottom=6pt,
+}
+
+\newcommand{\step}[1]{\noindent\textbf{#1}\quad}
+
+\setlength{\parskip}{4pt}
+\setlength{\parindent}{0pt}
+
+\begin{document}
+
+\begin{center}
+    {\LARGE \textbf{Homework 2}}\\[2pt]
+    {\normalsize Interconnect Topologies and Parallelism}\\[4pt]
+    \rule{\textwidth}{0.4pt}
+\end{center}
+
+\section*{Introduction}
+
+This write-up solves the two questions of Homework~2 step by step. Throughout, the
+workload is a fully-connected layer
+\[
+    Y = X W, \qquad X\in\mathbb{R}^{B\times N}, \; W\in\mathbb{R}^{N\times M}, \; Y\in\mathbb{R}^{B\times M},
+\]
+with $N = M = 2^{17}$, batch size $B = 1024 = 2^{10}$, and FP32 values (4\,B each).
+The backward pass needs
+\[
+    dW = X^{\top} dY \in \mathbb{R}^{N\times M},
+    \qquad
+    dX = dY\, W^{\top} \in \mathbb{R}^{B\times N}.
+\]
+
+\paragraph{Recurring tensor sizes.}
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item $|X| = |dX| = |Y| = |dY| = B\!\cdot\! N\!\cdot\! 4 = 2^{29}\,\text{B} = 0.5\,\text{GiB}$.
+    \item $|W| = |dW| = N\!\cdot\! M\!\cdot\! 4 = 2^{36}\,\text{B} = 64\,\text{GiB}$.
+\end{itemize}
+
+\paragraph{Collective cost formulas (from Week~2--3 lecture, slide 45).}
+For a tensor of total size $D$ distributed across $P$ GPUs, with per-direction bandwidth
+$\mathrm{BW}$ on the communicating links:
+\begin{align*}
+    T_{\text{all-reduce}} &= 2\,\tfrac{P-1}{P}\cdot\tfrac{D}{\mathrm{BW}}
+    \qquad\text{(reduce-scatter + all-gather)} \\
+    T_{\text{all-gather}} &= \tfrac{P-1}{P}\cdot\tfrac{D}{\mathrm{BW}}.
+\end{align*}
+These hold for both the decentralized (fully-connected) version under a per-GPU
+bandwidth budget and the ring version on a ring of $P$ nodes.
+
+\vspace{4pt}\rule{\textwidth}{0.4pt}
+
+\section*{Question 1. Crossbar Interconnect: Data \& Tensor Parallelism (8 pts)}
+
+\textbf{Setup.} 8 GPUs on a crossbar. Each GPU has a per-GPU inbound
+bandwidth of 64\,GiB/s and an outbound bandwidth of 64\,GiB/s (full-duplex).
+Note this is a \emph{per-GPU} budget, shared across all simultaneous transfers --
+different from HW1\,Q1, where each pair of GPUs had its own dedicated link.
+Hence
+\[
+    \mathrm{BW} = 64\,\text{GiB/s} = 2^{36}\,\text{B/s}.
+\]
+
+\subsection*{Q1a. Data-parallel implementation (3 pts)}
+
+\begin{stepbox}
+\step{Assumptions.}
+\begin{itemize}[leftmargin=*, itemsep=1pt]
+    \item GPU $i$ holds full $W$ (replicated) and shard
+        $X^{(i)} \in \mathbb{R}^{B/P\times N}$, $B/P = 128$ samples.
+    \item $Y^{(i)} = X^{(i)} W$ is produced and consumed locally;
+        $dX^{(i)} = dY^{(i)} W^{\top}$ uses $dY^{(i)}$ on the same GPU.
+    \item All-reduce is decentralized; per-GPU bandwidth is shared across
+        all simultaneous transfers.
+\end{itemize}
+
+\medskip
+\step{Step 1: Forward derivation.}
+GPU~$i$ computes $Y^{(i)} = X^{(i)} W$ locally. $Y^{(i)}$ stays on GPU~$i$,
+so there is no forward communication.
+\[
+    T_{F} = 0\,\text{ms}.
+\]
+
+\medskip
+\step{Step 2: Backward derivation.}
+On GPU~$i$:
+\[
+    dX^{(i)} \;=\; dY^{(i)} W^{\top}
+    \quad(\text{local, $W$ is replicated}),
+\]
+\[
+    dW^{(i)}_{\text{partial}} \;=\; (X^{(i)})^{\!\top} dY^{(i)}
+    \;\in\;\mathbb{R}^{N\times M}.
+\]
+The true weight gradient $dW = \sum_{i=1}^{P} dW^{(i)}_{\text{partial}}$
+requires aggregating and redistributing the $P$ partials --
+an \textbf{all-reduce of $dW$}.
+
+\medskip
+\step{Step 3: Communication cost.}
+\[
+    D = |dW| = 2^{36}\,\text{B} = 64\,\text{GiB},
+    \quad P = 8,
+    \quad \mathrm{BW} = 2^{36}\,\text{B/s}.
+\]
+\[
+    T_{B} \;=\; 2 \cdot \tfrac{P-1}{P} \cdot \tfrac{D}{\mathrm{BW}}
+            \;=\; 2 \cdot \tfrac{7}{8} \cdot \tfrac{2^{36}}{2^{36}}
+            \;=\; \tfrac{7}{4}\,\text{s}
+            \;=\; \mathbf{1750\,\text{ms}}.
+\]
+
+\medskip
+\step{Total.} $T_{F} + T_{B} = 0 + 1750 = \boxed{1750\,\text{ms}}.$
+\end{stepbox}
+
+\subsection*{Q1b. Tensor-parallel implementation (5 pts)}
+
+\begin{stepbox}
+\step{Assumptions.}
+We use the Megatron-LM \emph{row-parallel} linear layer
+(Week~4 Megatron-LM slides) -- the variant requiring
+\emph{all-reduce} in the forward pass and \emph{all-gather} in the backward pass:
+\begin{itemize}[leftmargin=*, itemsep=1pt]
+    \item Weights split row-wise:
+        $W = \begin{bmatrix} W_1 \\ \vdots \\ W_P \end{bmatrix}$,
+        $W_i \in \mathbb{R}^{N/P \times M}$, with $N/P = 2^{17}/8 = 2^{14}$.
+    \item Inputs split column-wise (along the input-feature dim):
+        $X = [X_1, \ldots, X_P]$, $X_i \in \mathbb{R}^{B \times N/P}$.
+    \item Each GPU $i$ holds $X_i$ and $W_i$.
+    \item Decentralized all-reduce / all-gather on the crossbar
+        with per-GPU bandwidth $\mathrm{BW} = 64\,$GiB/s.
+\end{itemize}
+
+\medskip
+\step{Step 1: Forward.}
+Because $X W = \sum_{i=1}^{P} X_i W_i$, GPU $i$ computes the partial output
+\[
+    Y^{(i)}_{\text{partial}} \;=\; X_i W_i \;\in\; \mathbb{R}^{B\times M}
+    \quad(\text{local}).
+\]
+An \textbf{all-reduce of $Y$} accumulates the partials on every GPU:
+\[
+    D = |Y| = 2^{29}\,\text{B} = 0.5\,\text{GiB}.
+\]
+\[
+    T_{F} \;=\; 2\cdot\tfrac{P-1}{P}\cdot\tfrac{D}{\mathrm{BW}}
+        \;=\; 2\cdot\tfrac{7}{8}\cdot\tfrac{2^{29}}{2^{36}}
+        \;=\; \tfrac{7}{512}\,\text{s}
+        \;\approx\; \mathbf{13.67\,\text{ms}}.
+\]
+
+\medskip
+\step{Step 2: Backward.}
+The all-reduce leaves $dY \in \mathbb{R}^{B\times M}$ replicated on every GPU.
+
+\textbf{Weight gradient.} GPU $i$ owns rows $i$ of $W$, so
+\[
+    dW_i \;=\; X_i^{\top} dY \;\in\;\mathbb{R}^{N/P\times M}
+\]
+is computed locally from $X_i$ and $dY$. \emph{No communication.}
+
+\textbf{Input gradient.} From $dX = dY\,W^{\top}$ and the row-wise split,
+each GPU computes its slice locally:
+$dX_i = dY\, W_i^{\top} \in \mathbb{R}^{B\times N/P}$.
+An \textbf{all-gather of the $dX_i$ slices} recovers the full $dX$:
+\[
+    D = |dX| = 2^{29}\,\text{B} = 0.5\,\text{GiB}.
+\]
+\[
+    T_{B} \;=\; \tfrac{P-1}{P}\cdot\tfrac{D}{\mathrm{BW}}
+        \;=\; \tfrac{7}{8}\cdot\tfrac{2^{29}}{2^{36}}
+        \;=\; \tfrac{7}{1024}\,\text{s}
+        \;\approx\; \mathbf{6.84\,\text{ms}}.
+\]
+
+\medskip
+\step{Step 3: Total.}
+\[
+    T_{F} + T_{B} \;=\;\tfrac{7}{512} + \tfrac{7}{1024}
+        \;=\; \tfrac{21}{1024}\,\text{s}
+        \;\approx\; \boxed{20.51\,\text{ms}}.
+\]
+\end{stepbox}
+
+\vspace{4pt}\rule{\textwidth}{0.4pt}
+
+\section*{Question 2. 2D Torus Interconnect: Combined Data \& Model Parallelism (12 pts)}
+
+\textbf{Setup.} A $4\times 4$ 2D torus with \emph{unidirectional} links
+of 16\,GiB/s each. The 16 GPUs are organised as 4 rows
+$\times$ 4 columns. Each row is a data-parallel group of size $P_r = 4$
+(handles 256 of the 1024 samples), and each column is a tensor-parallel
+group of size $P_c = 4$ (handles $M/4 = 2^{15}$ output activations).
+\[
+    \mathrm{BW} = 16\,\text{GiB/s} = 2^{34}\,\text{B/s}.
+\]
+
+\begin{stepbox}
+\step{Assumptions (shared).}
+\begin{itemize}[leftmargin=*, itemsep=1pt]
+    \item GPU $(r,c)$ holds the weight slice
+        $W_{(c)} \in \mathbb{R}^{N\times M/4}$ (column-parallel weights,
+        replicated down each column).
+    \item Weight slice size: $|W_{(c)}| = N\!\cdot\!(M/4)\!\cdot\! 4
+        = 2^{17}\!\cdot\! 2^{15}\!\cdot\! 4 = 2^{34}\,\text{B} = 16\,\text{GiB}$.
+    \item Row-direction links (horizontal) and column-direction links
+        (vertical) are physically disjoint $\Rightarrow$ a ring along a row
+        can run \emph{concurrently} with a ring along a column.
+    \item Ring all-reduce on $P=4$:
+        $T = 2\cdot\tfrac{3}{4}\cdot \tfrac{D}{\mathrm{BW}} = \tfrac{3\,D}{2\,\mathrm{BW}}$.
+        Ring all-gather on $P=4$:
+        $T = \tfrac{3}{4}\cdot\tfrac{D}{\mathrm{BW}}$.
+\end{itemize}
+\end{stepbox}
+
+\subsection*{Two readings of the initial input layout}
+
+The assignment fixes per-row samples and per-column outputs but does not say
+how the 256 samples in a row are distributed across its four GPUs.
+Two natural choices:
+
+\begin{stepbox}
+\step{Reading A (primary, used for the headline number).}
+$X$ is sharded across the full $4\times 4$ grid along both axes:
+\[
+    X^{(r,c)} \in \mathbb{R}^{256 \times N/4}
+    \qquad(\text{batch by row, features by column}).
+\]
+Each GPU initially stores $1/16$ of $X$; a ring all-gather within each row
+reconstructs $X^{(r)}$ before the local GEMM.
+
+\medskip
+\step{Reading B (alternative).}
+Within each row $r$, the 256 samples are already \emph{replicated} across
+all four column GPUs, so every GPU $(r,c)$ holds the full
+$X^{(r)} \in \mathbb{R}^{256\times N}$ and the forward pass needs no communication.
+\end{stepbox}
+
+\subsection*{Forward pass (4 pts)}
+
+\begin{stepbox}
+\step{Reading A.}
+A ring all-gather is performed within each of the 4 rows, in parallel
+(the 4 row-rings use disjoint horizontal links).
+After the all-gather, every GPU $(r,c)$ has the full row-slice
+$X^{(r)} \in \mathbb{R}^{256\times N}$ and computes locally
+\[
+    Y^{(r,c)} \;=\; X^{(r)}\, W_{(c)} \;\in\;\mathbb{R}^{256\times M/4},
+\]
+the 256 samples $\times$ $2^{15}$ output activations that this GPU owns.
+The communicated tensor per row is the full row-slice of $X$:
+\[
+    D \;=\; 256\cdot N\cdot 4 \;=\; 2^{8}\cdot 2^{17}\cdot 2^{2} \;=\; 2^{27}\,\text{B} \;=\; 128\,\text{MiB}.
+\]
+\[
+    T_{F}^{\,A}
+    \;=\; \tfrac{P-1}{P}\cdot\tfrac{D}{\mathrm{BW}}
+    \;=\; \tfrac{3}{4}\cdot\tfrac{2^{27}}{2^{34}}
+    \;=\; \tfrac{3}{512}\,\text{s}
+    \;\approx\; \mathbf{5.86\,\text{ms}}.
+\]
+
+\medskip
+\step{Reading B.}
+$X^{(r)}$ is already on each GPU of row $r$, so each GPU directly computes
+$Y^{(r,c)} = X^{(r)} W_{(c)}$ with no communication.
+\[
+    T_{F}^{\,B} \;=\; 0\,\text{ms}.
+\]
+\end{stepbox}
+
+\subsection*{Backward pass (8 pts)}
+
+\begin{stepbox}
+\step{Setup.}
+GPU $(r,c)$ receives $dY^{(r,c)} \in \mathbb{R}^{256\times M/4}$
+(the gradient corresponding to its own output tile).
+Two gradients have to be produced: $dW$ and $dX$.
+
+\medskip
+\step{Step 1: Weight gradient $dW$.}
+Since the weight is sharded by output dim, GPU $(r,c)$ is responsible for
+the slice $dW_{(c)}\in\mathbb{R}^{N\times M/4}$, where
+\[
+    dW_{(c)} \;=\; X^{\top} dY_{(c)}
+            \;=\; \sum_{r=0}^{3} (X^{(r)})^{\!\top} dY^{(r,c)}.
+\]
+Each GPU $(r,c)$ computes its partial
+\[
+    dW^{(r)}_{(c),\text{partial}} \;=\; (X^{(r)})^{\!\top} dY^{(r,c)}
+    \;\in\;\mathbb{R}^{N\times M/4}.
+\]
+The $r$-sum (over 4 rows) is performed by a \textbf{ring all-reduce within
+each column}; there are 4 independent column rings, all using disjoint
+vertical links.
+\[
+    D = |W_{(c)}| = 2^{34}\,\text{B} = 16\,\text{GiB}.
+\]
+\[
+    T_{dW}
+    \;=\; 2\cdot\tfrac{P-1}{P}\cdot\tfrac{D}{\mathrm{BW}}
+    \;=\; \tfrac{3}{2}\cdot\tfrac{2^{34}}{2^{34}}
+    \;=\; \tfrac{3}{2}\,\text{s}
+    \;=\; \mathbf{1500\,\text{ms}}.
+\]
+
+\medskip
+\step{Step 2: Input gradient $dX$.}
+Within a row, summing over output columns gives the row's input gradient:
+\[
+    dX^{(r)} \;=\; \sum_{c=0}^{3} dY^{(r,c)} W_{(c)}^{\top}.
+\]
+Each GPU $(r,c)$ computes its partial
+\[
+    dX^{(r,c)}_{\text{partial}} \;=\; dY^{(r,c)} W_{(c)}^{\top}
+    \;\in\; \mathbb{R}^{256\times N}.
+\]
+The $c$-sum is performed by a \textbf{ring all-reduce within each row}
+(4 independent row rings, disjoint horizontal links).
+\[
+    D = 256\cdot N\cdot 4 = 2^{27}\,\text{B} = 128\,\text{MiB}.
+\]
+\[
+    T_{dX}
+    \;=\; 2\cdot\tfrac{P-1}{P}\cdot\tfrac{D}{\mathrm{BW}}
+    \;=\; \tfrac{3}{2}\cdot\tfrac{2^{27}}{2^{34}}
+    \;=\; \tfrac{3}{256}\,\text{s}
+    \;\approx\; \mathbf{11.72\,\text{ms}}.
+\]
+
+\medskip
+\step{Step 3: Concurrency.}
+The $dW$ all-reduce uses only \emph{column} (vertical) links and the $dX$
+all-reduce uses only \emph{row} (horizontal) links. They share no link, so
+they overlap entirely:
+\[
+    T_{B} \;=\; \max(T_{dW},\, T_{dX}) \;=\; \max(1500,\, 11.72) \;=\; \mathbf{1500\,\text{ms}}.
+\]
+\end{stepbox}
+
+\subsection*{Total for Question 2}
+
+\begin{stepbox}
+\step{Reading A (primary).}
+\[
+    T \;=\; T_{F}^{\,A} + T_{B}
+      \;=\; \tfrac{3}{512} + \tfrac{3}{2}
+      \;\approx\; 5.86 + 1500
+      \;\approx\; \boxed{1505.86\,\text{ms}}.
+\]
+
+\step{Reading B (alternative).}
+\[
+    T \;=\; 0 + 1500 \;=\; \boxed{1500\,\text{ms}}.
+\]
+
+In both readings, the $dW$ all-reduce over the 16\,GiB weight slice sets the total.
+\end{stepbox}
+
+\vspace{4pt}\rule{\textwidth}{0.4pt}
+
+\section*{Summary}
+
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Question} & \textbf{Forward} & \textbf{Backward} & \textbf{Total} \\
+\midrule
+Q1a -- crossbar, data-parallel & $0$\,ms & $1750$\,ms & $\mathbf{1750\,\text{ms}}$ \\
+Q1b -- crossbar, tensor-parallel & $\approx 13.67$\,ms & $\approx 6.84$\,ms & $\mathbf{\approx 20.51\,\text{ms}}$ \\
+Q2 (Reading A) -- 4$\times$4 torus, DP$\times$TP & $\approx 5.86$\,ms & $1500$\,ms (concurrent) & $\mathbf{\approx 1506\,\text{ms}}$ \\
+Q2 (Reading B) -- 4$\times$4 torus, DP$\times$TP & $0$\,ms & $1500$\,ms (concurrent) & $\mathbf{1500\,\text{ms}}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\end{document}
