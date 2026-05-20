@@ -13,11 +13,12 @@
 # NOTE: partition / module names UNCONFIRMED — see docs/setup/delftblue.md.
 #
 # Usage:
-#   sbatch slurm/gpu-v100.sbatch experiments/configs/<file>.yaml
+#   sbatch slurm/gpu-v100.sbatch experiments/configs/roberta_large_feasibility.yaml rolora
 
 set -euo pipefail
 
-CONFIG_PATH="${1:?usage: sbatch slurm/gpu-v100.sbatch <config.yaml>}"
+CONFIG_PATH="${1:?usage: sbatch slurm/gpu-v100.sbatch <config.yaml> [rolora|lora|ffa_lora]}"
+MODE="${2:-rolora}"
 cd "$SLURM_SUBMIT_DIR"
 
 # module load 2024r1
@@ -26,10 +27,8 @@ cd "$SLURM_SUBMIT_DIR"
 export SLS_DATA_DIR="${SLS_DATA_DIR:-/scratch/$USER/sls-data}"
 export SLS_RESULTS_DIR="${SLS_RESULTS_DIR:-/scratch/$USER/sls-results}"
 
-echo "job $SLURM_JOB_ID on $(hostname) — config=$CONFIG_PATH"
+echo "job $SLURM_JOB_ID on $(hostname) — config=$CONFIG_PATH mode=$MODE"
 
-uv run python -m sls_rolora.cli --config "$CONFIG_PATH" || {
-    rc=$?
-    echo "training entrypoint not yet implemented (expected during pre-launch)."
-    exit $rc
-}
+# Placeholder until TA instructions are confirmed. Once modules/env are verified,
+# this should run the same supplement interface as local feasibility jobs.
+CONFIG="$CONFIG_PATH" LOG_PREFIX="roberta_large_feasibility" bash scripts/smoke_supplement.sh "$MODE"

@@ -88,6 +88,26 @@ Use these docs to keep the final project execution visible to humans and agents:
 - [`docs/research/literature-snapshot-2026-05-20.md`](docs/research/literature-snapshot-2026-05-20.md) — external literature positioning for the improvement story.
 - [`docs/decisions/0005-unified-phase-dynamics-thesis.md`](docs/decisions/0005-unified-phase-dynamics-thesis.md) — ADR pinning the unified phase-specific thesis.
 
+## Tracking snapshot — 2026-05-20
+
+### Done / visible now
+
+- Paper-track strategy is locked: reproduce first, diagnose phase-specific A/B dynamics, then test proposal-compatible improvements.
+- `docs/progress.md` is the live dashboard and claim ledger.
+- `docs/experiment-matrix.md` defines dataset rules, compute gates, reproduction rows, improvement rows, and stop/fallback criteria.
+- `report/README.md` is the report skeleton with figure/table placeholders mapped to claim IDs.
+- `experiments/configs/roberta_large_feasibility.yaml` defines the GPU-only RoBERTa-Large feasibility gate.
+- `scripts/summarize_supplement.py --diagnostics` and `make diagnostics-summary` parse manifest, per-result metrics, and phase markers from logs.
+
+### Left / next evidence gates
+
+1. Run `make table1-medium-all`, then `make table1-medium-summary` and `make diagnostics-summary PREFIX=table1_medium`.
+2. Ledger the medium all-mode result or failure in `experiments/ledger/README.md`.
+3. Run `make roberta-large-feasibility MODE=rolora` on a GPU-capable machine.
+4. Add stronger supplement instrumentation for update norms, frozen-factor equality markers, wall time, and memory.
+5. Implement the improvement knobs in order: orthogonal A init, A/B LR split, active-factor server momentum.
+6. Fill the report skeleton continuously; no claim should enter final prose without a claim-ledger evidence path.
+
 ## Local commands
 | Command | Purpose |
 |---|---|
@@ -102,6 +122,10 @@ Use these docs to keep the final project execution visible to humans and agents:
 | `make table1-medium MODE=rolora` | Stronger local pilot: 3-client QNLI RoBERTa-base, 10 rounds, 5 local batches. |
 | `make table1-medium-all` | Run the stronger local pilot for all three modes. |
 | `make table1-medium-summary` | Parse `results/table1_medium_*.log` into a metrics table. |
+| `make roberta-large-feasibility MODE=rolora` | Run the tiny GPU-only RoBERTa-Large feasibility gate before cluster reproduction. |
+| `make roberta-large-feasibility-summary` | Parse feasibility logs into a metrics table. |
+| `make diagnostics-summary PREFIX=table1_medium` | Parse manifest, per-round metrics, and phase markers from supplement logs. |
+| `make cluster-dry-run` | Print the current cluster gate and feasibility config without submitting Slurm jobs. |
 | `make local-smoke` | Full fast local evidence chain: checks, MNIST smoke, supplement smoke-all. |
 | `make full-local` | Strongest laptop-feasible evidence chain: checks, 200-round MNIST, supplement smoke-all. |
 | `make clean` | Remove local outputs/caches while preserving tracked placeholders. |
@@ -113,11 +137,13 @@ Use these docs to keep the final project execution visible to humans and agents:
 - `make supplement-smoke-all` — authors' FederatedScope supplement runs locally in `rolora`, `lora`, and `ffa_lora` modes.
 - `make table1-pilot-all` — Table-1-shaped local QNLI pilot: RoBERTa-base, 3 clients, 3 rounds, 3 local batches.
 - `make table1-pilot-summary` — parses local pilot logs into a metrics table.
-- `make table1-medium MODE=rolora` — stronger local pilot; verified for `rolora` on 2026-05-14. Run `make table1-medium-all` when ready to spend more local runtime.
+- `make table1-medium MODE=rolora` — stronger local pilot; verified for `rolora` on 2026-05-14. Run `make table1-medium-all` next to close the local all-mode rung.
+- `make diagnostics-summary PREFIX=table1_medium` — parses existing medium logs into the diagnostic table shape; richer update-norm/frozen-factor fields still need supplement instrumentation.
+- `make cluster-dry-run` — documents that cluster execution remains TA-gated rather than silently pretending Slurm is ready.
 
 ## What is not local yet
 
-Full paper Table 1 is RoBERTa-Large across MNLI/QQP/QNLI, 3/20/50 clients, three methods, and multiple seeds. The plan estimates hundreds of GPU-hours, so local runs are pipeline and mechanism evidence, not paper-comparable Table 1 numbers.
+Full paper Table 1 is RoBERTa-Large across MNLI/QQP/QNLI, 3/20/50 clients, three methods, and multiple seeds. The plan estimates hundreds of GPU-hours, so local runs are pipeline and mechanism evidence, not paper-comparable Table 1 numbers. The explicit next gate is `make roberta-large-feasibility MODE=rolora` on a GPU-capable machine.
 
 ## Status
-**Week 3 — pre-launch.** Main env is pinned, MNIST sanity checks run locally, the authors' supplement is installed in an isolated Python 3.9 env, and local Table-1-shaped pilots are runnable. Next local step: `make table1-medium-all` if runtime is acceptable; after that, try a one-round RoBERTa-Large feasibility probe. Full RoBERTa-Large reproduction starts once DelftBlue/DAIC access is available. See [`docs/kickoff.md`](docs/kickoff.md) for the remaining team/process items.
+**Week 3 — pre-launch.** Main env is pinned, MNIST sanity checks run locally, the authors' supplement is installed in an isolated Python 3.9 env, and local Table-1-shaped pilots are runnable. Next local step: `make table1-medium-all` if runtime is acceptable; after that, run the explicit `make roberta-large-feasibility MODE=rolora` gate on a GPU-capable machine. Full RoBERTa-Large reproduction starts once DelftBlue/DAIC access is available. See [`docs/kickoff.md`](docs/kickoff.md) for the remaining team/process items.

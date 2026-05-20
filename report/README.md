@@ -1,5 +1,105 @@
-# Report
+# Final report skeleton
 
-LaTeX writeup for the final seminar deliverable. Empty until we start drafting.
+This directory holds the final CS4725 project writeup. Build artifacts
+(`build/`, `*.aux`, etc.) are gitignored. The report should be filled as the
+claim ledger in `docs/progress.md` moves from planned to supported/failed.
 
-Build outputs (`build/`, `*.aux`, etc.) are gitignored — see top-level `.gitignore`.
+## One-sentence thesis
+
+RoLoRA's exact alternating aggregation gives the core robustness benefit, but
+its final behavior is governed by phase-specific `A`/`B` dynamics that can be
+characterized and possibly improved with initialization, A/B learning-rate, and
+active-factor server-optimization choices.
+
+## Required report sections
+
+1. **Introduction**
+   - Problem: federated LoRA averaging is biased because averaging factors is
+     not averaging products.
+   - Contribution: reproduce RoLoRA and study phase-specific A/B dynamics under
+     limited compute.
+
+2. **Background**
+   - LoRA factorization.
+   - Federated LoRA aggregation trap.
+   - RoLoRA alternating optimization.
+   - Why A/B phases are a meaningful intervention surface.
+
+3. **Reproduction protocol**
+   - Source paper and OpenReview supplement.
+   - Datasets, clients, ranks, seeds.
+   - Deviations from paper caused by compute.
+   - Exact command/config/log discipline.
+
+4. **Local sanity evidence**
+   - MNIST Figure-2-style sanity.
+   - Supplement smoke and Table-1-shaped local pilot.
+   - Clear warning that local RoBERTa-base/QNLI is pipeline evidence only.
+
+5. **Paper-scale reproduction**
+   - RoBERTa-Large feasibility.
+   - Selected Table 1 cells.
+   - Figure-3-style 50-client convergence if compute permits.
+
+6. **Phase diagnostics**
+   - A/B phase markers.
+   - Per-round metrics.
+   - Update norms and frozen-factor markers.
+   - Wall-clock and failure evidence.
+
+7. **Improvement experiments**
+   - Orthogonal/data-informed A initialization.
+   - Separate A/B learning rates, acknowledging the paper's 2×/4× LR ablations.
+   - Active-factor server momentum/Adam.
+   - Combined best only if individual axes show signal.
+
+8. **Discussion and limitations**
+   - What reproduced, what did not, and why.
+   - What diagnostics explain.
+   - Compute limits and external-validity limits.
+   - Why no TrustChain / no partial-participation pivot in the main story.
+
+9. **Conclusion**
+   - Reproduction status.
+   - Strongest insight.
+   - Future work.
+
+## Figure and table placeholders
+
+| Artifact | Claim ID | Source command / config | Status |
+|---|---|---|---|
+| Figure 1: RoLoRA alternating mechanism diagram | C0 | drawn from paper explanation | planned |
+| Figure 2: MNIST sanity plot | C1 | `make mnist-paper` | supported-local |
+| Table 1: local harness summary | C0/C2 | `make table1-pilot-summary`, `make table1-medium-summary` | partial |
+| Table 2: RoBERTa-Large feasibility result | C3 | `make roberta-large-feasibility MODE=rolora` | planned |
+| Table 3: selected Table-1 reproduction cells | C4 | R3-R5 matrix rows | planned |
+| Figure 3: 50-client convergence curves | C4 | R5/R6 logs | planned |
+| Figure 4: phase-dynamics diagnostics | C5 | `make diagnostics-summary PREFIX=<run>` | planned |
+| Table 4: improvement ablations | C5 | I1-I5 matrix rows | planned |
+| Table 5: limitations and failed runs | all | `experiments/ledger/README.md` | ongoing |
+
+## Current tracking status — 2026-05-20
+
+| Area | Status | Next action |
+|---|---|---|
+| Local sanity | Supported locally | Keep `make check` green before large runs. |
+| Local Table-1-shaped rung | Partial | Run `make table1-medium-all`; update C2. |
+| Diagnostics | Parser scaffold ready | Instrument update norms, frozen-factor equality, wall time, and memory. |
+| RoBERTa-Large feasibility | Config ready, run pending | Run `make roberta-large-feasibility MODE=rolora` on GPU. |
+| Improvements | Planned | Start only after diagnostics can explain positive/negative outcomes. |
+| Writing | Skeleton ready | Fill sections as claim-led evidence arrives. |
+
+## Done criteria before W8 draft
+
+- Every section has at least bullet content.
+- Every planned claim appears in `docs/progress.md` claim ledger.
+- Every figure/table placeholder has a source command or an explicit blocker.
+- Unsupported claims are labeled planned or failed, not written as conclusions.
+
+## Done criteria before W9 final
+
+- Every final claim has command, config, seed, log/plot, and interpretation.
+- Negative results are included when they explain phase dynamics.
+- The paper's own asymmetric-LR ablations are acknowledged.
+- The reproducibility appendix lists the supplement patch, configs, Make targets,
+  and exact rerun commands.

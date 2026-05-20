@@ -33,3 +33,21 @@ def test_supplement_runner_stamps_manifest_header() -> None:
     assert "# git_sha:" in script
     assert "# config:" in script
     assert "# mode:" in script
+
+
+def test_makefile_has_feasibility_and_diagnostics_targets() -> None:
+    makefile = Path("Makefile").read_text()
+
+    assert "roberta-large-feasibility:" in makefile
+    assert "experiments/configs/roberta_large_feasibility.yaml" in makefile
+    assert "diagnostics-summary:" in makefile
+    assert "--diagnostics" in makefile
+
+
+def test_roberta_large_feasibility_config_is_supplement_consumable() -> None:
+    config = Path("experiments/configs/roberta_large_feasibility.yaml").read_text()
+
+    assert "roberta-large@huggingface_llm" in config
+    assert "total_round_num: 1" in config
+    assert "client_num: 3" in config
+    assert "qnli.json@llm" in config

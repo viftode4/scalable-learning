@@ -12,10 +12,10 @@ Partition names and `module load` lines are placeholders. They are based on the 
 
 ## Usage
 ```bash
-sbatch slurm/gpu-a100-small.sbatch experiments/configs/template_roberta_mnli.yaml
+sbatch slurm/gpu-a100-small.sbatch experiments/configs/roberta_large_feasibility.yaml rolora
 ```
 
-`slurm-<jobid>.out` files are gitignored.
+`slurm-<jobid>.out` files are gitignored. These templates are placeholders until a TA-confirmed smoke job runs successfully.
 
 ## Do not use yet
 - `gpu-a100` (full 80 GB) — longest queues; reserved for Llama-7B stretch only.

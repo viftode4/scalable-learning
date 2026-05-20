@@ -58,3 +58,36 @@ def test_markdown_table_contains_metrics(tmp_path: Path) -> None:
 
     assert "| mode | round | test_acc | val_acc | marker |" in table
     assert "| lora | 3 | 0.500000 | 0.490000 | [sls-rolora] LoRA round 4: train both |" in table
+
+
+def test_parse_manifest_extracts_header_fields() -> None:
+    lines = [
+        "# git_sha: abc123",
+        "# config: experiments/configs/table1_local_pilot.yaml",
+        "# mode: rolora",
+    ]
+
+    manifest = summarize_supplement.parse_manifest(lines)
+
+    assert manifest["git_sha"] == "abc123"
+    assert manifest["config"] == "experiments/configs/table1_local_pilot.yaml"
+    assert manifest["mode"] == "rolora"
+
+
+def test_diagnostics_table_contains_manifest_and_phase(tmp_path: Path) -> None:
+    (tmp_path / "table1_pilot_rolora.log").write_text(
+        "# git_sha: abc123\n"
+        "# config: experiments/configs/table1_local_pilot.yaml\n"
+        "# mode: rolora\n"
+        "[sls-rolora] RoLoRA round 4: train B\n"
+        "INFO: {'Role': 'Client #3', 'Round': 3, 'Results_raw': {'test_acc': 0.52, 'val_acc': 0.51, 'test_loss': 1.2, 'val_loss': 1.3}}\n"
+    )
+
+    table = summarize_supplement.diagnostics_to_markdown(
+        summarize_supplement.summarize_diagnostics(tmp_path, "table1_pilot")
+    )
+
+    assert "| mode | git_sha | config | round | marker_round | phase |" in table
+    assert "| rolora | abc123 | experiments/configs/table1_local_pilot.yaml | 3 | 4 | train b |" in table
+    assert "1.200000" in table
+    assert "1.300000" in table
