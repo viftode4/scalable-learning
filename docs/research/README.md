@@ -8,6 +8,7 @@ Canonical references for the project. Do not edit these in place — they are sn
 | `project-proposal.pdf` | Course-submitted proposal *Reproducing and Improving RoLoRA* by Popovici / Iftode / Zele, 12 May 2026. Commits to three improvement directions (orthogonal/SVD init, separate LRs for A/B, adaptive server-side optimizer) and to using the authors' released code. |
 | `lecture-01-introduction.pdf` | CS 4725 lecture-1 slides by Atasu & Chen — assessment split, deadlines, paper-selection rules, cluster-access pointer. |
 | `deep-research-plan.md` | Independent technical-decision document covering code availability, GPU-hour budgets, week-by-week roadmap, and risks. Treated as authoritative for compute planning. Note: its recommended improvement angle (partial participation + comm-time-aware scheduling) is **not** the angle the team submitted in the proposal; see `project-proposal.pdf` for what we actually committed to. |
+| `literature-snapshot-2026-05-20.md` | External literature positioning for the 12/10 / paper-track improvement story; explains why the project should frame the proposal improvements as phase-specific A/B dynamics rather than broad federated-LoRA novelty. |
 
 ## Format note
 Both Markdown and PDF were requested where applicable. In practice:

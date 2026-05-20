@@ -77,6 +77,17 @@ make supplement-smoke-all
 
 See [`docs/setup/environment.md`](docs/setup/environment.md) for the full setup, [`docs/setup/openreview-supplement.md`](docs/setup/openreview-supplement.md) for fetching the authors' code, [`docs/setup/delftblue.md`](docs/setup/delftblue.md) for cluster access (TA-driven), and [`experiments/ledger/README.md`](experiments/ledger/README.md) for run evidence.
 
+
+## Project control docs
+
+Use these docs to keep the final project execution visible to humans and agents:
+
+- [`docs/progress.md`](docs/progress.md) — live owner/status/next-action board.
+- [`docs/experiment-matrix.md`](docs/experiment-matrix.md) — reproduction and improvement run matrix.
+- [`docs/plans/12-10-paper-track-rolora.md`](docs/plans/12-10-paper-track-rolora.md) — 12/10 + paper-track execution plan and critique.
+- [`docs/research/literature-snapshot-2026-05-20.md`](docs/research/literature-snapshot-2026-05-20.md) — external literature positioning for the improvement story.
+- [`docs/decisions/0005-unified-phase-dynamics-thesis.md`](docs/decisions/0005-unified-phase-dynamics-thesis.md) — ADR pinning the unified phase-specific thesis.
+
 ## Local commands
 | Command | Purpose |
 |---|---|

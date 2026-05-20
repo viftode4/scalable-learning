@@ -7,3 +7,7 @@ Append a short markdown file here for any decision worth preserving:
 - Departures from the deep-research plan
 
 Format: `NNNN-short-title.md`, lead with **Context / Decision / Consequences**.
+
+## Current key decisions
+
+- `0005-unified-phase-dynamics-thesis.md` — frames the three proposal improvements as one phase-specific A/B dynamics thesis for the final project.
