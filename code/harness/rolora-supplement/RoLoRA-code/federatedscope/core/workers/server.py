@@ -614,6 +614,28 @@ class Server(BaseServer):
                             formatted_logs[key + "_unseen"] = val
                             del formatted_logs[key]
                 logger.info(formatted_logs)
+                # sls-rolora: stream server-aggregated eval to wandb.
+                # Results_weighted_avg is the paper-comparable number (per-client
+                # metrics weighted by per-client sample counts; with IID splits
+                # this reconstructs accuracy on the full global test set).
+                # step=round aligns the server trace with the per-client traces
+                # logged from Client.callback_funcs_for_evaluate at the same round.
+                try:
+                    import wandb
+                    if wandb.run is not None:
+                        wavg = formatted_logs.get('Results_weighted_avg', {})
+                        if isinstance(wavg, dict) and wavg:
+                            sls_payload = {
+                                f'server/{k}': v
+                                for k, v in wavg.items()
+                                if isinstance(v, (int, float))
+                            }
+                            sls_payload['server/round'] = round
+                            wandb.log(sls_payload, step=int(round))
+                except Exception as _sls_wandb_err:
+                    logger.warning(
+                        f"[sls-rolora] server wandb.log failed: "
+                        f"{_sls_wandb_err}")
                 formatted_logs_all_set.update(formatted_logs)
                 self._monitor.update_best_result(
                     self.best_results,

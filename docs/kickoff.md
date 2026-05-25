@@ -12,10 +12,10 @@ Use this as the agenda for the first meeting. Items already resolved (grading sp
 
 ## Open items
 
-### 1. Cluster access — waiting for TAs
-- DelftBlue + DAIC access is TA-driven. Dennis Heijmans / Rui Wang will share instructions in a week-4 lecture or BrightSpace announcement.
-- **TODO:** designate one team member to track BrightSpace + course email for the announcement. If nothing arrives by mid-W4, ping Dennis directly.
-- Do **not** file a TOPdesk request without TA guidance.
+### 1. Cluster access — available; integration pending
+- DelftBlue is available; DAIC is held as backup. The earlier "waiting for TAs" framing was a miscommunication and has been dropped.
+- **TODO:** drop the user-supplied real `#SBATCH` header / `module load` lines into `slurm/gpu-a100-small.sbatch` and `slurm/gpu-v100.sbatch`, then submit the RoBERTa-Large feasibility job and ledger the result.
+- A faculty-share / TOPdesk request is an option only if queue time becomes a real blocker, not pre-emptively.
 
 ### 2. Time commitment
 - **TODO:** realistic hours/week per person. Honest answers — a 6h/week and 20h/week split needs different ownership.

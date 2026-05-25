@@ -1,4 +1,4 @@
-.PHONY: sync test lint check mnist mnist-paper mnist-smoke local-smoke full-local table1-pilot table1-pilot-all table1-pilot-summary table1-medium table1-medium-all table1-medium-summary roberta-large-feasibility roberta-large-feasibility-summary diagnostics-summary cluster-dry-run supplement install-supplement supplement-smoke supplement-smoke-all data clean
+.PHONY: sync test lint check mnist mnist-paper mnist-smoke local-smoke full-local table1-pilot table1-pilot-all table1-pilot-summary table1-medium table1-medium-all table1-medium-summary roberta-large-feasibility roberta-large-feasibility-summary diagnostics-summary supplement install-supplement supplement-smoke supplement-smoke-all data clean
 
 MODE ?= rolora
 SUPPLEMENT_ZIP ?=
@@ -35,10 +35,10 @@ install-supplement:
 	bash scripts/install_supplement.sh
 
 supplement-smoke:
-	bash scripts/smoke_supplement.sh $(MODE)
+	LOG_PREFIX=smoke bash scripts/smoke_supplement.sh $(MODE)
 
 supplement-smoke-all:
-	bash scripts/smoke_supplement.sh rolora lora ffa_lora
+	LOG_PREFIX=smoke bash scripts/smoke_supplement.sh rolora lora ffa_lora
 
 table1-pilot:
 	CONFIG=experiments/configs/table1_local_pilot.yaml LOG_PREFIX=table1_pilot bash scripts/smoke_supplement.sh $(MODE)
@@ -66,11 +66,6 @@ roberta-large-feasibility-summary:
 
 diagnostics-summary:
 	uv run python scripts/summarize_supplement.py --prefix $(PREFIX) --diagnostics
-
-cluster-dry-run:
-	@echo "Cluster execution is gated on TA-confirmed DelftBlue/DAIC instructions."
-	@echo "Current Slurm templates are placeholders; do not submit them as paper evidence yet."
-	@echo "Feasibility config: experiments/configs/roberta_large_feasibility.yaml"
 
 local-smoke:
 	uv run python scripts/local_suite.py smoke

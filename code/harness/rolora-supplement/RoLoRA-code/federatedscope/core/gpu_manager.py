@@ -8,6 +8,15 @@ def check_gpus():
     return True
 
 
+def _mps_available():
+    try:
+        import torch
+        return bool(getattr(torch.backends, 'mps', None)
+                    and torch.backends.mps.is_available())
+    except Exception:
+        return False
+
+
 class GPUManager():
     """
     To automatic allocate the gpu, which returns the gpu with the largest
@@ -60,6 +69,10 @@ class GPUManager():
         To allocate a device
         """
         if self.gpus is None:
+            # sls-rolora: prefer Apple MPS when CUDA is unavailable so the
+            # supplement smoke can run on macOS hosts.
+            if _mps_available():
+                return 'mps'
             return 'cpu'
         elif self.specified_device >= 0:
             # allow users to specify the device

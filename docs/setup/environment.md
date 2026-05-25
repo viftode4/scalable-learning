@@ -41,4 +41,4 @@ Always commit `pyproject.toml` and `uv.lock` together — keep them in lockstep.
 | `SLS_RESULTS_DIR` | `./results` | Where training output / plots are written. Gitignored. |
 
 ## On DelftBlue
-uv works without sudo. The Slurm templates `module load` system Python first, then run `uv sync` and `uv run` inside the job. See `docs/setup/delftblue.md` once TA instructions arrive.
+uv works without sudo. The Slurm templates `module load` system Python first, then run `uv sync` and `uv run` inside the job. See `docs/setup/delftblue.md` for current cluster status; the `module load` lines themselves are filled in once the user-supplied real Slurm template lands.

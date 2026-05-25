@@ -39,4 +39,4 @@ Always commit `pyproject.toml` and `uv.lock` together.
 - Lint: `uv run ruff check .`
 
 ## On the cluster
-See `docs/setup/delftblue.md` (currently waiting on TA instructions). uv works without sudo and produces a hermetic env, so the local workflow should carry over.
+See `docs/setup/delftblue.md` (access available; real Slurm headers pending integration). uv works without sudo and produces a hermetic env, so the local workflow should carry over.

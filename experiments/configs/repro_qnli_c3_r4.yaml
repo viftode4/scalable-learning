@@ -1,0 +1,71 @@
+# Reproduction cell C1 — QNLI, RoBERTa-Large, 3 clients, LoRA rank 4.
+#
+# Derived from the authors' reference config:
+#   code/harness/rolora-supplement/RoLoRA-code/federatedscope/llm/baseline/test_glue.yaml
+#
+# This is a paper-shape config, NOT a local probe. Submit on DelftBlue once the
+# real Slurm headers are integrated. The Mac MPS feasibility fallback still
+# works for pre-submission pipeline checks, just expect it to be slow.
+#
+# Maps to Table 1 row: Rank 4, Clients 3.
+#
+# Method is selected at runtime via SLS_ALTERNATION_MODE={rolora,lora,ffa_lora}.
+# Seed is overridden at runtime; default 0 below for self-documentation.
+# FlexLoRA is intentionally omitted (not shipped in the supplement).
+
+use_gpu: True
+device: 0
+seed: 0
+early_stop:
+  patience: 0
+
+federate:
+  mode: standalone
+  total_round_num: 30
+  save_to: "repro-qnli-c3-r4.ckpt"
+  client_num: 3
+  share_local_model: True
+
+data:
+  root: code/harness/rolora-supplement/RoLoRA-code/sst2/
+  type: 'qnli.json@llm'
+  splits: [0.89, 0.1, 0.01]
+  splitter: 'iid'
+
+llm:
+  tok_len: 128
+  chat:
+    max_len: 1000
+    max_history_len: 10
+  adapter:
+    use: True
+    args: [ { 'adapter_package': 'peft', 'adapter_method': 'lora', 'r': 4, 'lora_alpha': 32, 'lora_dropout': 0.1 } ]
+
+dataloader:
+  batch_size: 32
+
+model:
+  type: 'roberta-large@huggingface_llm'
+
+train:
+  local_update_steps: 20
+  batch_or_epoch: batch
+  optimizer:
+    lr: 0.005
+    weight_decay: 0.0002
+  is_enable_half: False
+
+trainer:
+  type: llmtrainer
+criterion:
+  type: CrossEntropyLoss
+
+eval:
+  # See repro_qnli_c20_r4.yaml for the freq=1 rationale (dense wandb curves
+  # at the cost of more eval wall-time; partial runs accepted on the 4h cap).
+  freq: 1
+  metrics: ['loss', 'acc']
+  best_res_update_round_wise_key: val_loss
+  # See repro_qnli_c20_r4.yaml for why count_flops is False (avoids
+  # gpu-a100-small CUBLAS OOM from FlopCountAnalysis pollution).
+  count_flops: False

@@ -5,11 +5,25 @@ Keep it updated as runs complete or fail.
 
 ## Dataset rule
 
-- **Primary:** MNLI, because it is the proposal/paper-default target for the
-  main reproduction story.
-- **Fallback:** QNLI, only when MNLI data prep, runtime, or feasibility blocks
-  progress. QNLI is acceptable as a fallback because the supplement pipeline is
-  already locally verified there.
+- **First sweep:** QNLI. The authors' supplement ships only QNLI data prep
+  (`sst2/qnli2json.py`), and the full pipeline is locally verified end-to-end
+  on it. Principle: get one dataset reproduced fully and properly before any
+  second dataset.
+- **Second sweep (expansion):** MNLI. The QNLI loader pattern
+  (`datasets.load_dataset("glue", "qnli")` + JSON formatting) extends
+  trivially to MNLI; the only real work is writing an `mnli2json.py`
+  analogue and confirming the field mapping.
+- **Stretch:** the remaining Table-1 tasks (SST-2, QQP, RTE) only after the
+  first two sweeps are fully ledgered and the report cells are filled.
+
+## Methods scope and FlexLoRA gap
+
+Paper Table 1 reports four methods: LoRA, FFA-LoRA, FlexLoRA, RoLoRA. The
+authors' supplement does **not** ship FlexLoRA code. We reproduce
+**LoRA, FFA-LoRA, RoLoRA** via `SLS_ALTERNATION_MODE`. FlexLoRA is omitted and
+the omission must be disclosed explicitly in the report's reproduction section
+("FlexLoRA results from Table 1 are not reproduced; the method is not included
+in the authors' supplementary material and we did not re-implement it").
 
 ## Compute ladder and stop gates
 
@@ -19,38 +33,51 @@ Keep it updated as runs complete or fail.
 | H1 | RoBERTa-base/QNLI pilot | laptop hours | All three modes complete. | Do not spend GPU until runner/config issues are resolved. |
 | H2 | RoBERTa-base/QNLI medium | overnight local at most | `table1-medium-all` completes or fails with ledgered reason. | If too slow, keep only RoLoRA plus one baseline and move to feasibility. |
 | H3 | RoBERTa-Large feasibility | one short GPU job | Model/data load, one tiny run, marker and metrics/failure captured. | Use QNLI or smaller local diagnostics if memory/runtime blocks. |
-| H4 | Selected reproduction | cluster only | 3/20/50-client rows for one dataset. | Stop broadening if 3-client baseline misses paper by >±2%. |
-| H5 | Improvement grid | after diagnostics | At least one axis has baseline + curve + phase explanation. | Reframe as negative result if no accuracy gain but diagnostics are clear. |
+| H4 | QNLI reproduction sweep | cluster only | All 4 cells × 3 methods × 3 seeds (36 jobs) complete on QNLI. | Stop broadening if 3-client baseline misses paper by >±2% without an explainable setup cause. |
+| H5 | MNLI reproduction (expansion) | cluster only | Same 4×3×3 shape on MNLI once H4 is fully ledgered. | Skip if H4 used all available cluster budget. |
+| H6 | Improvement grid | after diagnostics | At least one improvement axis has baseline + curve + phase explanation. | Reframe as negative result if no accuracy gain but diagnostics are clear. |
 
 ## Minimum credible reproduction
 
 Goal: reproduce the central RoLoRA claim on one GLUE dataset with
 RoBERTa-Large: RoLoRA should degrade less than FedAvg-LoRA and FFA-LoRA as
-client count increases, and Figure-3-style convergence should show stronger
-50-client behavior.
+client count increases (paper Table 1 rows), and Figure-3-style convergence
+should show stronger 50-client behavior. All cells use the authors'
+`test_glue.yaml` hyperparameters (30 rounds, 20 local batches, bs=32,
+tok_len=128, fp32, lr=0.005, weight_decay=0.0002, lora_alpha=32,
+lora_dropout=0.1). Seeds are passed at runtime via `SEED=…` (see
+`scripts/smoke_supplement.sh`); method selected via `SLS_ALTERNATION_MODE`.
 
-| ID | Dataset | Model | Methods | Clients | Rank | Seeds | Status | Evidence |
+| ID | Dataset | Model | Methods | Clients | Rank | Seeds | Config | Status |
 |---|---|---|---|---:|---:|---|---|---|
-| R0 | QNLI | RoBERTa-base | LoRA, FFA-LoRA, RoLoRA | 3 | 4 | 0 | Local pilot done | `results/table1_pilot_*.log` |
-| R1 | QNLI | RoBERTa-base | LoRA, FFA-LoRA, RoLoRA | 3 | 4 | 0 | Medium: RoLoRA done; all modes pending | `results/table1_medium_rolora.log` |
-| R2 | MNLI primary; QNLI fallback | RoBERTa-Large | RoLoRA | 3 | 4 | 0 | Config ready; GPU run pending | `experiments/configs/roberta_large_feasibility.yaml`, `make roberta-large-feasibility MODE=rolora` |
-| R3 | MNLI primary; QNLI fallback | RoBERTa-Large | LoRA, FFA-LoRA, RoLoRA | 3 | 4 | 0 | Pending | TBD |
-| R4 | MNLI primary; QNLI fallback | RoBERTa-Large | LoRA, FFA-LoRA, RoLoRA | 20 | 4 | 0 | Pending | TBD |
-| R5 | MNLI primary; QNLI fallback | RoBERTa-Large | LoRA, FFA-LoRA, RoLoRA | 50 | 4 | 0,1,2 | Pending | TBD |
+| R0 | QNLI | RoBERTa-base | LoRA, FFA-LoRA, RoLoRA | 3 | 4 | 0 | `experiments/configs/table1_local_pilot.yaml` | Local pilot done |
+| R1 | QNLI | RoBERTa-base | LoRA, FFA-LoRA, RoLoRA | 3 | 4 | 0 | `experiments/configs/table1_local_medium.yaml` | Medium: RoLoRA done; all modes pending |
+| R2 | QNLI | RoBERTa-Large | RoLoRA | 3 | 4 | 0 | `experiments/configs/roberta_large_feasibility.yaml` | Feasibility done locally on MPS (`results/roberta_large_feasibility_rolora.log`); cluster feasibility pending real Slurm headers |
+| **R3** | **QNLI** | **RoBERTa-Large** | **LoRA, FFA-LoRA, RoLoRA** | **3** | **4** | **0,1,2** | `experiments/configs/repro_qnli_c3_r4.yaml` | **Pending — paper-cell C1** |
+| **R4** | **QNLI** | **RoBERTa-Large** | **LoRA, FFA-LoRA, RoLoRA** | **20** | **4** | **0,1,2** | `experiments/configs/repro_qnli_c20_r4.yaml` | **Pending — paper-cell C2** |
+| **R5** | **QNLI** | **RoBERTa-Large** | **LoRA, FFA-LoRA, RoLoRA** | **50** | **4** | **0,1,2** | `experiments/configs/repro_qnli_c50_r4.yaml` | **Pending — paper-cell C3** |
+| **R6** | **QNLI** | **RoBERTa-Large** | **LoRA, FFA-LoRA, RoLoRA** | **50** | **8** | **0,1,2** | `experiments/configs/repro_qnli_c50_r8.yaml` | **Pending — paper-cell C4 (rank-8 50-client row)** |
 
-If compute is tight, R5 gets the most seeds because it tests the paper's main
-client-scaling claim. R3 and R4 can start with one seed.
+Total R3-R6 = 36 jobs (4 cells × 3 methods × 3 seeds) on QNLI. R5 and R6 are
+the load-bearing client-scaling rows; if cluster time runs short, complete
+those two first and treat R3/R4 as smaller-budget confirmations.
 
 ## Stretch reproduction
 
+After QNLI (R3-R6) is fully ledgered, expand. MNLI is the canonical second
+dataset; the remaining three Table-1 tasks come only after that.
+
 | ID | Dataset | Model | Methods | Clients | Rank | Seeds | Status | Evidence |
 |---|---|---|---|---:|---:|---|---|---|
-| S1 | SST-2 | RoBERTa-Large | LoRA, FFA-LoRA, RoLoRA | 50 | 4 | 0 | Pending | TBD |
-| S2 | QQP | RoBERTa-Large | LoRA, FFA-LoRA, RoLoRA | 50 | 4 | 0 | Pending | TBD |
-| S3 | RTE | RoBERTa-Large | LoRA, FFA-LoRA, RoLoRA | 50 | 4 | 0 | Pending | TBD |
-| S4 | Best available dataset | RoBERTa-Large | RoLoRA | 50 | 2,8 | 0 | Pending | TBD |
+| M3 | MNLI | RoBERTa-Large | LoRA, FFA-LoRA, RoLoRA | 3 | 4 | 0,1,2 | Pending; needs `mnli2json.py` | TBD |
+| M4 | MNLI | RoBERTa-Large | LoRA, FFA-LoRA, RoLoRA | 20 | 4 | 0,1,2 | Pending | TBD |
+| M5 | MNLI | RoBERTa-Large | LoRA, FFA-LoRA, RoLoRA | 50 | 4 | 0,1,2 | Pending | TBD |
+| M6 | MNLI | RoBERTa-Large | LoRA, FFA-LoRA, RoLoRA | 50 | 8 | 0,1,2 | Pending | TBD |
+| S1 | SST-2 | RoBERTa-Large | LoRA, FFA-LoRA, RoLoRA | 50 | 4 | 0 | Pending; needs `sst22json.py` | TBD |
+| S2 | QQP | RoBERTa-Large | LoRA, FFA-LoRA, RoLoRA | 50 | 4 | 0 | Pending; needs `qqp2json.py` | TBD |
+| S3 | RTE | RoBERTa-Large | LoRA, FFA-LoRA, RoLoRA | 50 | 4 | 0 | Pending; needs `rte2json.py` | TBD |
 
-Stretch runs must not displace the minimum credible reproduction.
+Stretch runs must not displace the QNLI minimum credible reproduction.
 
 ## Improvement grid
 

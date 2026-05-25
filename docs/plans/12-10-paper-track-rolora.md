@@ -20,6 +20,14 @@ The observable outcome is a week-9 final report and presentation where every maj
 - [x] (2026-05-20) Decided the unified phase-specific A/B dynamics thesis and recorded it in ADR 0005.
 - [x] (2026-05-20) Started the claim-led final report skeleton in `report/README.md`.
 - [x] (2026-05-20) Added diagnostics summary parsing for supplement logs.
+- [x] (2026-05-25) Patched supplement for Apple MPS fallback and CPU/MPS fp16 guard; RoBERTa-Large feasibility now runs on Mac as a pre-cluster sanity path.
+- [x] (2026-05-25) Removed all "waiting for TAs" cluster gating from setup/plan/progress/README docs; reframed as access-available, integration-pending.
+- [x] (2026-05-25) Authored four QNLI reproduction configs (cells C1-C4 = 3, 20, 50r4, 50r8 clients) using authors' `test_glue.yaml` hyperparameters (fp32, lr=0.005, wd=0.0002, alpha=32, dropout=0.1, 30 rounds × 20 local batches × bs=32 × tok_len=128). Reshaped the experiment matrix around 4 cells × 3 methods × 3 seeds = 36 jobs per dataset. Disclosed FlexLoRA omission (not in supplement).
+- [x] (2026-05-25) Added `SEED` env var support to `scripts/smoke_supplement.sh` and auto-derived `LOG_PREFIX` from config basename so per-seed logs name themselves correctly.
+- [x] (2026-05-25) Authored three real DelftBlue sbatch scripts for the C2 worked example (`slurm/repro_qnli_c20_r4_{lora,ffa_lora,rolora}.sbatch`). Made them partition-compliant on `gpu-a100-small` (cpus-per-task=2, mem-per-cpu=8000M, time=03:59:59) after the first-submit attempts surfaced the per-partition caps. Added `eval.count_flops: False` to all four repro YAMLs to avoid the FlopCountAnalysis CUDA-cache pollution that caused `CUBLAS_STATUS_ALLOC_FAILED` on the 10 GB MIG slice. Set `WANDB_ENTITY=scalable-learning-7`. Added `HF_HUB_OFFLINE=1` / `TRANSFORMERS_OFFLINE=1` / `HF_DATASETS_OFFLINE=1` to all training sbatch.
+- [x] (2026-05-25) Compute-node networking reality discovered (`[Errno 101] Network is unreachable` for `huggingface.co` from `gpu*` nodes). Replaced the slurm warm-cache job with `scripts/warm_caches.sh` (login-node, uses `huggingface_hub.snapshot_download` for file-fetch-only — no model load — so it fits the "install script or two" login-node policy).
+- [x] (2026-05-25) Wandb logging refactored to be paper-aligned. Trainer's per-routine `wandb.log` was producing a noisy single-trace zigzag mixing all clients. Replaced with: per-client logging in `Client.callback_funcs_for_evaluate` using FederatedScope's stable `self.ID` (keys `client_NN/{metric}`), plus server-aggregated logging in `Server.merge_eval_results_from_all_clients` using `Results_weighted_avg` (keys `server/{metric}`). Verified locally: wandb run summary shows 9 `server/*` keys (paper-comparable convergence) + 27 `client_NN/*` keys (3-client local feasibility) across `scalable-learning-7/sls-rolora-repro`.
+- [x] (2026-05-25) Wrote the dum-dum DelftBlue runbook (`docs/setup/delftblue.md`) with explicit login-node policy banner and 0-9 step checklist. Authored `scripts/sync_to_delftblue.sh` for laptop → cluster rsync.
 
 ## Surprises & Discoveries
 
@@ -31,6 +39,21 @@ The observable outcome is a week-9 final report and presentation where every maj
 
 - Observation: The current local Table-1-shaped pilot is not a scientific result yet.
   Evidence: `experiments/ledger/README.md` explicitly says the RoBERTa-base QNLI local pilot is too tiny for paper-comparable numbers, and `README.md` says full Table 1 requires RoBERTa-Large across GLUE tasks/client counts/multiple seeds.
+
+- Observation (2026-05-25): The authors' supplement omits FlexLoRA entirely despite reporting it in Table 1. Their `test_glue.yaml` covers only LoRA / FFA-LoRA / RoLoRA via the alternation switch. We reproduce three methods, not four; this is disclosed as a known limitation in the report.
+  Evidence: `grep -rn FlexLoRA code/harness/rolora-supplement/RoLoRA-code/` returns zero matches. Decision documented in `docs/experiment-matrix.md` "Methods scope and FlexLoRA gap" section.
+
+- Observation (2026-05-25): DelftBlue's `gpu-a100-small` partition has narrower per-knob caps than its `gpu-a100` counterpart — `--mem-per-cpu` capped at 8000 MB (not 8 GiB), `--cpus-per-task` capped at 2, ≤4h wall time. None of these were documented in the partition-info we inherited; all three surfaced as `sbatch: error: ...` on first submission and were fixed in place.
+  Evidence: `slurm/repro_qnli_c20_r4_*.sbatch` headers; progress.md 2026-05-25 change-log row "DelftBlue first-submit discovered three hard constraints".
+
+- Observation (2026-05-25): DelftBlue compute nodes have NO outbound internet for `huggingface.co` (`[Errno 101] Network is unreachable`). This invalidated the original "compute-node warm-cache" sbatch design. Model and dataset downloads must happen on the login node; the runbook now uses `scripts/warm_caches.sh` with `huggingface_hub.snapshot_download` (file-fetch only — no model load — so it fits the "install script or two" login-node policy). Wandb's specific endpoint *is* reachable from compute nodes (verified empirically), so live metrics streaming still works.
+  Evidence: `slurm_logs/sls-warm-caches-9971216.err` (the original network-unreachable trace); `docs/setup/delftblue.md` policy banner.
+
+- Observation (2026-05-25): FederatedScope's default `eval.count_flops: True` triggers `fvcore.nn.FlopCountAnalysis` on the first batch, which leaks CUDA caching-allocator blocks and causes `CUBLAS_STATUS_ALLOC_FAILED` on the 10 GB MIG slice — the model itself fits, but FLOPS counting tips it over. The authors' supplement even prints a warning about this. We set `count_flops: False` in every reproduction config. The FLOPS number is never reported in paper Table 1 or Figure 3, so the loss is zero.
+  Evidence: training log showing `WARNING: When using count flops functions, ...` then `CUBLAS_STATUS_ALLOC_FAILED`; `experiments/configs/repro_qnli_c*.yaml` all have `count_flops: False`.
+
+- Observation (2026-05-25): FederatedScope's wandb-friendly logging surface is essentially "look at `eval_results.log` after the fact." The authors shipped zero plotting / aggregation tools. The right architecture for paper-comparable live tracking is to hook wandb into `Server.merge_eval_results_from_all_clients` (for `Results_weighted_avg`, the paper number) and `Client.callback_funcs_for_evaluate` (for per-client diagnostic traces with FederatedScope's stable `self.ID`). The trainer-level wandb hook, originally added, was wrong because trainer is per-client without stable identity.
+  Evidence: `code/harness/rolora-supplement/RoLoRA-code/federatedscope/core/workers/{client,server}.py` patches; `https://wandb.ai/scalable-learning-7/sls-rolora-repro/runs/0ybxxdta` verifies 9 `server/*` + 27 `client_NN/*` keys live.
 
 ## Decision Log
 
@@ -48,9 +71,9 @@ The observable outcome is a week-9 final report and presentation where every maj
 
 ## Outcomes & Retrospective
 
-Current outcome: the plan identifies the critical gap between the current repository state and a top-grade final project. The repository now has the core research-control surfaces; the remaining 12/10 risk is execution evidence, diagnostics maturity, and named human ownership.
+Current outcome (as of 2026-05-25): the plan identifies the critical gap between the current repository state and a top-grade final project. The repository now has the core research-control surfaces; the C2 cluster pipeline is staged end-to-end (configs, sbatch, warm-cache, wandb live, runbook); the only un-derisked step is the actual first DelftBlue training submission. The remaining 12/10 risk is execution evidence (real cluster results), diagnostics maturity (update-norm / frozen-factor markers beyond final metrics), and named human ownership.
 
-The main lesson is that the project should stop thinking in terms of “run more experiments” and start thinking in terms of “prove one compelling claim with the minimum experiment set that withstands scrutiny.”
+The main lesson is that the project should stop thinking in terms of "run more experiments" and start thinking in terms of "prove one compelling claim with the minimum experiment set that withstands scrutiny." The 2026-05-25 session also surfaced a meta-lesson: cluster-policy knowledge (login-node restrictions, per-partition resource caps, compute-node network policy, FederatedScope's CUDA cache footgun) only crystallises through real submission attempts. We encoded each discovery in code + docs as it happened, which is the right pattern — but it underlines that "the first real sbatch submission" is itself a high-information experiment, not a formality.
 
 ## Context and Orientation
 
@@ -96,9 +119,9 @@ Fourth, it must include reproducibility artifacts. Every table cell should map t
 
 Milestone 1 is to keep project-control structure current. `docs/progress.md`, `docs/experiment-matrix.md`, ADR 0005, and `report/README.md` are the control surfaces. Update them before and after every substantial experiment so evidence remains organized.
 
-Milestone 2 is to finish the local-to-large bridge. Run `make table1-medium-all` and summarize it. Then add a RoBERTa-Large one-round feasibility config derived from the supplement harness. The acceptance criterion is not accuracy; it is that the model loads, data path works, memory use is known, and the log contains the same method markers as local pilots. This de-risks the first real cluster job.
+Milestone 2 is the local-to-cluster bridge. The local rungs (`make table1-medium-all`, then `make roberta-large-feasibility`) exist to retire pipeline risk before cluster submission. The RoBERTa-Large feasibility config is now also Mac-runnable on MPS, which gives a fast pre-submission sanity check. The acceptance criterion at this milestone is not accuracy; it is that the model loads, the data path works, memory use is known, and the log contains the same method markers as local pilots. Once the user-supplied real DelftBlue `#SBATCH` headers are dropped into `slurm/gpu-a100-small.sbatch` and `slurm/gpu-v100.sbatch`, the same feasibility config is the first cluster submission, and we ledger that result.
 
-Milestone 3 is the minimum credible reproduction. Run one RoBERTa-Large dataset, preferably MNLI if feasible and QNLI if time/compute is tight, for 3, 20, and 50 clients across LoRA, FFA-LoRA, and RoLoRA. Use at least three seeds for the most important 50-client comparison; if compute is constrained, use one seed for 3/20 and three seeds for 50. Generate Figure-3-style convergence curves for 50 clients. The acceptance criterion is a table and curve that directly test the paper’s central claim.
+Milestone 3 is the minimum credible reproduction and is the active milestone. Run one RoBERTa-Large dataset for 3, 20, and 50 clients across LoRA, FFA-LoRA, and RoLoRA on DelftBlue. The exact dataset (MNLI primary, QNLI fallback) is less important than getting one full sweep through the pipeline end-to-end first; the dataset choice can be refined for subsequent sweeps once the first one lands. Use at least three seeds for the most important 50-client comparison; if compute is constrained, use one seed for 3/20 and three seeds for 50. Generate Figure-3-style convergence curves for 50 clients. The acceptance criterion is a table and curve that directly test the paper’s central client-scaling claim, with every row mapped to a config, command, seed, and log path in `experiments/ledger/README.md`.
 
 Milestone 4 is the improvement characterization. Implement or expose experiment knobs for the three committed directions. Improved initialization should include standard PEFT init, orthogonal A, and one SVD/PCA-like data-informed A if feasible. Separate learning rates should sweep ratios such as A:B equals 1:1, 1:4, 1:8, 1:16, and 4:1 depending on which phase appears undertrained. Adaptive server-side optimization should start with FedAvg versus server momentum or server Adam on the active factor only. The acceptance criterion is not that all three beat RoLoRA; it is that each answers a precise question about phase-specific dynamics.
 
@@ -131,7 +154,7 @@ Add the outputs to `experiments/ledger/README.md` with date, command, scale, evi
 
 Maintain the report skeleton under `report/`. It must keep figure placeholders current: RoLoRA mechanism diagram, MNIST sanity result, reproduction table, 50-client convergence curve, phase-specific improvement ablation, and limitations table.
 
-Before cluster runs, update `docs/setup/delftblue.md` and `slurm/README.md` with TA-confirmed instructions. Do not rely on provisional partition names as final truth.
+Before the first cluster submission, drop the user-supplied real `#SBATCH` header and `module load` lines into `slurm/gpu-a100-small.sbatch` and `slurm/gpu-v100.sbatch`, then submit the RoBERTa-Large feasibility config (`experiments/configs/roberta_large_feasibility.yaml`) once per mode. Update `docs/setup/delftblue.md` to remove the "pending" banner only after a feasibility job actually completes on DelftBlue and the result is ledgered.
 
 ## Validation and Acceptance
 
@@ -143,7 +166,7 @@ The final 12/10 acceptance bar is: the report contains a credible reproduction o
 
 ## Idempotence and Recovery
 
-All documentation steps are safe to repeat. If an experiment fails, do not delete the log. Add it to the ledger as a failed run with the error and next action. If cluster access is delayed, shift to the strongest local substitute: RoBERTa-base longer runs, one RoBERTa-Large feasibility probe on any available GPU, and deeper MNIST/linear characterization of phase-specific behavior. If the supplement becomes a blocker, switch to the FedSA-LoRA fallback per ADR 0001 and document the switch in a new ADR.
+All documentation steps are safe to repeat. If an experiment fails, do not delete the log. Add it to the ledger as a failed run with the error and next action. If DelftBlue queue time becomes a hard blocker, file a faculty-share / TOPdesk request and/or activate the DAIC backup path; in the meantime, the strongest local substitute is RoBERTa-base longer runs plus the Mac-runnable RoBERTa-Large feasibility probe and deeper MNIST/linear characterization of phase-specific behavior. If the supplement becomes a blocker, switch to the FedSA-LoRA fallback per ADR 0001 and document the switch in a new ADR.
 
 If an improvement direction shows no accuracy gain, recover by reframing it as characterization: report convergence speed, variance, phase sensitivity, and failure mode. A clean negative result with explanation is better than hiding the experiment.
 

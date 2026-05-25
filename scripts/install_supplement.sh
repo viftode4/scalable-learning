@@ -67,6 +67,8 @@ done
 # 5. Install the LLM-extra pins.
 # Note: `datasets` is required by the dataset-prep scripts in sst2/ but is NOT in
 # the supplement's [llm] extras (it's only in [app]). We add it explicitly.
+# `wandb` is added so the supplement trainer can stream per-round eval metrics
+# during cluster runs (no-op when WANDB_PROJECT env var is unset).
 "$VENV/bin/python" -m pip install --no-build-isolation \
     'torch>=2.0,<2.4' \
     'transformers==4.29.2' \
@@ -74,7 +76,8 @@ done
     'accelerate==0.20.3' \
     'peft==0.3.0' \
     'sentencepiece==0.1.99' \
-    'datasets'
+    'datasets' \
+    'wandb'
 
 # 6. Import sanity check.
 "$VENV/bin/python" - <<'PY'

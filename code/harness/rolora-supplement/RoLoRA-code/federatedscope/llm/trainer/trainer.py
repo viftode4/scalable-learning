@@ -1,3 +1,4 @@
+import atexit
 import torch
 import os
 import logging
@@ -31,11 +32,83 @@ class LLMTrainer(GeneralTorchTrainer):
             'SLS_ALTERNATION_MODE', 'rolora').lower()
         assert self.alternation_mode in ('rolora', 'lora', 'ffa_lora'), \
             f"unknown SLS_ALTERNATION_MODE: {self.alternation_mode!r}"
+        # sls-rolora: optional wandb live tracking. Activated only when
+        # WANDB_PROJECT is set; no-op otherwise so the local feasibility path
+        # is unchanged. Graceful on import / init errors.
+        self._wandb_run = None
+        self._init_wandb()
+
+    def _init_wandb(self):
+        project = os.environ.get('WANDB_PROJECT')
+        if not project:
+            return
+        try:
+            import wandb
+        except Exception as e:
+            logger.warning(
+                f"[sls-rolora] WANDB_PROJECT set but `import wandb` failed "
+                f"({e}); continuing without live tracking.")
+            return
+        # LLMTrainer is instantiated per client; with share_local_model=True
+        # we get N trainers per process. Only the first one initialises wandb;
+        # the rest reuse the active run so we don't fragment into N runs per
+        # cluster job.
+        if wandb.run is not None:
+            self._wandb_run = wandb.run
+            return
+        try:
+            run_cfg = {
+                'alternation_mode': self.alternation_mode,
+                'seed': getattr(self.cfg, 'seed', None),
+                'client_num': getattr(
+                    getattr(self.cfg, 'federate', None), 'client_num', None),
+                'total_round_num': getattr(
+                    getattr(self.cfg, 'federate', None),
+                    'total_round_num', None),
+            }
+            tags_env = os.environ.get('WANDB_TAGS', '')
+            tags = [t for t in tags_env.split(',') if t] or None
+            self._wandb_run = wandb.init(
+                project=project,
+                group=os.environ.get('WANDB_RUN_GROUP'),
+                name=os.environ.get('WANDB_NAME'),
+                tags=tags,
+                config=run_cfg,
+            )
+            atexit.register(self._finish_wandb)
+            logger.info(
+                f"[sls-rolora] wandb run started: project={project} "
+                f"group={os.environ.get('WANDB_RUN_GROUP')} "
+                f"name={os.environ.get('WANDB_NAME')}")
+        except Exception as e:
+            logger.warning(
+                f"[sls-rolora] wandb.init failed ({e}); continuing without "
+                f"live tracking.")
+            self._wandb_run = None
+
+    def _finish_wandb(self):
+        if self._wandb_run is None:
+            return
+        try:
+            import wandb
+            wandb.finish()
+        except Exception:
+            pass
+        self._wandb_run = None
 
     def _hook_on_fit_start_numerical_precision(self, ctx):
         if self.cfg.train.is_enable_half:
             if not ctx.cfg.llm.deepspeed.use:
-                ctx.model = ctx.model.half()
+                # sls-rolora: fp16 cross_entropy is unimplemented on CPU and
+                # flaky on Apple MPS for older torch builds. Restrict .half()
+                # to CUDA so the supplement can run on Mac for feasibility.
+                device_str = str(getattr(ctx, 'device', 'cpu'))
+                if device_str.startswith('cuda'):
+                    ctx.model = ctx.model.half()
+                else:
+                    logger.info(
+                        f"[sls-rolora] is_enable_half=True ignored on "
+                        f"device={device_str}; running in fp32.")
 
     def _hook_on_fit_start_init(self, ctx):
         if ctx.cfg.llm.deepspeed.use:
@@ -215,6 +288,14 @@ class LLMTrainer(GeneralTorchTrainer):
             f'{ctx.cur_split}_acc':accuracy,
         }
         setattr(ctx, 'eval_metrics', eval_results)
+
+        # sls-rolora: wandb logging is intentionally NOT done here.
+        # Per-client and server-aggregated metrics are logged from
+        # Client.callback_funcs_for_evaluate and
+        # Server.merge_eval_results_from_all_clients respectively, where
+        # the true client_id (self.ID) and the weighted-avg aggregate are
+        # already known. Logging here would create noisy zigzag traces
+        # because LLMTrainer is per-client and has no stable client id.
 
         # TODO: make this as a hook function
         # Move trainable part to `cpu`, which can save memory but cost time

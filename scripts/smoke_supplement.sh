@@ -10,7 +10,10 @@ REPO="$(cd "$(dirname "$0")/.." && pwd)"
 SUPP="$REPO/code/harness/rolora-supplement/RoLoRA-code"
 VENV="$SUPP/.venv-supplement"
 CONFIG=${CONFIG:-"$REPO/experiments/configs/smoke_supplement.yaml"}
-LOG_PREFIX=${LOG_PREFIX:-smoke}
+# Auto-derive log prefix from the config basename when not explicitly set.
+# Lets per-cell sbatch jobs land at results/<config_stem>_<mode>[_seedN].log without
+# every caller having to thread LOG_PREFIX through env.
+LOG_PREFIX=${LOG_PREFIX:-$(basename "$CONFIG" .yaml)}
 RESULTS="$REPO/results"
 
 if [[ ! -x "$VENV/bin/python" ]]; then
@@ -45,19 +48,27 @@ for mode in "${modes[@]}"; do
             ;;
     esac
 
-    log="$RESULTS/${LOG_PREFIX}_${mode}.log"
-    echo "[smoke] $mode -> $log"
+    seed_suffix=""
+    seed_override=()
+    if [[ -n "${SEED:-}" ]]; then
+        seed_suffix="_seed${SEED}"
+        seed_override=(seed "$SEED")
+    fi
+
+    log="$RESULTS/${LOG_PREFIX}_${mode}${seed_suffix}.log"
+    echo "[smoke] $mode${seed_suffix:+ seed=$SEED} -> $log"
 
     if {
         echo "# repo: $REPO"
         echo "# git_sha: $(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo unknown)"
         echo "# config: $CONFIG"
         echo "# mode: $mode"
+        echo "# seed: ${SEED:-default}"
         echo "# started_at_utc: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
         cd "$REPO"
         NO_COLOR=1 SLS_ALTERNATION_MODE="$mode" \
             "$VENV/bin/python" scripts/run_supplement.py \
-            --cfg "$CONFIG"
+            --cfg "$CONFIG" "${seed_override[@]}"
     } >"$log" 2>&1; then
         marker="$(grep -F "[sls-rolora]" "$log" | tail -1 | perl -pe 's/\e\[[0-9;]*m//g' || true)"
         final="$(grep -E "Results_raw|Results_avg|Results_weighted_avg" "$log" | tail -1 | perl -pe 's/\e\[[0-9;]*m//g' || true)"

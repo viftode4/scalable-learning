@@ -552,6 +552,25 @@ class Client(BaseClient):
                 forms=['raw'],
                 return_raw=True)
             logger.info(formatted_eval_res)
+            # sls-rolora: stream per-client eval-of-aggregated-adapter to wandb.
+            # self.ID is FederatedScope's stable client id (not instantiation
+            # order). step=self.state aligns all clients' logs for the same FL
+            # round onto the same x-axis position.
+            try:
+                import wandb
+                if wandb.run is not None:
+                    raw = formatted_eval_res.get('Results_raw', {})
+                    if isinstance(raw, dict) and raw:
+                        payload = {
+                            f'client_{self.ID:02d}/{k}': v
+                            for k, v in raw.items()
+                            if isinstance(v, (int, float))
+                        }
+                        payload[f'client_{self.ID:02d}/round'] = self.state
+                        wandb.log(payload, step=int(self.state))
+            except Exception as _sls_wandb_err:
+                logger.warning(
+                    f"[sls-rolora] client wandb.log failed: {_sls_wandb_err}")
             update_best_this_round = self._monitor.update_best_result(
                 self.best_results,
                 formatted_eval_res['Results_raw'],

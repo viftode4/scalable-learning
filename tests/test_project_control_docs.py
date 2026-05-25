@@ -9,7 +9,7 @@ def test_progress_has_claim_ledger_and_fallback_triggers() -> None:
     assert "## Fallback triggers" in progress
     assert "## Claim ledger" in progress
     assert "C3" in progress
-    assert "RoBERTa-Large MNLI feasibility" in progress
+    assert "RoBERTa-Large feasibility" in progress
 
 
 def test_experiment_matrix_has_dataset_rule_and_comparability_constraints() -> None:

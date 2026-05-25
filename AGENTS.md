@@ -9,7 +9,13 @@ See `README.md` for orientation and `docs/research/` for canonical source docs.
 - **No unrelated prior-project framing** — keep the project centered on RoLoRA reproduction and the submitted proposal scope.
 - **W7-8 paper presentation is on the SAME RoLoRA paper** as the project — not a separate paper.
 - **Compute** is DelftBlue + DAIC + local laptops. Plan from low- to high-cost. Llama-2-7B is a stretch goal only, not a baseline path.
-- **Cluster access is TA-driven** (Dennis Heijmans / Rui Wang). Do NOT file a TOPdesk request without their guidance. Treat DelftBlue partition info in the deep-research plan as *unconfirmed* until TA instructions arrive.
+- **Cluster access is available** on DelftBlue (and DAIC as backup). Open work is integration: real Slurm templates, module/account values, and the first paper-scale submission. See `docs/setup/delftblue.md` and `slurm/README.md` for the current state.
+- **DelftBlue policy ground truths (as of 2026-05-25; do not re-litigate without evidence)**:
+  - **Login nodes are restricted** — `uv sync`, `pip install`, light import sanity checks are OK; **NO heavy Python** (no `from_pretrained`, no training runs, no GPU access). For model / dataset downloads use `scripts/warm_caches.sh` which calls `huggingface_hub.snapshot_download` (file fetch only, no model load).
+  - **Compute nodes have NO outbound internet for `huggingface.co`** (`[Errno 101] Network is unreachable`). All HF artefacts MUST be pre-cached on `/scratch/$USER/hf-cache` before submission. Training sbatch sets `HF_HUB_OFFLINE=1` / `TRANSFORMERS_OFFLINE=1` / `HF_DATASETS_OFFLINE=1` defensively.
+  - **`wandb.ai` IS reachable** from compute nodes — wandb live streaming works (verified). If it ever breaks, fallback is `WANDB_MODE=offline` + `wandb sync` from the login node after the job.
+  - **`gpu-a100-small` partition caps**: `--mem-per-cpu` ≤ 8000 MB (NOT 8 GiB), `--cpus-per-task` ≤ 2, `--time` ≤ 4h (MIG-slice limit). All current C2 sbatch files match these caps. Going to full `gpu-a100` is the escalation if VRAM or wall time forces it.
+  - **`eval.count_flops: False` in every reproduction YAML** — FederatedScope's default `True` invokes `fvcore.nn.FlopCountAnalysis` which pollutes the CUDA caching allocator and triggers `CUBLAS_STATUS_ALLOC_FAILED` on the 10 GB MIG slice. The FLOPS number is never reported anywhere in our paper artefacts.
 - **Team is 3 people.** Split work by ownership layer (infrastructure / algorithm / improvement & analysis), not by experiment.
 
 ## Improvement directions the team committed to in the proposal

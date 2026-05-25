@@ -44,6 +44,7 @@ exp/
 results/*
 !results/.gitkeep
 slurm-*.out
+slurm_logs/
 *.ckpt
 *.pt
 wandb/
@@ -52,3 +53,5 @@ mlruns/
 # HuggingFace cache accidentally created under supplement data dir
 code/harness/rolora-supplement/RoLoRA-code/sst2/models--*/
 code/harness/rolora-supplement/RoLoRA-code/sst2/.locks/
+
+.env
