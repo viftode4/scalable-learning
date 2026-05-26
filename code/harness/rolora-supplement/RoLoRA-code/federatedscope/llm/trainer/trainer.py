@@ -140,7 +140,12 @@ class LLMTrainer(GeneralTorchTrainer):
                 ctx.scheduler = get_scheduler(
                     ctx.optimizer, **ctx.cfg[ctx.cur_mode].scheduler)
         # print("Train number of epoch",ctx.num_train_epoch)
-        # sls-rolora: per-mode factor-freezing strategy.
+        # sls-rolora: per-mode factor-freezing strategy. Each branch only
+        # toggles requires_grad on parameters whose name contains 'lora_A' or
+        # 'lora_B' — the classifier head name has neither substring, so the
+        # alternation logic itself never touches it. The explicit
+        # classifier-unfreeze below makes that invariant defensive against
+        # future code drift.
         if self.alternation_mode == 'rolora':
             train_b = (self.step_count % 2) == 0
             print(f"[sls-rolora] RoLoRA round {self.step_count}: "
@@ -166,11 +171,25 @@ class LLMTrainer(GeneralTorchTrainer):
                     param.requires_grad = False
                 elif 'lora_B' in name:
                     param.requires_grad = True
-        if self.step_count==0:
-            print("Freeze classifier")
-            for name, param in ctx.model.named_parameters():
-                if 'classifier' in name:
-                    param.requires_grad = False
+
+        # sls-rolora: keep the sequence-classification head trainable in EVERY
+        # round across ALL three modes. The supplement loads roberta-large via
+        # AutoModelForSequenceClassification(num_labels=2); the base MLM
+        # checkpoint contains no classifier head, so HuggingFace creates a
+        # fresh random one (verified by the "newly initialized" load warning).
+        # PEFT's TaskType.SEQ_CLS wraps it in ModulesToSaveWrapper with both
+        # the original_module and modules_to_save.default copies marked
+        # trainable — that's the canonical PEFT recipe for SEQ_CLS LoRA. The
+        # upstream supplement had a `if step_count==0: Freeze classifier`
+        # block here that re-froze both copies, capping QNLI test_acc at
+        # chance (~0.50) regardless of how many rounds we trained. We delete
+        # that block and explicitly assert trainable here so the head trains
+        # alongside whichever LoRA factor(s) the current alternation step is
+        # updating. See docs/progress.md change-log for the empirical
+        # evidence and the PEFT-doc reference.
+        for name, param in ctx.model.named_parameters():
+            if 'classifier' in name:
+                param.requires_grad = True
         self.step_count += 1
         # if ctx.cfg.llm.deepspeed.use:
 
