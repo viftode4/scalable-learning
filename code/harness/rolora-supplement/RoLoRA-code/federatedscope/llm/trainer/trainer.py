@@ -57,15 +57,37 @@ class LLMTrainer(GeneralTorchTrainer):
             self._wandb_run = wandb.run
             return
         try:
+            def _cfgget(path, default=None):
+                node = self.cfg
+                for part in path.split('.'):
+                    node = getattr(node, part, None)
+                    if node is None:
+                        return default
+                return node
             run_cfg = {
                 'alternation_mode': self.alternation_mode,
-                'seed': getattr(self.cfg, 'seed', None),
-                'client_num': getattr(
-                    getattr(self.cfg, 'federate', None), 'client_num', None),
-                'total_round_num': getattr(
-                    getattr(self.cfg, 'federate', None),
-                    'total_round_num', None),
+                'seed': _cfgget('seed'),
+                'client_num': _cfgget('federate.client_num'),
+                'total_round_num': _cfgget('federate.total_round_num'),
+                'lr': _cfgget('train.optimizer.lr'),
+                'optimizer': _cfgget('train.optimizer.type'),
+                'weight_decay': _cfgget('train.optimizer.weight_decay'),
+                'local_update_steps': _cfgget('train.local_update_steps'),
+                'batch_size': _cfgget('dataloader.batch_size'),
+                'model': _cfgget('model.type'),
+                'data': _cfgget('data.type'),
+                'tok_len': _cfgget('llm.tok_len'),
             }
+            # adapter args is a list of dicts: [{r, lora_alpha, lora_dropout}]
+            try:
+                _ad = _cfgget('llm.adapter.args')
+                if isinstance(_ad, (list, tuple)) and _ad \
+                        and isinstance(_ad[0], dict):
+                    run_cfg['lora_r'] = _ad[0].get('r')
+                    run_cfg['lora_alpha'] = _ad[0].get('lora_alpha')
+                    run_cfg['lora_dropout'] = _ad[0].get('lora_dropout')
+            except Exception:
+                pass
             tags_env = os.environ.get('WANDB_TAGS', '')
             tags = [t for t in tags_env.split(',') if t] or None
             self._wandb_run = wandb.init(

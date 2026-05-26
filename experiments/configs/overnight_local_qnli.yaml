@@ -1,0 +1,67 @@
+# Overnight LOCAL mechanism check for the OpenReview supplement harness.
+#
+# Purpose: produce an actual accuracy-vs-round curve for each alternation mode
+# on a real classification setup, to confirm (or refute) that after the
+# classifier-unfreeze fix the model learns QNLI off chance (~0.50). This is a
+# MECHANISM check, not paper Table 1:
+#   - roberta-base instead of roberta-large (fits a 6 GB laptop GPU; 2 in parallel)
+#   - QNLI only, 3 IID clients
+#   - 40 rounds, 20 local steps/round, eval every 2 rounds
+# Hyperparameters otherwise mirror the cluster C2 cell (r=4, alpha=32, lr=0.005,
+# SGD, wd=2e-4) so the local mechanism matches what we run at scale.
+#
+# The optimizer can be overridden per-arm on the command line, e.g. to test the
+# undertraining hypothesis with AdamW:
+#   ... --cfg <this> train.optimizer.type AdamW train.optimizer.lr 0.0005
+
+use_gpu: True
+device: 0
+early_stop:
+  patience: 0
+
+federate:
+  mode: standalone
+  total_round_num: 40
+  save_to: "overnight-local-qnli.ckpt"
+  client_num: 3
+  share_local_model: True
+
+data:
+  root: code/harness/rolora-supplement/RoLoRA-code/sst2/
+  type: 'qnli.json@llm'
+  splits: [0.89, 0.1, 0.01]
+  splitter: 'iid'
+
+llm:
+  tok_len: 128
+  chat:
+    max_len: 384
+    max_history_len: 4
+  adapter:
+    use: True
+    args: [ { 'adapter_package': 'peft', 'adapter_method': 'lora', 'r': 4, 'lora_alpha': 32, 'lora_dropout': 0.1 } ]
+
+dataloader:
+  batch_size: 16
+
+model:
+  type: 'roberta-base@huggingface_llm'
+
+train:
+  local_update_steps: 20
+  batch_or_epoch: batch
+  optimizer:
+    lr: 0.005
+    weight_decay: 0.0002
+  is_enable_half: False
+
+trainer:
+  type: llmtrainer
+criterion:
+  type: CrossEntropyLoss
+
+eval:
+  freq: 2
+  metrics: ['loss', 'acc']
+  best_res_update_round_wise_key: val_loss
+  count_flops: False

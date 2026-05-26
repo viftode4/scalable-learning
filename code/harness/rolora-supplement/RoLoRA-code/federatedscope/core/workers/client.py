@@ -345,6 +345,31 @@ class Client(BaseClient):
                         f"early stopped. "
                         f"The next FL update may result in negative effect")
                     self._monitor.local_converged()
+                # sls-rolora: per-round mechanism probes on the freshly-loaded
+                # GLOBAL model (pre local training, right after trainer.update).
+                # The classifier-norm trace is the direct check that the
+                # unfrozen head is actually being updated and aggregated (a flat
+                # trace => the fix did not take); the lora_A / lora_B norms
+                # expose the alternation and let us watch the frozen factor hold
+                # steady within a round. Under share_local_model every client
+                # logs identical values at the same step, so wandb dedups to a
+                # single trace per round.
+                try:
+                    import wandb
+                    if wandb.run is not None:
+                        _sq = {'lora_A': 0.0, 'lora_B': 0.0, 'classifier': 0.0}
+                        for _n, _p in self.trainer.ctx.model.named_parameters():
+                            for _k in _sq:
+                                if _k in _n:
+                                    _sq[_k] += float(
+                                        _p.detach().float().norm().item()) ** 2
+                        _probe = {f'mech/{_k}_norm': _v ** 0.5
+                                  for _k, _v in _sq.items()}
+                        _probe['mech/round'] = self.state
+                        wandb.log(_probe, step=int(self.state))
+                except Exception as _sls_mech_err:
+                    logger.warning(
+                        f"[sls-rolora] mech probe failed: {_sls_mech_err}")
                 sample_size, model_para_all, results = self.trainer.train()
                 if self._cfg.federate.share_local_model and not \
                         self._cfg.federate.online_aggr:
@@ -355,6 +380,25 @@ class Client(BaseClient):
                     role='Client #{}'.format(self.ID),
                     return_raw=True)
                 logger.info(train_log_res)
+                # sls-rolora: stream per-client TRAIN metrics to wandb (mirrors
+                # the eval block in callback_funcs_for_evaluate). The train-loss
+                # curve is the first signal that local optimisation is working,
+                # independent of whether it generalises to the eval splits.
+                try:
+                    import wandb
+                    if wandb.run is not None:
+                        _traw = train_log_res.get('Results_raw', {})
+                        if isinstance(_traw, dict) and _traw:
+                            _tp = {
+                                f'client_{self.ID:02d}/{_k}': _v
+                                for _k, _v in _traw.items()
+                                if isinstance(_v, (int, float))
+                            }
+                            wandb.log(_tp, step=int(self.state))
+                except Exception as _sls_tr_err:
+                    logger.warning(
+                        f"[sls-rolora] client train wandb.log failed: "
+                        f"{_sls_tr_err}")
                 if self._cfg.wandb.use and self._cfg.wandb.client_train_info:
                     self._monitor.save_formatted_results(train_log_res,
                                                          save_file_name="")
