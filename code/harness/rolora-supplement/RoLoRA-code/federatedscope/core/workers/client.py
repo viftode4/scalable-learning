@@ -351,25 +351,33 @@ class Client(BaseClient):
                 # unfrozen head is actually being updated and aggregated (a flat
                 # trace => the fix did not take); the lora_A / lora_B norms
                 # expose the alternation and let us watch the frozen factor hold
-                # steady within a round. Under share_local_model every client
-                # logs identical values at the same step, so wandb dedups to a
-                # single trace per round.
-                try:
-                    import wandb
-                    if wandb.run is not None:
-                        _sq = {'lora_A': 0.0, 'lora_B': 0.0, 'classifier': 0.0}
-                        for _n, _p in self.trainer.ctx.model.named_parameters():
-                            for _k in _sq:
-                                if _k in _n:
-                                    _sq[_k] += float(
-                                        _p.detach().float().norm().item()) ** 2
-                        _probe = {f'mech/{_k}_norm': _v ** 0.5
-                                  for _k, _v in _sq.items()}
-                        _probe['mech/round'] = self.state
-                        wandb.log(_probe, step=int(self.state))
-                except Exception as _sls_mech_err:
-                    logger.warning(
-                        f"[sls-rolora] mech probe failed: {_sls_mech_err}")
+                # steady within a round. Only client #1 emits so that wandb's
+                # "merge at same step" semantics don't overwrite the start-of-
+                # round value with a later client's mid-round value (under
+                # share_local_model successive clients see the shared model
+                # being mutated in-place by earlier clients in the same round).
+                if self.ID == 1:
+                    try:
+                        import wandb
+                        if wandb.run is not None:
+                            _sq = {'lora_A': 0.0,
+                                   'lora_B': 0.0,
+                                   'classifier': 0.0}
+                            for _n, _p in \
+                                    self.trainer.ctx.model.named_parameters():
+                                for _k in _sq:
+                                    if _k in _n:
+                                        _sq[_k] += float(
+                                            _p.detach().float().norm().item()
+                                        ) ** 2
+                            _probe = {f'mech/{_k}_norm': _v ** 0.5
+                                      for _k, _v in _sq.items()}
+                            _probe['mech/round'] = self.state
+                            wandb.log(_probe, step=int(self.state))
+                    except Exception as _sls_mech_err:
+                        logger.warning(
+                            f"[sls-rolora] mech probe failed: "
+                            f"{_sls_mech_err}")
                 sample_size, model_para_all, results = self.trainer.train()
                 if self._cfg.federate.share_local_model and not \
                         self._cfg.federate.online_aggr:

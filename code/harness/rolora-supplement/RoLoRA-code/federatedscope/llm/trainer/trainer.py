@@ -154,65 +154,66 @@ class LLMTrainer(GeneralTorchTrainer):
             # prepare model and optimizer
             # print("prepare model and optimizer")
             ctx.model.to(ctx.device)
+            # sls-rolora: factor-freezing + step_count bookkeeping MUST be
+            # gated on cur_mode == TRAIN/FINETUNE. The pre-fix code ran the
+            # alternation block on every fit_start_init call (train, val,
+            # test → 3 invocations per client per round), so `step_count`
+            # advanced 3x per round and eval routines flipped requires_grad
+            # using a counter that didn't correspond to a real training
+            # round. Apply factor freezing BEFORE optimizer construction so
+            # the optimizer's param_groups reflect the current alternation
+            # phase. Classifier head stays trainable in every TRAIN round.
             if ctx.cur_mode in [MODE.TRAIN, MODE.FINETUNE]:
-                # Initialize optimizer here to avoid the reuse of optimizers
-                # across different routines
+                # Debug: stdout probe of model norms at the start of each
+                # train fit, independent of wandb (which merges multi-client
+                # logs at the same step under share_local_model and gives
+                # misleading mid-round values). Opt-in via SLS_DEBUG_PROBE=1.
+                if os.environ.get('SLS_DEBUG_PROBE') == '1':
+                    _sq = {'lora_A': 0.0, 'lora_B': 0.0, 'classifier': 0.0}
+                    for _n, _p in ctx.model.named_parameters():
+                        for _k in _sq:
+                            if _k in _n:
+                                _sq[_k] += float(
+                                    _p.detach().float().norm().item())**2
+                    print(f"[STDOUT-PROBE step={self.step_count}] "
+                          f"cls={_sq['classifier']**0.5:.6f} "
+                          f"A={_sq['lora_A']**0.5:.6f} "
+                          f"B={_sq['lora_B']**0.5:.6f}")
+                if self.alternation_mode == 'rolora':
+                    train_b = (self.step_count % 2) == 0
+                    print(f"[sls-rolora] RoLoRA round {self.step_count}: "
+                          f"train {'B' if train_b else 'A'}")
+                    for name, param in ctx.model.named_parameters():
+                        if 'lora_A' in name:
+                            param.requires_grad = not train_b
+                        elif 'lora_B' in name:
+                            param.requires_grad = train_b
+                elif self.alternation_mode == 'lora':
+                    print(f"[sls-rolora] LoRA round {self.step_count}: "
+                          f"train both")
+                    for name, param in ctx.model.named_parameters():
+                        if 'lora_A' in name or 'lora_B' in name:
+                            param.requires_grad = True
+                elif self.alternation_mode == 'ffa_lora':
+                    print(f"[sls-rolora] FFA-LoRA round {self.step_count}: "
+                          f"A frozen, train B")
+                    for name, param in ctx.model.named_parameters():
+                        if 'lora_A' in name:
+                            param.requires_grad = False
+                        elif 'lora_B' in name:
+                            param.requires_grad = True
+                for name, param in ctx.model.named_parameters():
+                    if 'classifier' in name:
+                        param.requires_grad = True
+                self.step_count += 1
+
+                # Build the optimizer AFTER the alternation block so its
+                # param_groups reflect the current phase (in case a future
+                # refactor adds a requires_grad filter to get_optimizer).
                 ctx.optimizer = get_optimizer(
                     ctx.model, **ctx.cfg[ctx.cur_mode].optimizer)
                 ctx.scheduler = get_scheduler(
                     ctx.optimizer, **ctx.cfg[ctx.cur_mode].scheduler)
-        # print("Train number of epoch",ctx.num_train_epoch)
-        # sls-rolora: per-mode factor-freezing strategy. Each branch only
-        # toggles requires_grad on parameters whose name contains 'lora_A' or
-        # 'lora_B' — the classifier head name has neither substring, so the
-        # alternation logic itself never touches it. The explicit
-        # classifier-unfreeze below makes that invariant defensive against
-        # future code drift.
-        if self.alternation_mode == 'rolora':
-            train_b = (self.step_count % 2) == 0
-            print(f"[sls-rolora] RoLoRA round {self.step_count}: "
-                  f"train {'B' if train_b else 'A'}")
-            for name, param in ctx.model.named_parameters():
-                if 'lora_A' in name:
-                    param.requires_grad = not train_b
-                elif 'lora_B' in name:
-                    param.requires_grad = train_b
-        elif self.alternation_mode == 'lora':
-            # Train both factors every round; the aggregator averages A and B
-            # independently — this is the math-bug baseline the paper attacks.
-            print(f"[sls-rolora] LoRA round {self.step_count}: train both")
-            for name, param in ctx.model.named_parameters():
-                if 'lora_A' in name or 'lora_B' in name:
-                    param.requires_grad = True
-        elif self.alternation_mode == 'ffa_lora':
-            # Freeze A at init forever; only B is trained and aggregated.
-            print(f"[sls-rolora] FFA-LoRA round {self.step_count}: "
-                  f"A frozen, train B")
-            for name, param in ctx.model.named_parameters():
-                if 'lora_A' in name:
-                    param.requires_grad = False
-                elif 'lora_B' in name:
-                    param.requires_grad = True
-
-        # sls-rolora: keep the sequence-classification head trainable in EVERY
-        # round across ALL three modes. The supplement loads roberta-large via
-        # AutoModelForSequenceClassification(num_labels=2); the base MLM
-        # checkpoint contains no classifier head, so HuggingFace creates a
-        # fresh random one (verified by the "newly initialized" load warning).
-        # PEFT's TaskType.SEQ_CLS wraps it in ModulesToSaveWrapper with both
-        # the original_module and modules_to_save.default copies marked
-        # trainable — that's the canonical PEFT recipe for SEQ_CLS LoRA. The
-        # upstream supplement had a `if step_count==0: Freeze classifier`
-        # block here that re-froze both copies, capping QNLI test_acc at
-        # chance (~0.50) regardless of how many rounds we trained. We delete
-        # that block and explicitly assert trainable here so the head trains
-        # alongside whichever LoRA factor(s) the current alternation step is
-        # updating. See docs/progress.md change-log for the empirical
-        # evidence and the PEFT-doc reference.
-        for name, param in ctx.model.named_parameters():
-            if 'classifier' in name:
-                param.requires_grad = True
-        self.step_count += 1
         # if ctx.cfg.llm.deepspeed.use:
 
         
@@ -287,6 +288,40 @@ class LLMTrainer(GeneralTorchTrainer):
         else:
             ctx.optimizer.zero_grad()
             ctx.loss_task.backward()
+
+            # Debug: on the first batch of each train fit, dump A/B
+            # requires_grad and grad-norm. Use this to confirm the alternation
+            # freeze is actually preventing the frozen factor's optimizer
+            # update. Opt-in via SLS_DEBUG_GRAD=1.
+            if os.environ.get('SLS_DEBUG_GRAD') == '1':
+                if not hasattr(self, '_dbg_seen_step'):
+                    self._dbg_seen_step = -1
+                if self.step_count != self._dbg_seen_step:
+                    self._dbg_seen_step = self.step_count
+                    a_req = b_req = None
+                    a_g_sum = b_g_sum = 0.0
+                    a_g_none = b_g_none = 0
+                    a_count = b_count = 0
+                    for n, p in ctx.model.named_parameters():
+                        if 'lora_A' in n:
+                            a_count += 1
+                            if a_req is None: a_req = p.requires_grad
+                            if p.grad is None: a_g_none += 1
+                            else: a_g_sum += float(
+                                p.grad.detach().float().norm().item())**2
+                        elif 'lora_B' in n:
+                            b_count += 1
+                            if b_req is None: b_req = p.requires_grad
+                            if p.grad is None: b_g_none += 1
+                            else: b_g_sum += float(
+                                p.grad.detach().float().norm().item())**2
+                    print(f"[DBG step={self.step_count - 1}] "
+                          f"A: req_grad={a_req} "
+                          f"grad_none={a_g_none}/{a_count} "
+                          f"grad_norm={a_g_sum**0.5:.6f}  |  "
+                          f"B: req_grad={b_req} "
+                          f"grad_none={b_g_none}/{b_count} "
+                          f"grad_norm={b_g_sum**0.5:.6f}")
 
             if ctx.grad_clip > 0:
                 torch.nn.utils.clip_grad_norm_(ctx.model.parameters(),
