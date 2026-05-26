@@ -202,9 +202,24 @@ class LLMTrainer(GeneralTorchTrainer):
                             param.requires_grad = False
                         elif 'lora_B' in name:
                             param.requires_grad = True
-                for name, param in ctx.model.named_parameters():
-                    if 'classifier' in name:
-                        param.requires_grad = True
+                # Default: keep the SEQ_CLS head trainable every round (fixes
+                # the upstream bug that pinned QNLI at chance). Set
+                # SLS_FREEZE_CLASSIFIER=1 to reproduce the unmodified
+                # OpenReview supplement behaviour (classifier frozen from
+                # step_count==0 onward) — used for the "control" experiment
+                # that quantifies the published-artifact mismatch.
+                if os.environ.get('SLS_FREEZE_CLASSIFIER') == '1':
+                    if self.step_count == 0:
+                        print("[sls-rolora] SLS_FREEZE_CLASSIFIER=1: "
+                              "freezing classifier head (upstream-original "
+                              "behaviour)")
+                        for name, param in ctx.model.named_parameters():
+                            if 'classifier' in name:
+                                param.requires_grad = False
+                else:
+                    for name, param in ctx.model.named_parameters():
+                        if 'classifier' in name:
+                            param.requires_grad = True
                 self.step_count += 1
 
                 # Build the optimizer AFTER the alternation block so its

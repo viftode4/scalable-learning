@@ -2,6 +2,16 @@
 
 TU Delft **CS 4725** research seminar (Spring 2026). 9 course weeks, currently in **week 3**. Hard end: week 9 final report + presentation (the only graded deliverables).
 
+> ## ⚠️ Reproducibility audit finding (2026-05-27) — read before submitting cluster jobs
+>
+> The OpenReview supplement's shipped `test_glue.yaml` uses **SGD lr=0.005** (the `type: Adam` line is commented out at `federatedscope/llm/baseline/test_glue.yaml:74`). At that recipe the model **cannot learn QNLI** in the paper's 30 rounds — neither on our cluster RoBERTa-Large runs nor on local RoBERTa-base smoke runs. Replacing the optimizer with **AdamW lr=5e-4** reaches test_acc 0.87 on RoBERTa-base QNLI in 40 rounds.
+>
+> Additionally, the supplement's trainer permanently freezes the SEQ_CLS classification head from `step_count==0` onward, with **zero documentation** anywhere in the repo. Empirically the freeze is harmful but recoverable (LoRA can adapt upstream features into the random head's effective decision direction).
+>
+> **Before re-launching any `slurm/repro_qnli_*` job**: use the patched trainer on branch `fix-rolora` AND swap SGD → AdamW lr=5e-4 in the config or sbatch overrides. The previous cluster jobs (`evidence/cluster_runs/{9971857,9976252}`) sat at chance accuracy precisely because of this.
+>
+> Full audit + empirical evidence: **[`docs/decisions/0006-supplement-reproducibility-gap.md`](docs/decisions/0006-supplement-reproducibility-gap.md)**. Report integration in [`report/README.md`](report/README.md) §4 and `docs/progress.md` change-log row 2026-05-27. Trainer patch in commits `8c60faa` (Daniel) + `3e5f68e` (Vlad).
+
 ## Team
 - Vlad Iftode
 - Daniel Popovici

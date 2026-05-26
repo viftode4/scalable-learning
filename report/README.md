@@ -31,35 +31,59 @@ active-factor server-optimization choices.
    - Deviations from paper caused by compute.
    - Exact command/config/log discipline.
 
-4. **Local sanity evidence**
+4. **Reproducibility audit of the OpenReview supplement** *(see ADR 0006)*
+   - The federated RoLoRA paper has no public github repository; the
+     OpenReview supplement is the sole released artifact.
+   - The shipped `test_glue.yaml` uses SGD `lr=0.005` (Adam line is
+     commented out). At that recipe, neither our local RoBERTa-base
+     QNLI runs nor Daniel's cluster RoBERTa-Large runs learn beyond
+     chance in 30 rounds. Replacing with AdamW `lr=5e-4` reaches
+     test_acc ≥ 0.87 at 40 rounds on RoBERTa-base QNLI.
+   - The supplement's trainer permanently freezes the SEQ_CLS head
+     from `step_count==0` onward, with no documentation. Empirically
+     the freeze is harmful but not catastrophic (control run with
+     AdamW + frozen head still reaches ≥ 0.82 by round 9, because
+     LoRA adapts upstream features into the random head's effective
+     decision direction).
+   - Report frames the two findings separately: (a) **shipped
+     optimiser cannot reproduce paper accuracies** — strong empirical
+     claim; (b) **undocumented classifier-freeze** — code-quality
+     concern that slows but doesn't block learning.
+   - Patches are recorded in `code/harness/rolora-supplement/`
+     `federatedscope/llm/trainer/trainer.py` and `client.py` on
+     branch `fix-rolora` (commits `8c60faa`, `3e5f68e`); the
+     empirical-evidence table sits in ADR 0006 and the change-log row
+     for 2026-05-27 in `docs/progress.md`.
+
+5. **Local sanity evidence**
    - MNIST Figure-2-style sanity.
    - Supplement smoke and Table-1-shaped local pilot.
    - Clear warning that local RoBERTa-base/QNLI is pipeline evidence only.
 
-5. **Paper-scale reproduction**
+6. **Paper-scale reproduction**
    - RoBERTa-Large feasibility.
    - Selected Table 1 cells.
    - Figure-3-style 50-client convergence if compute permits.
 
-6. **Phase diagnostics**
+7. **Phase diagnostics**
    - A/B phase markers.
    - Per-round metrics.
    - Update norms and frozen-factor markers.
    - Wall-clock and failure evidence.
 
-7. **Improvement experiments**
+8. **Improvement experiments**
    - Orthogonal/data-informed A initialization.
    - Separate A/B learning rates, acknowledging the paper's 2×/4× LR ablations.
    - Active-factor server momentum/Adam.
    - Combined best only if individual axes show signal.
 
-8. **Discussion and limitations**
+9. **Discussion and limitations**
    - What reproduced, what did not, and why.
    - What diagnostics explain.
    - Compute limits and external-validity limits.
    - Why no unrelated prior-project framing or partial-participation pivot in the main story.
 
-9. **Conclusion**
+10. **Conclusion**
    - Reproduction status.
    - Strongest insight.
    - Future work.
