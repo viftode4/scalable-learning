@@ -10,7 +10,13 @@ early_stop:
 
 federate:
   mode: standalone
-  total_round_num: 30
+  # Paper Table 6 (p41) says 500 comm rounds at 3 clients, scaled down with
+  # client count to keep the sample budget constant: 500*3 = 1500 client-rounds.
+  # For 20 clients, this yields 1500/20 = 75 rounds. The previously shipped 30
+  # rounds matched the 50-client setting (1500/50 = 30), which is what the
+  # authors' `test_glue.yaml` ships — but that's the wrong cell for our C2
+  # (20-client) experiment. See ADR 0006 §"What the paper actually says".
+  total_round_num: 75
   save_to: "repro-qnli-c20-r4.ckpt"
   client_num: 20
   share_local_model: True
@@ -40,7 +46,14 @@ train:
   local_update_steps: 20
   batch_or_epoch: batch
   optimizer:
-    lr: 0.005
+    # AdamW lr 5e-4 reaches test_acc 0.86-0.88 in 40 rounds across all 3 modes
+    # on the local RoBERTa-base mech-check (`results/overnight_*_adamw.log`);
+    # the authors' shipped SGD lr 0.005 sits at chance (0.49-0.52) on the same
+    # arms. See ADR 0006 for the full empirical matrix + the paper's
+    # underspecified-optimizer story (paper Table 6 lists no optimizer; Section
+    # 5 says LR was tuned over {5e-4,…,1e-1} with best-of-sweep reported).
+    type: AdamW
+    lr: 0.0005
     weight_decay: 0.0002
   is_enable_half: False
 
@@ -50,13 +63,15 @@ criterion:
   type: CrossEntropyLoss
 
 eval:
-  # freq: 1 = evaluate (and stream metrics to wandb) every FL round. Costs
-  # ~12 min/round in extra eval wall-time at 20 clients × bs=32, but gives
-  # a dense convergence curve. With the 4h gpu-a100-small cap, expect ~9-10
-  # rounds completed (vs 30 at full pace) — explicit trade-off: denser data
-  # over a truncated horizon. Paper Table-1-equivalent numbers will fall
-  # out of partial runs but the partial curve will be readable.
-  freq: 1
+  # freq: 5 = evaluate every 5 FL rounds. The previous freq=1 setting was
+  # eating ~12 min/round in extra eval wall-time at 20 clients × bs=32, which
+  # capped completed rounds at ~10 of 30 inside the 4 h gpu-a100-small slice.
+  # At freq=5 we get 15 eval points across the (now 75) total rounds, the
+  # convergence curve is still readable, and we fit ~30+ rounds of actual
+  # training in the budget. AdamW lr 5e-4 reaches near-peak by round 15-20 on
+  # the local RoBERTa-base mech-check, so a truncated 30-round run already
+  # produces a paper-comparable trajectory.
+  freq: 5
   metrics: ['loss', 'acc']
   best_res_update_round_wise_key: val_loss
   # Disable FederatedScope's one-shot FlopCountAnalysis at job start — it

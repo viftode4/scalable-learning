@@ -18,8 +18,12 @@
 #     PyTorch overhead ~2 GB + FederatedScope state — tight but adequate.
 #     If we OOM on host RAM, fallback is gpu-a100 (full A100, 24h cap) where
 #     mem-per-cpu and cpus-per-task aren't as constrained.
-#   - --time=03:59:59 maximises the 4h MIG slice; estimated job duration is
-#     ~30 min (30 rounds × 20 local steps × 20 clients × bs=32).
+#   - --time=03:59:59 maximises the 4h MIG slice. The C2 config now requests
+#     75 rounds (paper Table 6 scaling for 20 clients) with AdamW lr 5e-4 and
+#     eval.freq=5. Local AdamW evidence (`results/overnight_*_adamw.log`)
+#     shows convergence by ~r15-20, so a truncated 4 h run that completes
+#     ~30 rounds is already paper-comparable on the convergence curve. See
+#     ADR 0006 for the recipe rationale.
 #
 # Prerequisites (one-time on the DelftBlue login node) — see docs/setup/delftblue.md:
 #   1) mkdir -p slurm_logs
