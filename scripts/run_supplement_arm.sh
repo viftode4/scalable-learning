@@ -63,6 +63,14 @@ echo "      overrides: ${OVERRIDES[*]:-(none)}"
   export WANDB_RUN_GROUP="${WANDB_RUN_GROUP:-overnight_local_qnli}"
   export WANDB_NAME="${WANDB_NAME:-$TAG}"
   export WANDB_TAGS="${WANDB_TAGS:-local,qnli,roberta-base,$MODE}"
+  # Per-arm outdir disambiguator: FederatedScope auto-generates
+  # `exp/<auto_name>/sub_exp_<timestamp>` at 1-second resolution, so 2 arms
+  # launched simultaneously by the matrix collide on the same directory and
+  # the second one dies with FileExistsError. Override outdir to include TAG
+  # + PID + a nanosecond stamp so each arm gets its own tree.
+  ARM_OUTDIR="exp/${TAG}_$$_$(date +%s%N)"
   NO_COLOR=1 SLS_ALTERNATION_MODE="$MODE" \
-    "$PY" scripts/run_supplement.py --cfg "$CONFIG" "${OVERRIDES[@]}"
+    "$PY" scripts/run_supplement.py --cfg "$CONFIG" \
+      outdir "$ARM_OUTDIR" \
+      ${OVERRIDES[@]+"${OVERRIDES[@]}"}
 } >"$log" 2>&1 && echo "[done] $TAG (exit 0)" || { echo "[FAIL] $TAG; tail:"; tail -40 "$log"; exit 1; }

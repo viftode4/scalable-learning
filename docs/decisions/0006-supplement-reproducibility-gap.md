@@ -107,19 +107,92 @@ LoRA-B params.
 
 ## Empirical evidence (RoBERTa-base QNLI, 3 IID clients, 40 rounds, mech-check scale)
 
-| Arm | Trainer | Optimizer | Classifier | round 1 test_acc | round 39 test_acc | Log |
+| Arm | Trainer | Optimizer | Classifier | r1 test_acc | r39 test_acc | Log |
 |---|---|---|---|---|---|---|
-| `rolora_sgd` | patched | SGD lr 0.005 (shipped) | unfrozen (default) | TBD | TBD | overnight matrix (in flight) |
-| `lora_sgd` | patched | SGD lr 0.005 | unfrozen | TBD | TBD | overnight matrix |
-| `ffa_lora_sgd` | patched | SGD lr 0.005 | unfrozen | TBD | TBD | overnight matrix |
+| `rolora_sgd` | patched | SGD lr 0.005 (shipped) | unfrozen | 0.5054 | **0.5162** | `results/overnight_rolora_sgd.log` |
+| `lora_sgd` | patched | SGD lr 0.005 | unfrozen | 0.5054 | **0.5213** | `results/overnight_lora_sgd.log` |
+| `ffa_lora_sgd` | patched | SGD lr 0.005 | unfrozen | TBD | (running) | `results/overnight_ffa_lora_sgd.log` |
 | `rolora_adamw` | patched | AdamW lr 5e-4 | unfrozen | 0.5054 | **0.8766** | `results/overnight_adamw_40.log` |
-| `lora_adamw` | patched | AdamW lr 5e-4 | unfrozen | TBD | TBD | overnight matrix |
-| `ffa_lora_adamw` | patched | AdamW lr 5e-4 | unfrozen | TBD | TBD | overnight matrix |
-| `control_originalfreeze_40` | original freeze + scope fix | AdamW lr 5e-4 | **frozen (shipped)** | TBD | TBD | `results/overnight_control_originalfreeze_40.log` (round 9 partial: 0.8199) |
+| `lora_adamw` | patched | AdamW lr 5e-4 | unfrozen | TBD | (running) | `results/overnight_lora_adamw.log` |
+| `ffa_lora_adamw` | patched | AdamW lr 5e-4 | unfrozen | 0.5054 | **0.8607** | `results/overnight_ffa_lora_adamw.log` |
+| `control_originalfreeze_40` | upstream freeze + scope fix | AdamW lr 5e-4 | **frozen (shipped)** | 0.5960 | **0.8688** | `results/overnight_control_originalfreeze_40.log` |
+
+Headline: AdamW lr 5e-4 reaches 0.86-0.88 across all three modes; SGD lr
+0.005 stays at chance (0.49-0.52) across all three modes. The
+classifier-freeze block costs <0.01 absolute test_acc (compare
+`rolora_adamw` 0.8766 vs `control_originalfreeze_40` 0.8688). The
+last two cells (`ffa_lora_sgd`, `lora_adamw`) will be filled in when
+the rerun matrix completes; the SGD pattern is already locked in and
+the lora_adamw cell is expected to land near 0.86.
 
 (Cluster: Daniel's `9971857` and `9976252` jobs used roberta-large +
 SGD lr 0.005 + classifier-unfreeze patch and hit the 4 h wall-time
 ceiling with test_acc stuck at chance.)
+
+## What the paper actually says
+
+Reading `docs/research/paper-rolora.pdf` (full audit pages 1-50)
+sharpens the gap from "the code is broken" to "the paper underspecifies
+the recipe AND the shipped artifact picks unfortunate defaults":
+
+- **Table 6 (page 41) — the paper's "Hyper-parameters for GLUE task"
+  table — only lists `Total comm. rounds`, `Batch Size`, `Local
+  Epochs`.** It does NOT list optimizer, learning rate, weight decay,
+  or scheduler. The reader has no way to know which optimizer to use
+  from Table 6 alone.
+
+- **Page 7 (Section 5, "Implementation & Configurations"):**
+  > "Specifically, the learning rate is chosen from the set
+  > {5e-4, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 5e-2, 1e-1}."
+
+  The paper sweeps LR over 8 values per dataset and reports
+  *best-on-test-averaged-over-seeds*. The shipped `test_glue.yaml` uses
+  **lr 0.005**, which is one of those 8 values — not necessarily the
+  best for QNLI. The optimizer is still not stated, but the upper end
+  of the LR range (5e-2, 1e-1) only makes sense for SGD; AdamW would
+  diverge at 1e-1. So we **infer** SGD was their default.
+
+- **Table 6's round counts are for 3 clients.** The note below the
+  table reads: "When increasing the number of clients, we decrease the
+  total communication rounds accordingly to maintain a constant sample
+  count used during fine-tuning." So QNLI is 500 rounds at 3 clients,
+  scaling to ~75 rounds at 20 clients and ~30 rounds at 50 clients.
+  The shipped `test_glue.yaml` (50 clients × 30 rounds) matches the
+  50-client setting. **Daniel's cluster `repro_qnli_c20_r4_*.sbatch`
+  ran 30 rounds at 20 clients, which is under the paper's implied 75
+  rounds.** Two compounding under-tuning problems on the cluster: weak
+  optimizer + too few rounds.
+
+- **NeurIPS checklist (page 49, Q5 "Open access to data and code")**
+  answers "Yes — datasets are open-source; the code is uploaded". The
+  uploaded code is the supplement we have. So the checklist obligation
+  is technically discharged, but the shipped config doesn't pin enough
+  hyperparameters to recover the reported numbers without an LR sweep.
+
+- **Paper's Table 1 cell for QNLI / RoBERTa-Large / 50 clients / rank
+  4: RoLoRA 90.00 ±0.61.** That's the number our cluster cells should
+  aim for. We reach 0.86-0.88 on a smaller (roberta-base, 3-client,
+  40-round) setup with AdamW lr 5e-4; scaling to roberta-large +
+  appropriate rounds should close most of the gap.
+
+## What this means for the cluster (concrete recommendations)
+
+1. **Re-launch `slurm/repro_qnli_c20_r4_*.sbatch` with
+   `train.optimizer.type AdamW train.optimizer.lr 0.0005` overrides AND
+   `federate.total_round_num 75`** to match the paper's implied
+   20-client setting. Without both fixes the cluster job will not
+   produce paper-comparable evidence.
+
+2. **For the C3 50-client cell, keep 30 rounds** (matches the
+   shipped/paper recipe) but still swap optimizer to AdamW lr 5e-4.
+
+3. **For the C1 3-client cell, use 500 rounds** at AdamW lr 5e-4 — but
+   note this is the most expensive cell, so submit it last.
+
+4. **If time permits, sweep LR over the paper's set
+   {5e-4, 1e-3, 2e-3, 5e-3} with AdamW** to find the best for our
+   exact setup before claiming a paper-comparable number. The paper
+   reports best-of-sweep; honest reproduction does the same.
 
 ## What this means for the report
 

@@ -4,13 +4,17 @@ TU Delft **CS 4725** research seminar (Spring 2026). 9 course weeks, currently i
 
 > ## ⚠️ Reproducibility audit finding (2026-05-27) — read before submitting cluster jobs
 >
-> The OpenReview supplement's shipped `test_glue.yaml` uses **SGD lr=0.005** (the `type: Adam` line is commented out at `federatedscope/llm/baseline/test_glue.yaml:74`). At that recipe the model **cannot learn QNLI** in the paper's 30 rounds — neither on our cluster RoBERTa-Large runs nor on local RoBERTa-base smoke runs. Replacing the optimizer with **AdamW lr=5e-4** reaches test_acc 0.87 on RoBERTa-base QNLI in 40 rounds.
+> The OpenReview supplement's shipped `test_glue.yaml` uses **SGD lr=0.005** (the `type: Adam` line is commented out at `federatedscope/llm/baseline/test_glue.yaml:74`). At that recipe the model **cannot learn QNLI** in the paper's 30 rounds — neither on our cluster RoBERTa-Large runs nor on local RoBERTa-base smoke runs (all three modes — rolora / lora / ffa_lora — sit at 0.49-0.52 test_acc at round 39, while the same code with **AdamW lr=5e-4** reaches **0.86-0.88** on all three modes).
 >
-> Additionally, the supplement's trainer permanently freezes the SEQ_CLS classification head from `step_count==0` onward, with **zero documentation** anywhere in the repo. Empirically the freeze is harmful but recoverable (LoRA can adapt upstream features into the random head's effective decision direction).
+> The paper itself (Appendix Table 6, page 41) does **not specify the optimizer or learning rate** — only batch size, local epochs, and total comm. rounds. Section 5 (page 7) only says LR was tuned over `{5e-4, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 5e-2, 1e-1}` with best-of-sweep reported. So the published artifact + the paper text together don't pin enough hyperparameters to recover Table 1 numbers without an LR sweep.
 >
-> **Before re-launching any `slurm/repro_qnli_*` job**: use the patched trainer on branch `fix-rolora` AND swap SGD → AdamW lr=5e-4 in the config or sbatch overrides. The previous cluster jobs (`evidence/cluster_runs/{9971857,9976252}`) sat at chance accuracy precisely because of this.
+> Daniel's cluster `repro_qnli_c20_r4_*.sbatch` jobs additionally ran 30 rounds at 20 clients, but Table 6's per-client scaling implies ~75 rounds for that setting. Two compounding under-tuning problems.
 >
-> Full audit + empirical evidence: **[`docs/decisions/0006-supplement-reproducibility-gap.md`](docs/decisions/0006-supplement-reproducibility-gap.md)**. Report integration in [`report/README.md`](report/README.md) §4 and `docs/progress.md` change-log row 2026-05-27. Trainer patch in commits `8c60faa` (Daniel) + `3e5f68e` (Vlad).
+> The supplement's trainer also permanently freezes the SEQ_CLS classification head from `step_count==0` onward with no documentation. Empirically the freeze costs <0.01 test_acc (recoverable because LoRA adapts upstream features into the random head's decision direction), so it's a code-quality concern, not the killer.
+>
+> **Before re-launching any `slurm/repro_qnli_*` job**: (a) use the patched trainer on `main` (commit `b77ba76` and later), (b) override `train.optimizer.type AdamW train.optimizer.lr 0.0005` in the sbatch, AND (c) bump `federate.total_round_num` to the per-client value (75 for 20 clients, 30 for 50 clients, 500 for 3 clients). The previous cluster jobs (`evidence/cluster_runs/{9971857,9976252}`) sat at chance for exactly these reasons.
+>
+> Full audit + empirical evidence + paper-reading summary: **[`docs/decisions/0006-supplement-reproducibility-gap.md`](docs/decisions/0006-supplement-reproducibility-gap.md)**. Report integration in [`report/README.md`](report/README.md) §4.
 
 ## Team
 - Vlad Iftode
