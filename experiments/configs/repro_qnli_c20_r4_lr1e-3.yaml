@@ -40,7 +40,7 @@ train:
   local_update_steps: 20
   batch_or_epoch: batch
   optimizer:
-    lr: 0.0005
+    lr: 0.001
     weight_decay: 0.0002
   is_enable_half: False
 
