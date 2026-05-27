@@ -1,8 +1,7 @@
 # ADR 0006 — Reproducibility gap between the OpenReview supplement and paper Table 1
 
-**Status:** Proposed (2026-05-27). Promote to Accepted once the 6-arm
-overnight matrix and the `SLS_FREEZE_CLASSIFIER=1` control experiment
-finish and the empirical-evidence table below is final.
+**Status:** Accepted (2026-05-27). All 6 matrix arms + control complete;
+empirical-evidence table below is final.
 
 ## Context
 
@@ -111,19 +110,29 @@ LoRA-B params.
 |---|---|---|---|---|---|---|
 | `rolora_sgd` | patched | SGD lr 0.005 (shipped) | unfrozen | 0.5054 | **0.5162** | `results/overnight_rolora_sgd.log` |
 | `lora_sgd` | patched | SGD lr 0.005 | unfrozen | 0.5054 | **0.5213** | `results/overnight_lora_sgd.log` |
-| `ffa_lora_sgd` | patched | SGD lr 0.005 | unfrozen | TBD | (running) | `results/overnight_ffa_lora_sgd.log` |
+| `ffa_lora_sgd` | patched | SGD lr 0.005 | unfrozen | 0.5054 | **0.5193** | `results/overnight_ffa_lora_sgd.log` |
 | `rolora_adamw` | patched | AdamW lr 5e-4 | unfrozen | 0.5054 | **0.8766** | `results/overnight_adamw_40.log` |
-| `lora_adamw` | patched | AdamW lr 5e-4 | unfrozen | TBD | (running) | `results/overnight_lora_adamw.log` |
+| `lora_adamw` | patched | AdamW lr 5e-4 | unfrozen | 0.5054 | **0.8783** | `results/overnight_lora_adamw.log` |
 | `ffa_lora_adamw` | patched | AdamW lr 5e-4 | unfrozen | 0.5054 | **0.8607** | `results/overnight_ffa_lora_adamw.log` |
 | `control_originalfreeze_40` | upstream freeze + scope fix | AdamW lr 5e-4 | **frozen (shipped)** | 0.5960 | **0.8688** | `results/overnight_control_originalfreeze_40.log` |
 
-Headline: AdamW lr 5e-4 reaches 0.86-0.88 across all three modes; SGD lr
-0.005 stays at chance (0.49-0.52) across all three modes. The
-classifier-freeze block costs <0.01 absolute test_acc (compare
-`rolora_adamw` 0.8766 vs `control_originalfreeze_40` 0.8688). The
-last two cells (`ffa_lora_sgd`, `lora_adamw`) will be filled in when
-the rerun matrix completes; the SGD pattern is already locked in and
-the lora_adamw cell is expected to land near 0.86.
+Headline: AdamW lr 5e-4 reaches **0.86-0.88** across all three modes
+(rolora 0.8766, lora 0.8783, ffa_lora 0.8607); SGD lr 0.005 stays at
+**chance (0.49-0.52)** across all three modes (rolora 0.5162, lora
+0.5213, ffa_lora 0.5193). The classifier-freeze block costs <0.01
+absolute test_acc (rolora_adamw 0.8766 vs control 0.8688), confirming
+it's a minor code-quality issue, not the killer.
+
+**Caveat that must appear in the report:** at this small mech-check
+scale (3-client IID, RoBERTa-base, 40 rounds) the three AdamW arms
+are within 0.02 of each other — `lora_adamw` (0.8783) even slightly
+edges `rolora_adamw` (0.8766). This is *expected*: RoLoRA's
+"exact alternating aggregation" advantage manifests when client count
+is high enough for FedAvg-of-AB to introduce meaningful interference,
+not at 3 IID clients on a small backbone. So this matrix neither
+confirms nor refutes the paper's mode ranking — it only confirms the
+SGD-vs-AdamW story. The cluster cells (20- and 50-client
+RoBERTa-Large) are the actual test of the paper's claim.
 
 (Cluster: Daniel's `9971857` and `9976252` jobs used roberta-large +
 SGD lr 0.005 + classifier-unfreeze patch and hit the 4 h wall-time
