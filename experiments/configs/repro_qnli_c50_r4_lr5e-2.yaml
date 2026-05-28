@@ -1,0 +1,65 @@
+# Reproduction cell — QNLI, RoBERTa-base, 50 clients, LoRA rank 4 (lr-sweep variant).
+# See `repro_qnli_c3_r4.yaml` for the cell-pattern header.
+# Derived from repro_qnli_c20_r4_lr*.yaml; client_num bumped to 50, total_round_num to 20.
+
+use_gpu: True
+device: 0
+seed: 0
+early_stop:
+  patience: 0
+
+federate:
+  mode: standalone
+  total_round_num: 20
+  save_to: "repro-qnli-c50-r4.ckpt"
+  client_num: 50
+  share_local_model: True
+
+data:
+  root: code/harness/rolora-supplement/RoLoRA-code/sst2/
+  type: 'qnli.json@llm'
+  splits: [0.89, 0.1, 0.01]
+  splitter: 'iid'
+
+llm:
+  tok_len: 128
+  chat:
+    max_len: 1000
+    max_history_len: 10
+  adapter:
+    use: True
+    args: [ { 'adapter_package': 'peft', 'adapter_method': 'lora', 'r': 4, 'lora_alpha': 32, 'lora_dropout': 0.1 } ]
+
+dataloader:
+  batch_size: 32
+
+model:
+  type: 'roberta-base@huggingface_llm'
+
+train:
+  local_update_steps: 20
+  batch_or_epoch: batch
+  optimizer:
+    lr: 0.05
+    weight_decay: 0.0002
+  is_enable_half: False
+
+trainer:
+  type: llmtrainer
+criterion:
+  type: CrossEntropyLoss
+
+eval:
+  # freq: 1 = evaluate (and stream metrics to wandb) every FL round. Costs
+  # ~12 min/round in extra eval wall-time at 20 clients × bs=32, but gives
+  # a dense convergence curve. With the 4h gpu-a100-small cap, expect ~9-10
+  # rounds completed (vs 30 at full pace) — explicit trade-off: denser data
+  # over a truncated horizon. Paper Table-1-equivalent numbers will fall
+  # out of partial runs but the partial curve will be readable.
+  freq: 1
+  metrics: ['loss', 'acc']
+  best_res_update_round_wise_key: val_loss
+  # Disable FederatedScope's one-shot FlopCountAnalysis at job start — it
+  # pollutes the CUDA caching allocator and causes CUBLAS_STATUS_ALLOC_FAILED
+  # on the 10 GB gpu-a100-small MIG slice. We don't report FLOPS anywhere.
+  count_flops: False

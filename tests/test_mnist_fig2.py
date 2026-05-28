@@ -48,8 +48,9 @@ def test_method_produces_curves(method: str, tiny_loaders) -> None:
         seed=0,
         device=torch.device("cpu"),
     )
-    assert len(losses) == 3
-    assert len(accs) == 3
+    # rounds + 1: round-0 (pre-training) eval is prepended to the curves.
+    assert len(losses) == 4
+    assert len(accs) == 4
     for loss, acc in zip(losses, accs, strict=True):
         assert loss > 0
         assert 0.0 <= acc <= 1.0

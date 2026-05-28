@@ -1,4 +1,4 @@
-.PHONY: sync test lint check mnist mnist-paper mnist-smoke local-smoke full-local table1-pilot table1-pilot-all table1-pilot-summary table1-medium table1-medium-all table1-medium-summary roberta-large-feasibility roberta-large-feasibility-summary diagnostics-summary supplement install-supplement supplement-smoke supplement-smoke-all data clean
+.PHONY: sync test lint check mnist mnist-paper mnist-smoke mnist-compare mnist-stress mnist-ceiling local-smoke full-local table1-pilot table1-pilot-all table1-pilot-summary table1-medium table1-medium-all table1-medium-summary roberta-large-feasibility roberta-large-feasibility-summary diagnostics-summary supplement install-supplement supplement-smoke supplement-smoke-all data clean
 
 MODE ?= rolora
 SUPPLEMENT_ZIP ?=
@@ -23,6 +23,25 @@ mnist-paper:
 
 mnist-smoke:
 	uv run python notebooks/mnist_fig2.py --rounds 15 --clients 5 --rank 1 --local-steps 10 --subset 5000 --out results/mnist_fig2_smoke.png
+
+# Compare base RoLoRA against the four cheap-drop-in improvement variants
+# (LoRA+, orthogonal-A, FedProx, server momentum) + a centralized ceiling.
+# All variants share the same (clients, split, rounds, rank, seed); the plot
+# overlays them and the ceiling is drawn as a dashed reference line.
+mnist-compare:
+	uv run python notebooks/mnist_fig2_compare.py --clients 10 --labels-per-client 1 --rounds 100
+
+# Sweep across (clients, labels_per_client) cells to surface where improvements
+# matter most. Paper-faithful anchors (5c×2, 10c×1) + two stress points where
+# each class is sharded across multiple owners (20c×1, 50c×1).
+mnist-stress:
+	uv run python notebooks/toy/sweep.py --grid "5,2 10,1 20,1 50,1" --seeds 0 --rounds 50
+
+# Centralized (non-federated) LoRA baseline only — the maximum-attainable
+# ceiling on the toy task and model. Useful to know how much of any federated
+# variant's gap is "wrong algorithm" vs. "federated overhead."
+mnist-ceiling:
+	uv run python notebooks/mnist_fig2_compare.py --clients 10 --labels-per-client 1 --rounds 100 --variants centralized --out results/mnist_fig2_ceiling.png
 
 supplement:
 	@if [ -n "$(SUPPLEMENT_ZIP)" ]; then \
