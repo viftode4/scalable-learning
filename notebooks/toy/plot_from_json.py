@@ -40,7 +40,62 @@ _NOTEBOOKS = Path(__file__).resolve().parent.parent
 if str(_NOTEBOOKS) not in sys.path:
     sys.path.insert(0, str(_NOTEBOOKS))
 
+import matplotlib  # noqa: E402
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt  # noqa: E402
+
 from toy.plotting import plot_curves  # noqa: E402
+
+
+def _plot_single_panel(
+    curves: dict[str, tuple[list[float], list[float]]],
+    sems: dict[str, tuple[list[float], list[float]]] | None,
+    ceiling: tuple[str, list[float], list[float]] | None,
+    ceiling_sem: tuple[list[float], list[float]] | None,
+    xs: list[int],
+    component: int,  # 0 = loss, 1 = accuracy
+    ylabel: str,
+    title: str,
+    out: Path,
+) -> None:
+    """Render one panel (loss or accuracy) to `out`. plotting.py untouched."""
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig, ax = plt.subplots(1, 1, figsize=(6, 4), layout="constrained")
+    for label, pair in curves.items():
+        series = pair[component]
+        (line,) = ax.plot(xs, series, label=label)
+        if sems is not None and label in sems:
+            band = sems[label][component]
+            ax.fill_between(
+                xs,
+                [m - s for m, s in zip(series, band, strict=True)],
+                [m + s for m, s in zip(series, band, strict=True)],
+                color=line.get_color(),
+                alpha=0.2,
+                linewidth=0,
+            )
+    if ceiling is not None:
+        c_series = ceiling[1 + component]
+        ax.plot(xs, c_series, label=ceiling[0], linestyle="--", color="black", linewidth=1.2)
+        if ceiling_sem is not None:
+            c_band = ceiling_sem[component]
+            ax.fill_between(
+                xs,
+                [m - s for m, s in zip(c_series, c_band, strict=True)],
+                [m + s for m, s in zip(c_series, c_band, strict=True)],
+                color="black",
+                alpha=0.15,
+                linewidth=0,
+            )
+    ax.set_xlabel("communication round")
+    ax.set_ylabel(ylabel)
+    ax.legend(fontsize=8)
+    # constrained_layout sizes title space automatically; wrap=True still
+    # protects against absurdly long single-line custom titles.
+    fig.suptitle(title, fontsize=10, wrap=True)
+    fig.savefig(out, dpi=120)
+    plt.close(fig)
 
 # Two-tailed t-critical values at α=0.05, indexed by N (df = N-1). Covers the
 # realistic seed-count range; for N > 30 we use the large-sample normal
@@ -125,6 +180,13 @@ def main() -> None:
         action="store_true",
         help="hide shaded bands even when the JSONs have multi-seed data",
     )
+    p.add_argument(
+        "--panels",
+        choices=("both", "loss", "acc"),
+        default="both",
+        help="which panel(s) to render: 'both' (loss + accuracy, default), "
+        "'loss' only, or 'acc' only",
+    )
     args = p.parse_args()
 
     datasets = [(path, json.loads(path.read_text())) for path in args.json]
@@ -179,22 +241,51 @@ def main() -> None:
     cfg = datasets[0][1]["config"]
     show_bands = num_seeds > 1 and not args.no_bands
     band_label = _band_label(args.band)
-    suffix = f", {num_seeds} seeds (mean ± {band_label})" if show_bands else ""
-    title = args.title or (
-        f"RoLoRA improvements — MNIST, {cfg['clients']} clients "
-        f"(split={cfg['split']}, lpc={cfg['labels_per_client']}), "
-        f"rank {cfg['rank']}{suffix}"
-    )
+    if args.title is not None:
+        title = args.title
+    elif args.panels == "both":
+        suffix = f", {num_seeds} seeds (mean ± {band_label})" if show_bands else ""
+        title = (
+            f"RoLoRA improvements — MNIST, {cfg['clients']} clients "
+            f"(split={cfg['split']}, lpc={cfg['labels_per_client']}), "
+            f"rank {cfg['rank']}{suffix}"
+        )
+    else:
+        # Single-panel auto-title: split onto two lines so it fits the 6-inch
+        # figure width and stays informative.
+        what = "accuracy" if args.panels == "acc" else "loss"
+        suffix = f"  ({num_seeds} seeds, ± {band_label})" if show_bands else ""
+        title = (
+            f"MNIST test {what} — {cfg['clients']} clients (lpc={cfg['labels_per_client']}), "
+            f"rank {cfg['rank']}\n"
+            f"RoLoRA improvements{suffix}"
+        )
 
-    plot_curves(
-        curves,
-        args.out,
-        xs=cp_rounds,
-        title=title,
-        ceiling=ceiling,
-        curve_sems=sems if show_bands else None,
-        ceiling_sem=ceiling_sem if show_bands else None,
-    )
+    if args.panels == "both":
+        plot_curves(
+            curves,
+            args.out,
+            xs=cp_rounds,
+            title=title,
+            ceiling=ceiling,
+            curve_sems=sems if show_bands else None,
+            ceiling_sem=ceiling_sem if show_bands else None,
+        )
+    else:
+        component, ylabel = (
+            (0, "test cross-entropy") if args.panels == "loss" else (1, "test accuracy")
+        )
+        _plot_single_panel(
+            curves,
+            sems=sems if show_bands else None,
+            ceiling=ceiling,
+            ceiling_sem=ceiling_sem if show_bands else None,
+            xs=cp_rounds,
+            component=component,
+            ylabel=ylabel,
+            title=title,
+            out=args.out,
+        )
     print(f"saved {args.out}")
 
 
