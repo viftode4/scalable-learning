@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DeepSpeed Ulysses — Extreme Long-Sequence Transformer Training</title>
+<style>
+  :root {
+    --bg: #06080d;
+    --bg-2: #0b1220;
+    --panel: rgba(12, 20, 34, 0.74);
+    --panel-2: rgba(8, 13, 22, 0.82);
+    --ink: #f5f7fb;
+    --muted: #9fb0c9;
+    --line: rgba(139, 178, 255, 0.22);
+    --cyan: #63e7ff;
+    --blue: #5689ff;
+    --violet: #a77bff;
+    --green: #72f0a8;
+    --amber: #ffd166;
+    --red: #ff6b8a;
+    --shadow: 0 24px 90px rgba(0, 0, 0, 0.45);
+    --radius: 28px;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    --sans: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font-family: var(--sans); }
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(circle at 12% 18%, rgba(99,231,255,.22), transparent 30%),
+      radial-gradient(circle at 82% 12%, rgba(167,123,255,.18), transparent 28%),
+      radial-gradient(circle at 72% 88%, rgba(114,240,168,.13), transparent 26%),
+      linear-gradient(135deg, #04060a 0%, #0a1120 52%, #05070c 100%);
+    z-index: -3;
+  }
+  body::after {
+    content: "";
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
+    background-size: 72px 72px;
+    mask-image: radial-gradient(circle at 50% 48%, black, transparent 78%);
+    z-index: -2;
+  }
+
+  main { width: 100vw; height: 100vh; height: 100dvh; position: relative; }
+  .slide {
+    position: absolute; inset: 0; width: 100vw; height: 100vh; height: 100dvh;
+    padding: clamp(24px, 4vw, 72px);
+    display: grid; place-items: center;
+    overflow: hidden;
+    opacity: 0; transform: translateX(4vw) scale(.985);
+    transition: opacity .45s ease, transform .55s cubic-bezier(.2,.8,.2,1);
+    pointer-events: none;
+  }
+  .slide.active { opacity: 1; transform: translateX(0) scale(1); pointer-events: auto; }
+  .slide.exit-left { transform: translateX(-4vw) scale(.985); }
+  .canvas { width: min(1180px, 100%); height: min(720px, calc(100vh - clamp(48px, 8vw, 144px))); position: relative; display: grid; gap: clamp(16px, 2.2vw, 28px); }
+  .canvas.center { align-content: center; justify-items: start; }
+  .two { grid-template-columns: 1.02fr .98fr; align-items: center; }
+  .three { grid-template-columns: repeat(3, 1fr); align-items: stretch; }
+  .stack { display: grid; gap: clamp(12px, 1.8vw, 22px); }
+  .kicker { color: var(--cyan); text-transform: uppercase; letter-spacing: .22em; font-weight: 800; font-size: clamp(11px, 1.4vw, 14px); }
+  h1, h2, h3, p { margin: 0; overflow-wrap: break-word; }
+  h1 { font-size: clamp(52px, 8vw, 106px); line-height: .9; letter-spacing: -.065em; max-width: 980px; }
+  h2 { font-size: clamp(34px, 5.2vw, 70px); line-height: .94; letter-spacing: -.055em; max-width: 980px; }
+  h3 { font-size: clamp(20px, 2.5vw, 30px); line-height: 1.05; letter-spacing: -.025em; }
+  .lead { color: var(--muted); font-size: clamp(18px, 2.1vw, 27px); line-height: 1.32; max-width: 850px; }
+  .small { color: var(--muted); font-size: clamp(13px, 1.35vw, 16px); line-height: 1.45; }
+  .caption { color: #71819c; font-size: clamp(11px, 1.1vw, 13px); font-family: var(--mono); }
+  .panel, .card, .metric, .node, .gpu { min-width: 0; }
+  .panel { background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.035)); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); backdrop-filter: blur(18px); }
+  .pad { padding: clamp(18px, 2.7vw, 34px); }
+  .chip { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; color: var(--muted); font-family: var(--mono); font-size: clamp(11px, 1vw, 13px); background: rgba(255,255,255,.04); width: fit-content; }
+  .chip b { color: var(--ink); }
+  .accent { color: var(--cyan); } .green { color: var(--green); } .violet { color: var(--violet); } .amber { color: var(--amber); } .red { color: var(--red); }
+  .huge-number { font-size: clamp(72px, 10vw, 138px); font-weight: 900; line-height: .82; letter-spacing: -.075em; background: linear-gradient(90deg, var(--cyan), var(--violet)); -webkit-background-clip: text; color: transparent; }
+  .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: clamp(10px, 1.6vw, 18px); }
+  .metric { padding: clamp(16px, 2.1vw, 24px); min-height: 164px; display: grid; align-content: space-between; }
+  .metric .num { font-size: clamp(34px, 4.8vw, 64px); font-weight: 900; letter-spacing: -.06em; line-height: .9; }
+  .metric .label { color: var(--muted); font-size: clamp(13px, 1.45vw, 17px); line-height: 1.25; }
+  .cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: clamp(12px, 1.6vw, 18px); }
+  .card { padding: clamp(18px, 2.2vw, 28px); border-radius: 22px; border: 1px solid var(--line); background: rgba(5, 10, 18, .58); min-height: 150px; display: grid; gap: 12px; align-content: start; }
+  .card .tag { color: var(--cyan); font-family: var(--mono); font-size: 12px; text-transform: uppercase; letter-spacing: .16em; }
+  .bullets { display: grid; gap: clamp(10px, 1.5vw, 16px); margin: 0; padding: 0; list-style: none; }
+  .bullets li { display: grid; grid-template-columns: 22px 1fr; gap: 12px; color: var(--muted); font-size: clamp(17px, 1.85vw, 23px); line-height: 1.25; }
+  .bullets li::before { content: ""; width: 10px; height: 10px; border-radius: 50%; margin-top: .45em; background: linear-gradient(135deg, var(--cyan), var(--violet)); box-shadow: 0 0 22px rgba(99,231,255,.6); }
+
+  .topline { position: absolute; top: clamp(16px, 2vw, 28px); left: clamp(20px, 3vw, 44px); right: clamp(20px, 3vw, 44px); display: flex; justify-content: space-between; align-items: center; color: rgba(245,247,251,.58); font-family: var(--mono); font-size: 12px; z-index: 10; }
+  .progress { position: fixed; left: 0; bottom: 0; height: 4px; background: linear-gradient(90deg, var(--cyan), var(--violet)); width: 0%; z-index: 20; transition: width .25s ease; }
+  .navhint { position: fixed; right: 20px; bottom: 14px; color: rgba(245,247,251,.42); font-family: var(--mono); font-size: 11px; z-index: 21; }
+
+  .sequence-strip { display: grid; grid-template-columns: repeat(16, 1fr); gap: 5px; width: 100%; height: 64px; }
+  .tok { border-radius: 10px; background: linear-gradient(180deg, rgba(99,231,255,.7), rgba(86,137,255,.35)); box-shadow: 0 0 28px rgba(99,231,255,.14); }
+  .gpu-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .gpu { min-height: 150px; border-radius: 22px; padding: 18px; border: 1px solid var(--line); background: rgba(255,255,255,.045); position: relative; overflow: hidden; }
+  .gpu::before { content: attr(data-label); font-family: var(--mono); color: var(--cyan); font-size: 12px; }
+  .mini-tokens { position: absolute; left: 18px; right: 18px; bottom: 18px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; height: 34px; }
+  .mini-tokens span { border-radius: 8px; background: rgba(99,231,255,.45); }
+  .arrow { color: var(--cyan); font-size: clamp(26px, 4vw, 44px); text-align: center; font-weight: 900; }
+  .formula { font-family: var(--mono); font-size: clamp(22px, 3.2vw, 44px); color: var(--ink); line-height: 1.1; }
+  .formula small { display:block; color: var(--muted); font-size: clamp(13px, 1.35vw, 16px); margin-top: 10px; }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: stretch; }
+  .barbox { display: grid; gap: 12px; align-content: center; }
+  .bar { height: 46px; border-radius: 999px; background: rgba(255,255,255,.06); overflow: hidden; border: 1px solid rgba(255,255,255,.08); }
+  .bar span { display:block; height:100%; border-radius:999px; background: linear-gradient(90deg, var(--cyan), var(--blue)); }
+  .bar.redbar span { background: linear-gradient(90deg, var(--red), var(--amber)); }
+  .timeline { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; align-items: center; }
+  .node { min-height: 108px; border-radius: 20px; padding: 14px; display: grid; align-content: center; text-align: center; background: rgba(255,255,255,.05); border: 1px solid var(--line); }
+  .node strong { font-size: clamp(15px, 1.8vw, 22px); }
+  .node span { color: var(--muted); font-family: var(--mono); font-size: 12px; margin-top: 6px; }
+  .split-title { display: grid; grid-template-columns: .9fr 1.1fr; gap: 28px; align-items: end; }
+
+  .reveal { opacity: 0; transform: translateY(18px); transition: opacity .45s ease, transform .55s ease; }
+  .active .reveal { opacity: 1; transform: translateY(0); }
+  .active .reveal:nth-child(2) { transition-delay: .07s; } .active .reveal:nth-child(3) { transition-delay: .14s; } .active .reveal:nth-child(4) { transition-delay: .21s; } .active .reveal:nth-child(5) { transition-delay: .28s; }
+
+  @media (max-width: 820px) {
+    .canvas { height: calc(100vh - 56px); }
+    .two, .three, .split-title, .compare { grid-template-columns: 1fr; }
+    .metric-grid { grid-template-columns: repeat(2, 1fr); }
+    .cards { grid-template-columns: 1fr; }
+    .gpu-row { grid-template-columns: repeat(2, 1fr); }
+    .timeline { grid-template-columns: 1fr; }
+    .hide-small { display:none; }
+  }
+  @media (max-width: 520px) {
+    .slide { padding: 18px; }
+    .topline { left: 18px; right: 18px; font-size: 10px; }
+    .topline span:last-child { display: none; }
+    .canvas { width: 100%; height: calc(100vh - 42px); gap: 10px; }
+    h1 { font-size: clamp(42px, 14vw, 56px); }
+    h2 { font-size: clamp(25px, 9vw, 36px); line-height: .98; }
+    h3 { font-size: 18px; }
+    .lead { font-size: 16px; line-height: 1.26; }
+    .metric-grid { grid-template-columns: 1fr; gap: 8px; }
+    .metric { min-height: 78px; padding: 12px 14px; grid-template-columns: 86px 1fr; align-content: center; align-items: center; }
+    .metric .num { font-size: 32px; }
+    .metric .label { font-size: 12px; overflow-wrap: anywhere; }
+    .card { min-height: auto; padding: 14px; }
+    .bullets li { font-size: 15px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+  @media print {
+    html, body { overflow: visible; background: #05070c; }
+    main { height: auto; }
+    .slide { position: relative; opacity: 1 !important; transform: none !important; page-break-after: always; height: 100vh; }
+    .progress, .navhint { display:none; }
+  }
+</style>
+</head>
+<body>
+<main id="deck" aria-live="polite">
+
+<section class="slide active" data-title="Title">
+  <div class="topline"><span>GROUP PAPER PRESENTATION</span><span>DeepSpeed Ulysses · PODC ’24</span></div>
+  <div class="canvas center">
+    <div class="chip reveal"><b>Tomorrow’s talk</b> · extreme long-sequence training</div>
+    <h1 class="reveal">Training past the context wall</h1>
+    <p class="lead reveal">DeepSpeed Ulysses: system optimizations that let Transformer training scale to million-token sequences by slicing the sequence dimension itself.</p>
+    <p class="caption reveal">Sam Ade Jacobs et al. · Microsoft · arXiv:2309.14509</p>
+  </div>
+</section>
+
+<section class="slide" data-title="Why it matters">
+  <div class="topline"><span>01 · MOTIVATION</span><span>Long context is not a luxury feature</span></div>
+  <div class="canvas two">
+    <div class="stack">
+      <div class="kicker reveal">Why long sequences matter</div>
+      <h2 class="reveal">Some problems are naturally bigger than a GPU’s memory.</h2>
+      <p class="lead reveal">Books, patient histories, genome strings, climate grids, video, speech: the input is not a neat 4K-token prompt.</p>
+    </div>
+    <div class="cards">
+      <div class="card reveal"><div class="tag">Generative AI</div><h3>Coherent long dialogue</h3><p class="small">Reason over long chat history, documents, and chapter-scale context.</p></div>
+      <div class="card reveal"><div class="tag">Science</div><h3>Genome-scale sequences</h3><p class="small">Human genome scale is billions of symbols, not thousands.</p></div>
+      <div class="card reveal"><div class="tag">Climate</div><h3>High-resolution grids</h3><p class="small">Higher resolution creates quadratically more image-like tokens.</p></div>
+      <div class="card reveal"><div class="tag">Healthcare</div><h3>Whole patient records</h3><p class="small">Useful signal may be spread across years of events.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-title="The gap">
+  <div class="topline"><span>02 · THE GAP</span><span>Classic parallelism misses one axis</span></div>
+  <div class="canvas">
+    <div class="split-title">
+      <div><div class="kicker reveal">Four axes of Transformer compute</div><h2 class="reveal">Batch, hidden size, and layers are covered. Sequence length is the hard part.</h2></div>
+      <p class="lead reveal">Data, tensor, and pipeline parallelism help—but they do not directly make one very long sequence fit.</p>
+    </div>
+    <div class="metric-grid">
+      <div class="metric panel reveal"><div class="num">B</div><div><h3>Batch</h3><p class="label">Data parallelism splits examples.</p></div></div>
+      <div class="metric panel reveal"><div class="num">H</div><div><h3>Hidden dim</h3><p class="label">Tensor parallelism splits operators.</p></div></div>
+      <div class="metric panel reveal"><div class="num">L</div><div><h3>Layers</h3><p class="label">Pipeline parallelism splits depth.</p></div></div>
+      <div class="metric panel reveal"><div class="num accent">N</div><div><h3>Sequence</h3><p class="label">The missing scaling dimension.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-title="Core idea">
+  <div class="topline"><span>03 · THE IDEA</span><span>Sequence-parallel ↔ head-parallel</span></div>
+  <div class="canvas center">
+    <div class="kicker reveal">Ulysses in one move</div>
+    <h2 class="reveal">Partition tokens across GPUs. Use all-to-all to temporarily regroup by attention heads.</h2>
+    <div class="sequence-strip reveal" aria-label="long sequence split into tokens">
+      <span class="tok"></span><span class="tok"></span><span class="tok"></span><span class="tok"></span><span class="tok"></span><span class="tok"></span><span class="tok"></span><span class="tok"></span><span class="tok"></span><span class="tok"></span><span class="tok"></span><span class="tok"></span><span class="tok"></span><span class="tok"></span><span class="tok"></span><span class="tok"></span>
+    </div>
+    <p class="lead reveal">Before attention: each GPU owns <span class="accent">N/P tokens</span> and all heads. During attention: each GPU owns the <span class="green">full sequence</span> for a subset of heads. Then swap back.</p>
+  </div>
+</section>
+
+<section class="slide" data-title="Mechanism">
+  <div class="topline"><span>04 · MECHANISM</span><span>Two all-to-alls per transformer block</span></div>
+  <div class="canvas stack">
+    <div><div class="kicker reveal">How the block runs</div><h2 class="reveal">Attention stays local. The layout changes around it.</h2></div>
+    <div class="timeline reveal">
+      <div class="node panel"><strong>Sequence parallel</strong><span>N/P tokens · all heads</span></div>
+      <div class="arrow">→</div>
+      <div class="node panel"><strong>All-to-all</strong><span>transpose layout</span></div>
+      <div class="arrow">→</div>
+      <div class="node panel"><strong>Head parallel</strong><span>full N · H/P heads</span></div>
+    </div>
+    <div class="timeline reveal">
+      <div class="node panel"><strong>Local attention</strong><span>dense/sparse/Flash</span></div>
+      <div class="arrow">→</div>
+      <div class="node panel"><strong>All-to-all</strong><span>transpose back</span></div>
+      <div class="arrow">→</div>
+      <div class="node panel"><strong>MLP + norms</strong><span>N/P tokens again</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-title="Why it scales">
+  <div class="topline"><span>05 · SCALING ARGUMENT</span><span>The communication trick</span></div>
+  <div class="canvas two">
+    <div class="stack">
+      <div class="kicker reveal">Communication volume</div>
+      <h2 class="reveal">All-to-all avoids replicating the whole sequence everywhere.</h2>
+      <p class="lead reveal">When sequence length <span class="accent">N</span> and device count <span class="violet">P</span> scale together, per-GPU communication stays roughly constant.</p>
+    </div>
+    <div class="compare">
+      <div class="panel pad barbox reveal"><h3>Megatron / ColAI</h3><div class="formula red">4Nd<small>all-gather style, independent of P</small></div><div class="bar redbar"><span style="width:100%"></span></div></div>
+      <div class="panel pad barbox reveal"><h3>Ulysses</h3><div class="formula green">4Nd / P<small>each pair exchanges only its slice</small></div><div class="bar"><span style="width:18%"></span></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-title="Microbenchmark">
+  <div class="topline"><span>06 · EVIDENCE</span><span>Collective communication benchmark</span></div>
+  <div class="canvas two">
+    <div class="stack">
+      <div class="kicker reveal">All-to-all vs gather/scatter</div>
+      <h2 class="reveal">Same 8GB moved. Much less time.</h2>
+      <p class="lead reveal">On 8×A100 with 256K sequence and 4K hidden size, Ulysses’ all-to-all path avoids the contention of gather/scatter.</p>
+    </div>
+    <div class="panel pad stack reveal">
+      <div><span class="huge-number">4.9 ms</span><p class="small">Ulysses all-to-all</p></div>
+      <div class="bar"><span style="width:14%"></span></div>
+      <div><span class="huge-number red" style="font-size:clamp(48px,7vw,86px);">34 ms</span><p class="small">Megatron all-gather + reduce-scatter</p></div>
+      <div class="bar redbar"><span style="width:100%"></span></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-title="Practical system">
+  <div class="topline"><span>07 · SYSTEM DESIGN</span><span>Not just the core trick</span></div>
+  <div class="canvas">
+    <div><div class="kicker reveal">What makes it usable</div><h2 class="reveal">Ulysses plugs into the rest of the training stack.</h2></div>
+    <div class="three">
+      <div class="card panel reveal"><div class="tag">Memory</div><h3>ZeRO-3 integration</h3><p class="small">Partition model states across combined data + sequence-parallel groups.</p></div>
+      <div class="card panel reveal"><div class="tag">Flexibility</div><h3>Attention-agnostic</h3><p class="small">Dense, sparse, causal, and FlashAttention can remain ordinary local attention kernels.</p></div>
+      <div class="card panel reveal"><div class="tag">Adoption</div><h3>Minimal rewrites</h3><p class="small">Implemented in DeepSpeed / Megatron-DeepSpeed with a relatively small integration surface.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-title="Headline results">
+  <div class="topline"><span>08 · RESULTS</span><span>What the paper claims</span></div>
+  <div class="canvas stack">
+    <div><div class="kicker reveal">Headline evaluation</div><h2 class="reveal">Longer sequences, higher throughput, less communication.</h2></div>
+    <div class="metric-grid">
+      <div class="metric panel reveal"><div class="num">1M+</div><div><h3>tokens</h3><p class="label">context on a 1.2B GPT model.</p></div></div>
+      <div class="metric panel reveal"><div class="num">2.5×</div><div><h3>throughput</h3><p class="label">higher than SOTA baseline.</p></div></div>
+      <div class="metric panel reveal"><div class="num">4×</div><div><h3>longer</h3><p class="label">sequence length than prior systems.</p></div></div>
+      <div class="metric panel reveal"><div class="num">10×</div><div><h3>less comm.</h3><p class="label">versus existing sequence-parallel methods.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-title="Memory result">
+  <div class="topline"><span>09 · MEMORY</span><span>ZeRO partitions weights; Ulysses partitions activations</span></div>
+  <div class="canvas two">
+    <div class="stack">
+      <div class="kicker reveal">Memory bottleneck</div>
+      <h2 class="reveal">ZeRO-3 alone is not enough for long activations.</h2>
+      <p class="lead reveal">Weights can be partitioned, but long sequences explode activation memory. Ulysses splits that sequence activation footprint too.</p>
+    </div>
+    <div class="cards">
+      <div class="card panel reveal"><div class="tag">GPT-7B · 32 GPUs</div><div class="huge-number">16×</div><p class="small">max sequence length versus ZeRO-3 alone.</p></div>
+      <div class="card panel reveal"><div class="tag">GPT-30B · 64 GPUs</div><div class="huge-number">32×</div><p class="small">max sequence length versus ZeRO-3 alone.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-title="Case study">
+  <div class="topline"><span>10 · CASE STUDY</span><span>AI for science</span></div>
+  <div class="canvas two">
+    <div class="stack">
+      <div class="kicker reveal">ClimaX climate model</div>
+      <h2 class="reveal">Higher image resolution becomes longer token sequences.</h2>
+      <p class="lead reveal">A ViT climate model moves from 768×768 to 1536×1536 images on the same 64 A100 GPUs.</p>
+    </div>
+    <div class="panel pad stack reveal">
+      <div class="formula">768² → 108K tokens<small>baseline runs out of memory beyond this scale</small></div>
+      <div class="arrow">↓</div>
+      <div class="formula green">1536² → 432K tokens<small>4× longer with Ulysses on same hardware</small></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-title="Critique">
+  <div class="topline"><span>11 · CRITIQUE</span><span>Where the result is strongest—and where to be careful</span></div>
+  <div class="canvas two">
+    <div>
+      <div class="kicker reveal">Critical reading</div>
+      <h2 class="reveal">This is a systems win with real assumptions.</h2>
+    </div>
+    <ul class="bullets panel pad reveal">
+      <li>All-to-all performance depends heavily on the network fabric.</li>
+      <li>Sequence-parallel degree is bounded by attention heads.</li>
+      <li>The “constant communication” story assumes N and P scale together.</li>
+      <li>Later context-parallel methods raise the question: combine or replace?</li>
+    </ul>
+  </div>
+</section>
+
+<section class="slide" data-title="Takeaway">
+  <div class="topline"><span>12 · TAKEAWAY</span><span>The slide to remember</span></div>
+  <div class="canvas center">
+    <div class="kicker reveal">Main takeaway</div>
+    <h2 class="reveal">Ulysses makes sequence length a first-class parallel dimension.</h2>
+    <p class="lead reveal">Its key contribution is not a new attention approximation. It is a layout transformation that lets existing attention kernels operate locally while the sequence is distributed globally.</p>
+    <div class="chip reveal"><b>Headline:</b> 2.5× faster training · 4× longer sequences · 10× less communication</div>
+  </div>
+</section>
+
+<section class="slide" data-title="Discussion">
+  <div class="topline"><span>13 · DISCUSSION</span><span>Questions for the room</span></div>
+  <div class="canvas">
+    <div><div class="kicker reveal">Open the Q&A</div><h2 class="reveal">Three questions worth asking</h2></div>
+    <div class="cards">
+      <div class="card panel reveal"><div class="tag">1</div><h3>Fixed GPU budget</h3><p class="small">If sequence length grows but GPU count cannot, does Ulysses still win enough?</p></div>
+      <div class="card panel reveal"><div class="tag">2</div><h3>Attention-head cap</h3><p class="small">How limiting is the sequence-parallel degree for models with few heads or GQA/MQA?</p></div>
+      <div class="card panel reveal"><div class="tag">3</div><h3>Newer methods</h3><p class="small">How should we compare Ulysses to Ring Attention / context parallelism—and can they compose?</p></div>
+      <div class="card panel reveal"><div class="tag">4</div><h3>Engineering tradeoff</h3><p class="small">Is all-to-all complexity worth it outside hyperscale clusters?</p></div>
+    </div>
+  </div>
+</section>
+
+</main>
+<div class="progress" id="progress"></div>
+<div class="navhint">← / → · space · swipe</div>
+<script>
+class Deck {
+  constructor() {
+    this.slides = [...document.querySelectorAll('.slide')];
+    this.i = 0;
+    this.progress = document.getElementById('progress');
+    this.bind();
+    this.show(0);
+  }
+  bind() {
+    document.addEventListener('keydown', e => {
+      if (['ArrowRight','PageDown',' '].includes(e.key)) { e.preventDefault(); this.next(); }
+      if (['ArrowLeft','PageUp','Backspace'].includes(e.key)) { e.preventDefault(); this.prev(); }
+      if (e.key === 'Home') this.show(0);
+      if (e.key === 'End') this.show(this.slides.length - 1);
+    });
+    let locked = false;
+    document.addEventListener('wheel', e => {
+      if (Math.abs(e.deltaY) < 35 || locked) return;
+      locked = true;
+      e.deltaY > 0 ? this.next() : this.prev();
+      setTimeout(() => locked = false, 520);
+    }, { passive: true });
+    let startX = null;
+    document.addEventListener('touchstart', e => startX = e.changedTouches[0].clientX, { passive: true });
+    document.addEventListener('touchend', e => {
+      if (startX === null) return;
+      const dx = e.changedTouches[0].clientX - startX;
+      if (Math.abs(dx) > 45) dx < 0 ? this.next() : this.prev();
+      startX = null;
+    }, { passive: true });
+  }
+  show(n) {
+    const prev = this.i;
+    this.i = Math.max(0, Math.min(this.slides.length - 1, n));
+    this.slides.forEach((s, idx) => {
+      s.classList.toggle('active', idx === this.i);
+      s.classList.toggle('exit-left', idx < this.i);
+      s.setAttribute('aria-hidden', idx === this.i ? 'false' : 'true');
+    });
+    this.progress.style.width = `${((this.i + 1) / this.slides.length) * 100}%`;
+    location.hash = String(this.i + 1).padStart(2, '0');
+  }
+  next() { this.show(this.i + 1); }
+  prev() { this.show(this.i - 1); }
+}
+const initialHash = Number(location.hash.replace('#',''));
+const deck = new Deck();
+if (initialHash) deck.show(initialHash - 1);
+</script>
+</body>
+</html>

@@ -12,6 +12,14 @@ Paper for the group presentation.
 - Microsoft Research page: <https://www.microsoft.com/en-us/research/publication/deepspeed-ulysses-system-optimizations-for-enabling-training-of-extreme-long-sequence-transformer-models/>
 - Local PDF: [`paper-deepspeed-ulysses-arxiv-2309.14509.pdf`](paper-deepspeed-ulysses-arxiv-2309.14509.pdf)
 
+## Presentation deliverables
+
+- Improved HTML deck: [`deepspeed-ulysses-presentation.html`](deepspeed-ulysses-presentation.html)
+- Slide-by-slide story: [`slides-outline.md`](slides-outline.md)
+- Speaker prep notes: [`speaker-notes.md`](speaker-notes.md)
+- Original downloaded draft PDF: [`source-friend-presentation.pdf`](source-friend-presentation.pdf)
+- Extracted draft text: [`source-friend-presentation-text.md`](source-friend-presentation-text.md)
+
 ## One-line thesis
 
 DeepSpeed-Ulysses enables training Transformer models with extreme sequence lengths by partitioning along the sequence dimension and using all-to-all communication for attention, so communication volume stays constant when sequence length and device count scale proportionally.
@@ -22,6 +30,7 @@ DeepSpeed-Ulysses enables training Transformer models with extreme sequence leng
 - [ ] Build slide outline: problem → why existing parallelism fails → Ulysses idea → communication analysis → experiments → limitations.
 - [ ] Extract/redo key figures for sequence parallelism and all-to-all attention.
 - [ ] Prepare 2-3 discussion questions.
+- [ ] Rehearse once with timer and cut slide 10 or 11 if running long.
 
 ## Tomorrow plan
 
