@@ -1,12 +1,12 @@
 #!/bin/bash
 #
-# QNLI reproduction — cell C2 (20 clients, RoBERTa-Large, LoRA rank 4) — RoLoRA mode.
-# Config: experiments/configs/repro_qnli_c20_r4.yaml
+# QNLI lr sweep — 50 clients, RoBERTa-base, LoRA rank 4 — FFA-LoRA mode.
+# Config: experiments/configs/repro_qnli_c50_r4_lr5e-3.yaml
 #
-# Submit (seed 0 default):
-#   sbatch slurm/repro_qnli_c20_r4_rolora.sbatch
-# Submit with a non-default seed:
-#   SEED=1 sbatch slurm/repro_qnli_c20_r4_rolora.sbatch
+# Submit (seed defaults to 0):
+#   sbatch slurm/repro_qnli_c50_r4_ffa_lora_lr5e-3.sbatch
+# Submit with a non-default seed (positional arg):
+#   sbatch slurm/repro_qnli_c50_r4_ffa_lora_lr5e-3.sbatch 1
 #
 # Sizing rationale (gpu-a100-small, 10 GB MIG slice, ≤4h cap):
 #   - Single Python process. No torch.multiprocessing, no DataLoader workers
@@ -29,7 +29,7 @@
 #   5) bash scripts/install_supplement.sh   (creates supplement .venv-supplement)
 #   6) sbatch slurm/warm_caches.sbatch   (downloads model + qnli.json to scratch)
 #
-#SBATCH --job-name=sls-c20-r4-rolora-lr5e-2
+#SBATCH --job-name=sls-c50-r4-ffa_lora-lr5e-3
 #SBATCH --partition=gpu-a100-small
 #SBATCH --account=education-eemcs-msc-dsait
 #SBATCH --time=03:59:59
@@ -76,16 +76,16 @@ set -a; [ -f .env ] && source .env; set +a
 : "${WANDB_API_KEY:?FAIL: WANDB_API_KEY missing — populate .env on the cluster}"
 
 # --- Pinned per-file -------------------------------------------------------
-export SLS_ALTERNATION_MODE=rolora
-CONFIG_PATH="experiments/configs/repro_qnli_c20_r4_lr5e-2.yaml"
-SEED="${SEED:-0}"
+export SLS_ALTERNATION_MODE=ffa_lora
+CONFIG_PATH="experiments/configs/repro_qnli_c50_r4_lr5e-3.yaml"
+SEED="${1:-0}"
 
 # --- Wandb identity --------------------------------------------------------
 export WANDB_ENTITY="scalable-learning-7"
 export WANDB_PROJECT="sls-rolora-repro"
-export WANDB_RUN_GROUP="qnli_c20_r4"
-export WANDB_NAME="${SLS_ALTERNATION_MODE}_lr5e-2_seed${SEED}"
-export WANDB_TAGS="qnli,c20,r4,${SLS_ALTERNATION_MODE},lr5e-2,seed${SEED}"
+export WANDB_RUN_GROUP="qnli_c50_r4"
+export WANDB_NAME="${SLS_ALTERNATION_MODE}_lr5e-3_seed${SEED}"
+export WANDB_TAGS="qnli,c50,r4,${SLS_ALTERNATION_MODE},lr5e-3,seed${SEED}"
 
 # --- Sanity checks ---------------------------------------------------------
 echo "Node:           $(hostname)"

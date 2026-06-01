@@ -78,7 +78,7 @@ set -a; [ -f .env ] && source .env; set +a
 # --- Pinned per-file -------------------------------------------------------
 export SLS_ALTERNATION_MODE=rolora
 CONFIG_PATH="experiments/configs/repro_qnli_c50_r4_lr2e-2.yaml"
-SEED="${SEED:-0}"
+SEED="${SEED:-2}"
 
 # --- Wandb identity --------------------------------------------------------
 export WANDB_ENTITY="scalable-learning-7"

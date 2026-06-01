@@ -4,7 +4,7 @@
 
 use_gpu: True
 device: 0
-seed: 0
+seed: 2
 early_stop:
   patience: 0
 
