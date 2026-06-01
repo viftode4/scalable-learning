@@ -60,3 +60,4 @@ docs/presentations/**/source-thumbnails/
 docs/presentations/**/preview-screenshots/
 
 .env
+docs/presentations/**/paper-page-previews/

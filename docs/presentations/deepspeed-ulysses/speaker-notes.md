@@ -14,17 +14,18 @@ This is a systems paper. The key point is not a new model architecture and not a
 2. **Motivation:** Use examples; do not over-explain each domain.
 3. **Gap:** Name the four axes. Emphasize sequence length is the unsolved axis.
 4. **Core idea:** Make the audience understand the layout switch before any formulas.
-5. **Mental model:** During attention each GPU has full sequence context for a subset of heads.
-6. **Mechanism:** Two all-to-alls around attention; everything else stays sequence-parallel.
-7. **Scaling:** Formula slide. Carefully explain the assumption: N and P scale together.
-8. **Microbenchmark:** Same data moved, much lower time. This is about contention/layout, not magic compression.
-9. **Practical system:** Why this is usable: ZeRO-3 + existing attention kernels + DeepSpeed integration.
-10. **Results:** Present headline numbers quickly.
-11. **Memory:** ZeRO handles parameters; Ulysses handles long-sequence activations.
-12. **ClimaX:** Nice concrete use case; use if time allows.
-13. **Critique:** Strongest discussion slide. Mention network dependence and head-count cap.
-14. **Takeaway:** Repeat: layout transform, not approximate attention.
-15. **Discussion:** Ask one question yourself if the room is quiet.
+5. **Toy example:** Walk left to right. Before attention each GPU has a token slice; after all-to-all each GPU has the whole sequence for some heads.
+6. **Mental model:** During attention each GPU has full sequence context for a subset of heads.
+7. **Mechanism:** Two all-to-alls around attention; everything else stays sequence-parallel.
+8. **Scaling:** Use the N=1M, P=64 intuition first, then the `4Nd` vs `4Nd/P` formula.
+9. **Microbenchmark:** Same data moved, much lower time. This is about contention/layout, not magic compression.
+10. **Practical system:** Why this is usable: ZeRO-3 + existing attention kernels + DeepSpeed integration.
+11. **Results:** Present headline numbers quickly.
+12. **Memory:** ZeRO handles parameters; Ulysses handles long-sequence activations.
+13. **ClimaX:** Nice concrete use case; use if time allows.
+14. **Critique:** Strongest discussion slide. Mention network dependence and head-count cap.
+15. **Takeaway:** Repeat: layout transform, not approximate attention.
+16. **Discussion:** Ask one question yourself if the room is quiet.
 
 ## Likely Q&A
 
