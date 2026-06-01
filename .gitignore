@@ -34,6 +34,7 @@ report/build/
 
 # OMC tool state
 .omc/
+.omx/
 
 # Local virtualenv inside vendored OpenReview supplement
 code/harness/rolora-supplement/RoLoRA-code/.venv-supplement/

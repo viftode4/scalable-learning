@@ -29,7 +29,9 @@ which is light enough to fit the login-node policy.
 
 | Knob | Value |
 |---|---|
-| Account | `education-eemcs-msc-dsait` |
+| Access grant | Full DelftBlue access granted 2026-06-01; Slurm accounting may take up to one working day to accept new jobs after the grant email. |
+| Account share (portal display) | `Education-EEMCS-MSc-DSAIT` |
+| Slurm account directive | `education-eemcs-msc-dsait` |
 | Modules loaded by sbatch | `2024r1`, `cuda` |
 | Primary partition | `gpu-a100-small` (10 GB MIG, ≤4h cap) |
 | Backup partition | `gpu-a100` (full 80 GB, 24h account cap) |
@@ -268,12 +270,13 @@ scancel -u $USER          # all your jobs (use with care)
 1. **Submit from the repo root.** `cd ~/scalable-learning && sbatch slurm/...`. Not from `~`, not from `slurm/`. The sbatch file does `cd "$SLURM_SUBMIT_DIR"` internally so the working dir matches submission dir.
 2. **`mkdir -p slurm_logs` is required once.** Without it slurm silently drops job stdout/stderr.
 3. **`uv sync` and `scripts/install_supplement.sh` only on the login node.** Compute nodes typically have no outbound network for package installs.
-4. **`roberta-large` must be pre-cached.** See section 2.7. The cluster job will fail at model load if it isn't there.
+4. **`roberta-large` must be pre-cached.** See section 2.8. The cluster job will fail at model load if it isn't there.
 5. **Education account caps at 24h wall time**, `gpu-a100-small` partition caps at 4h per MIG slice. Our sbatch scripts request 03:59:59 (max under the 4h cap). C2 jobs are estimated at ~30 min so this is comfortable.
-6. **`.env` is NOT synced from your laptop.** It is in `.gitignore` and the rsync exclusion list. Create it directly on the cluster.
-7. **Wandb offline fallback**: if compute nodes block outbound HTTPS, wandb buffers runs into `wandb/offline-run-*` directories. After the job finishes, `wandb sync wandb/offline-run-*` on the login node uploads them. The local `results/*.log` and `exp/*/sub_exp_*/eval_results.log` files remain authoritative regardless.
-8. **Backspace broken over SSH from some terminals?** Set `TERM=xterm-256color` before `ssh`.
-9. **If you're not on the DSAIT account**, run `sacctmgr list user $USER withassoc format='user%-20,account%-45'` to find your account name, then edit `--account=` in the three sbatch files.
+6. **Fresh access can lag in Slurm.** The grant email says Slurm may need up to one full working day to update its database. If `sbatch` rejects the account right after 2026-06-01, first verify with `sacctmgr list user $USER withassoc format='user%-20,account%-45'`, then retry after the accounting update window before changing templates.
+7. **`.env` is NOT synced from your laptop.** It is in `.gitignore` and the rsync exclusion list. Create it directly on the cluster.
+8. **Wandb offline fallback**: if compute nodes block outbound HTTPS, wandb buffers runs into `wandb/offline-run-*` directories. After the job finishes, `wandb sync wandb/offline-run-*` on the login node uploads them. The local `results/*.log` and `exp/*/sub_exp_*/eval_results.log` files remain authoritative regardless.
+9. **Backspace broken over SSH from some terminals?** Set `TERM=xterm-256color` before `ssh`.
+10. **If you're not on the DSAIT account**, run `sacctmgr list user $USER withassoc format='user%-20,account%-45'` to find your account name, then edit `--account=` in the three sbatch files.
 
 ## What's intentionally NOT here yet
 

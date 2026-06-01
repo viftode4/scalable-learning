@@ -31,10 +31,11 @@
 #   3) uv installed and on PATH
 #   4) uv sync   (creates project .venv)
 #   5) bash scripts/install_supplement.sh   (creates supplement .venv-supplement)
-#   6) sbatch slurm/warm_caches.sbatch   (downloads model + qnli.json to scratch)
+#   6) bash scripts/warm_caches.sh   (downloads model + qnli.json to scratch)
 #
 #SBATCH --job-name=sls-c20-r4-rolora
 #SBATCH --partition=gpu-a100-small
+# Portal share display: Education-EEMCS-MSc-DSAIT. Slurm account is lowercase.
 #SBATCH --account=education-eemcs-msc-dsait
 #SBATCH --time=03:59:59
 #SBATCH --ntasks=1

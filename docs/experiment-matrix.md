@@ -52,7 +52,7 @@ lora_dropout=0.1). Seeds are passed at runtime via `SEED=…` (see
 |---|---|---|---|---:|---:|---|---|---|
 | R0 | QNLI | RoBERTa-base | LoRA, FFA-LoRA, RoLoRA | 3 | 4 | 0 | `experiments/configs/table1_local_pilot.yaml` | Local pilot done |
 | R1 | QNLI | RoBERTa-base | LoRA, FFA-LoRA, RoLoRA | 3 | 4 | 0 | `experiments/configs/table1_local_medium.yaml` | Medium: RoLoRA done; all modes pending |
-| R2 | QNLI | RoBERTa-Large | RoLoRA | 3 | 4 | 0 | `experiments/configs/roberta_large_feasibility.yaml` | Feasibility done locally on MPS (`results/roberta_large_feasibility_rolora.log`); cluster feasibility pending real Slurm headers |
+| R2 | QNLI | RoBERTa-Large | RoLoRA | 3 | 4 | 0 | `experiments/configs/roberta_large_feasibility.yaml` | Feasibility done locally on MPS (`results/roberta_large_feasibility_rolora.log`); cluster-equivalent feasibility will be covered by the first C2 submission under confirmed Slurm account `education-eemcs-msc-dsait` |
 | **R3** | **QNLI** | **RoBERTa-Large** | **LoRA, FFA-LoRA, RoLoRA** | **3** | **4** | **0,1,2** | `experiments/configs/repro_qnli_c3_r4.yaml` | **Pending — paper-cell C1** |
 | **R4** | **QNLI** | **RoBERTa-Large** | **LoRA, FFA-LoRA, RoLoRA** | **20** | **4** | **0,1,2** | `experiments/configs/repro_qnli_c20_r4.yaml` | **Pending — paper-cell C2** |
 | **R5** | **QNLI** | **RoBERTa-Large** | **LoRA, FFA-LoRA, RoLoRA** | **50** | **4** | **0,1,2** | `experiments/configs/repro_qnli_c50_r4.yaml` | **Pending — paper-cell C3** |

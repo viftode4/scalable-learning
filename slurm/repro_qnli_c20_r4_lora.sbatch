@@ -13,6 +13,7 @@
 #
 #SBATCH --job-name=sls-c20-r4-lora
 #SBATCH --partition=gpu-a100-small
+# Portal share display: Education-EEMCS-MSc-DSAIT. Slurm account is lowercase.
 #SBATCH --account=education-eemcs-msc-dsait
 #SBATCH --time=03:59:59
 #SBATCH --ntasks=1

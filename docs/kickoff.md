@@ -9,13 +9,14 @@ Use this as the agenda for the first meeting. Items already resolved (grading sp
 - **Harness:** primary = OpenReview supplement; fallback = FedSA-LoRA fork (submodule).
 - **Supplement setup:** downloaded, audited, installed in isolated Python 3.9 env, smoke-tested locally.
 - **Env:** uv-managed Python 3.11, `peft==0.10.0` pinned.
+- **DelftBlue access:** full access granted 2026-06-01 under portal share `Education-EEMCS-MSc-DSAIT`; Slurm templates use `education-eemcs-msc-dsait`.
 
 ## Open items
 
-### 1. Cluster access — available; integration pending
+### 1. Cluster submission — first real run pending
 - DelftBlue is available; DAIC is held as backup. The earlier "waiting for TAs" framing was a miscommunication and has been dropped.
-- **TODO:** drop the user-supplied real `#SBATCH` header / `module load` lines into `slurm/gpu-a100-small.sbatch` and `slurm/gpu-v100.sbatch`, then submit the RoBERTa-Large feasibility job and ledger the result.
-- A faculty-share / TOPdesk request is an option only if queue time becomes a real blocker, not pre-emptively.
+- The account share is now confirmed. If `sbatch` rejects the account immediately after the 2026-06-01 grant, allow up to one working day for Slurm accounting to update and verify with `sacctmgr list user $USER withassoc format='user%-20,account%-45'`.
+- **TODO:** submit the C2 RoLoRA seed-0 job from `~/scalable-learning` and ledger the result.
 
 ### 2. Time commitment
 - **TODO:** realistic hours/week per person. Honest answers — a 6h/week and 20h/week split needs different ownership.

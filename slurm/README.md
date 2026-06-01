@@ -24,7 +24,8 @@ single-process supplement workload.
 All three target paper-cell C2 (20 clients, RoBERTa-Large, LoRA rank 4) on
 `gpu-a100-small`. They share identical resource asks (`--time=03:59:59`,
 `--cpus-per-task=2`, `--gpus-per-task=1`, `--mem-per-cpu=8000M` (~16G total; `gpu-a100-small` caps both `cpus-per-task` at 2 and `mem-per-cpu` at 8000 MB), account
-`education-eemcs-msc-dsait`); they differ only in `SLS_ALTERNATION_MODE`,
+`education-eemcs-msc-dsait` — portal share `Education-EEMCS-MSc-DSAIT`, granted
+2026-06-01); they differ only in `SLS_ALTERNATION_MODE`,
 `--job-name`, and the wandb `WANDB_NAME` / `WANDB_TAGS`.
 
 C1, C3, C4 sbatch files are not yet authored — they are deferred until C2
@@ -36,7 +37,8 @@ copy-and-edit source for the remaining 9 (cell × mode) variants.
 Run these in order, top-to-bottom. Each step has a `verify` line — if it
 prints anything other than `ok`, stop and fix it before continuing. None
 of these run real Python on the login node (DelftBlue policy); the heavy
-download lives in step 8 as a slurm job.
+download lives in step 8 as the login-node `scripts/warm_caches.sh` file-fetch
+script.
 
 For the long-form rationale per step, see
 [`docs/setup/delftblue.md`](../docs/setup/delftblue.md). This list is what
@@ -233,6 +235,12 @@ on the cluster.
   ~30 min so this is comfortable. The 50-client cells (~75-80 min) also
   fit; if they ever exceed 4h we'd move them to `gpu-a100` (full A100,
   24h account cap).
+- **Fresh DelftBlue access can lag in Slurm.** Full access was granted on
+  2026-06-01 for portal share `Education-EEMCS-MSc-DSAIT`; the templates use
+  Slurm account `education-eemcs-msc-dsait`. If `sbatch` rejects the account
+  immediately after the grant, check `sacctmgr list user $USER withassoc
+  format='user%-20,account%-45'` and allow up to one working day for the
+  accounting database to update.
 - **Wandb offline fallback**: if compute nodes have no outbound network,
   wandb buffers to `wandb/offline-run-*` and you `wandb sync` later.
   The local `results/*.log` and `exp/*/sub_exp_*/eval_results.log` files
