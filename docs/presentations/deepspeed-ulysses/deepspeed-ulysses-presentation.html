@@ -3,430 +3,1054 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>DeepSpeed Ulysses — Visual Explanation Deck</title>
+<title>DeepSpeed Ulysses — visual explainer</title>
 <style>
-  :root {
-    --bg: #05070c;
-    --canvas: #0a0f1a;
-    --panel: rgba(255, 255, 255, 0.065);
-    --line: rgba(137, 180, 255, 0.24);
-    --text: #f5f7ff;
-    --muted: #aab8cf;
-    --dim: #65758f;
-    --cyan: #62e8ff;
-    --blue: #5d8cff;
-    --violet: #aa82ff;
-    --green: #72f0a8;
-    --amber: #ffd166;
-    --red: #ff6b8a;
-    --radius: 28px;
-    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    --sans: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  }
+:root {
+  color-scheme: dark;
+  --bg: #070a12;
+  --panel: rgba(18, 25, 39, .88);
+  --panel-2: rgba(30, 39, 58, .92);
+  --ink: #f7fbff;
+  --muted: #aab8cb;
+  --dim: #75859b;
+  --line: rgba(255, 255, 255, .13);
+  --cyan: #67e8f9;
+  --blue: #79a7ff;
+  --green: #7cf7b1;
+  --yellow: #ffd166;
+  --pink: #ff6f91;
+  --violet: #b997ff;
+  --red: #ff456b;
+  --radius: 24px;
+  --shadow: 0 24px 90px rgba(0, 0, 0, .42);
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(103, 232, 249, .18), transparent 30%),
+    radial-gradient(circle at 80% 12%, rgba(185, 151, 255, .18), transparent 30%),
+    radial-gradient(circle at 72% 88%, rgba(124, 247, 177, .10), transparent 30%),
+    linear-gradient(135deg, #08101a 0%, #101225 50%, #070a12 100%);
+}
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: .16;
+  background-image:
+    linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(circle at center, black, transparent 78%);
+}
+main {
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  position: relative;
+  overflow: hidden;
+}
+.slide {
+  position: absolute;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  padding: min(2.4vw, 28px);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(5vw) scale(.985);
+  transition: opacity .34s ease, transform .34s ease;
+}
+.slide.active {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0) scale(1);
+}
+.slide.exit-left { transform: translateX(-5vw) scale(.985); }
+.frame {
+  position: relative;
+  width: min(100%, calc(100vh * 16 / 9));
+  height: min(100%, calc(100vw * 9 / 16));
+  max-width: 1280px;
+  max-height: 720px;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+  background: linear-gradient(140deg, rgba(10,16,27,.97), rgba(18,22,39,.94));
+}
+.frame::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 36%, rgba(103,232,249,.07), transparent 33%),
+    radial-gradient(circle at 72% 28%, rgba(185,151,255,.08), transparent 34%);
+  pointer-events: none;
+}
+.top {
+  position: absolute;
+  z-index: 5;
+  left: clamp(24px, 3.6vw, 46px);
+  right: clamp(24px, 3.6vw, 46px);
+  top: clamp(18px, 2.4vw, 30px);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  color: var(--dim);
+  font: 800 clamp(8px, .82vw, 11px)/1.2 var(--mono);
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+.content {
+  position: absolute;
+  z-index: 2;
+  inset: clamp(62px, 8.2vw, 92px) clamp(36px, 5.3vw, 68px) clamp(42px, 5.5vw, 58px);
+  display: grid;
+  gap: clamp(14px, 2vw, 24px);
+  min-height: 0;
+}
+h1, h2, h3, p { margin: 0; }
+h1 {
+  font-size: clamp(52px, 7.4vw, 94px);
+  line-height: .86;
+  letter-spacing: -.075em;
+  max-width: 900px;
+}
+h2 {
+  font-size: clamp(36px, 5.1vw, 68px);
+  line-height: .89;
+  letter-spacing: -.064em;
+  max-width: 860px;
+}
+h3 {
+  font-size: clamp(18px, 2.05vw, 27px);
+  line-height: 1.02;
+  letter-spacing: -.035em;
+}
+p {
+  color: var(--muted);
+  font-size: clamp(15px, 1.32vw, 19px);
+  line-height: 1.38;
+  max-width: 680px;
+}
+.small {
+  color: var(--muted);
+  font-size: clamp(11px, .96vw, 14px);
+  line-height: 1.35;
+}
+.kicker {
+  color: var(--cyan);
+  font: 900 clamp(9px, .95vw, 12px)/1.2 var(--mono);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.accent { color: var(--cyan); }
+.green { color: var(--green); }
+.pink { color: var(--pink); }
+.violet { color: var(--violet); }
+.yellow { color: var(--yellow); }
+.two { grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); align-items: center; }
+.stack { align-content: center; }
+.center { place-items: center; text-align: center; }
+.card {
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+  border-radius: 18px;
+  box-shadow: 0 14px 46px rgba(0,0,0,.16);
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  padding: 8px 12px;
+  border: 1px solid rgba(103,232,249,.28);
+  color: #dffbff;
+  border-radius: 999px;
+  background: rgba(103,232,249,.08);
+  font-size: clamp(11px, 1vw, 14px);
+}
+.badge-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 18px var(--cyan);
+}
+.hint {
+  position: absolute;
+  right: clamp(14px, 2vw, 24px);
+  bottom: clamp(10px, 1.5vw, 16px);
+  color: rgba(255,255,255,.38);
+  font: 700 9px/1 var(--mono);
+  letter-spacing: .08em;
+  z-index: 6;
+}
+.progress {
+  position: fixed;
+  z-index: 10;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: 0;
+  background: linear-gradient(90deg, var(--cyan), var(--violet), var(--pink));
+  transition: width .25s ease;
+}
+.step-indicator {
+  position: absolute;
+  left: clamp(14px, 2vw, 24px);
+  bottom: clamp(10px, 1.5vw, 16px);
+  color: rgba(255,255,255,.42);
+  font: 700 9px/1 var(--mono);
+  letter-spacing: .08em;
+  z-index: 6;
+}
 
-  * { box-sizing: border-box; }
-  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--sans); }
-  body::before {
-    content: "";
-    position: fixed; inset: 0; z-index: -3;
-    background:
-      radial-gradient(circle at 16% 20%, rgba(98,232,255,.20), transparent 30%),
-      radial-gradient(circle at 78% 16%, rgba(170,130,255,.17), transparent 30%),
-      radial-gradient(circle at 70% 86%, rgba(114,240,168,.10), transparent 27%),
-      linear-gradient(135deg, #04060b, #081221 52%, #03050a);
-  }
-  body::after {
-    content: "";
-    position: fixed; inset: 0; z-index: -2; opacity: .6;
-    background-image:
-      linear-gradient(rgba(255,255,255,.038) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,.038) 1px, transparent 1px);
-    background-size: 64px 64px;
-    mask-image: radial-gradient(circle at center, black, transparent 82%);
-  }
+/* shared diagram primitives */
+.token-line { display: flex; gap: 6px; align-items: center; min-width: 0; }
+.token {
+  width: clamp(13px, 1.55vw, 20px);
+  height: clamp(13px, 1.55vw, 20px);
+  border-radius: 6px;
+  background: linear-gradient(180deg, var(--cyan), #3a87ff);
+  box-shadow: 0 0 16px rgba(103,232,249,.42);
+  opacity: .94;
+}
+.g { background: linear-gradient(180deg, var(--green), #3bcaa0); box-shadow: 0 0 16px rgba(124,247,177,.36); }
+.y { background: linear-gradient(180deg, var(--yellow), #f28f3b); box-shadow: 0 0 16px rgba(255,209,102,.34); }
+.p { background: linear-gradient(180deg, var(--pink), #b86cff); box-shadow: 0 0 16px rgba(255,111,145,.34); }
+.dimtoken { opacity: .25; box-shadow: none; }
+.gpu {
+  padding: clamp(10px, 1.15vw, 14px);
+  min-width: 0;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,.055);
+  border-radius: 16px;
+}
+.gpu-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  color: #dce8f5;
+  font: 900 clamp(10px, .95vw, 12px)/1 var(--mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.gpu-label span:last-child { color: var(--dim); font-weight: 800; }
 
-  main { width: 100vw; height: 100vh; height: 100dvh; position: relative; }
-  .slide {
-    position: absolute; inset: 0;
-    width: 100vw; height: 100vh; height: 100dvh;
-    display: grid; place-items: center;
-    padding: 2.4vh 2.4vw;
-    opacity: 0; transform: translateX(3vw) scale(.985);
-    pointer-events: none; overflow: hidden;
-    transition: opacity .35s ease, transform .45s cubic-bezier(.2,.8,.2,1);
-  }
-  .slide.active { opacity: 1; transform: none; pointer-events: auto; }
-  .slide.exit-left { transform: translateX(-3vw) scale(.985); }
+/* animations */
+@keyframes pulse {
+  0%, 100% { opacity: .62; filter: drop-shadow(0 0 8px rgba(103,232,249,.35)); }
+  50% { opacity: 1; filter: drop-shadow(0 0 24px rgba(103,232,249,.85)); }
+}
+@keyframes dash { to { stroke-dashoffset: -120; } }
+@keyframes grow { from { transform: scaleX(.12); } to { transform: scaleX(1); } }
+@keyframes packet-lr {
+  0% { transform: translateX(-16px); opacity: .18; }
+  35% { opacity: 1; }
+  100% { transform: translateX(170px); opacity: .22; }
+}
+@keyframes matrix-scan {
+  0% { transform: translate(-18px, -18px); opacity: .22; }
+  45% { opacity: 1; }
+  100% { transform: translate(190px, 118px); opacity: .18; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition-duration: .01ms !important; }
+}
 
-  /* Everything visible lives inside this 16:9 canvas. */
-  .frame {
-    position: relative;
-    width: min(94vw, calc(88vh * 16 / 9));
-    height: min(88vh, calc(94vw * 9 / 16));
-    max-width: 1280px;
-    max-height: 720px;
-    border: 1px solid var(--line);
-    border-radius: 34px;
-    background:
-      radial-gradient(circle at 18% 20%, rgba(98,232,255,.11), transparent 34%),
-      radial-gradient(circle at 82% 16%, rgba(170,130,255,.10), transparent 32%),
-      linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.018)),
-      var(--canvas);
-    box-shadow: 0 34px 120px rgba(0,0,0,.48);
-    overflow: hidden;
-    padding: clamp(22px, 3.3vw, 50px);
-    display: grid;
-    grid-template-rows: auto 1fr;
-    gap: clamp(12px, 1.8vw, 24px);
-  }
-  .top {
-    display: flex; justify-content: space-between; align-items: center;
-    font-family: var(--mono); font-size: clamp(10px, .95vw, 13px);
-    color: rgba(245,247,255,.58); letter-spacing: .02em;
-    min-height: 18px;
-  }
-  .content { min-height: 0; display: grid; gap: clamp(12px, 1.7vw, 22px); align-items: center; }
-  .two { grid-template-columns: 1fr 1fr; }
-  .wide-narrow { grid-template-columns: 1.1fr .9fr; }
-  .center { align-content: center; justify-items: start; }
-  .stack { display: grid; gap: clamp(10px, 1.45vw, 18px); align-content: center; }
-  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
-  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-  h1, h2, h3, p { margin: 0; }
-  h1 { font-size: clamp(48px, 7.6vw, 108px); line-height: .86; letter-spacing: -.075em; text-wrap: balance; }
-  h2 { font-size: clamp(32px, 5.3vw, 74px); line-height: .9; letter-spacing: -.065em; text-wrap: balance; }
-  h3 { font-size: clamp(18px, 2.05vw, 27px); line-height: 1.05; letter-spacing: -.03em; }
-  .lead { color: var(--muted); font-size: clamp(17px, 2vw, 26px); line-height: 1.28; max-width: 820px; }
-  .small { color: var(--muted); font-size: clamp(12px, 1.15vw, 15px); line-height: 1.35; }
-  .kicker { color: var(--cyan); font-family: var(--mono); font-size: clamp(11px, 1.05vw, 14px); font-weight: 900; letter-spacing: .22em; text-transform: uppercase; }
-  .chip { width: fit-content; border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; color: var(--muted); font-family: var(--mono); font-size: clamp(11px, .95vw, 13px); background: rgba(255,255,255,.05); }
-  .cyan { color: var(--cyan); } .green { color: var(--green); } .violet { color: var(--violet); } .amber { color: var(--amber); } .red { color: var(--red); }
-  .gradient-text { background: linear-gradient(90deg, #fff, #bddcff 50%, #71f1ff); -webkit-background-clip: text; color: transparent; }
-  .panel { min-width: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); backdrop-filter: blur(14px); box-shadow: inset 0 1px 0 rgba(255,255,255,.06); }
-  .card { padding: clamp(14px, 1.7vw, 22px); min-height: 132px; display: grid; align-content: space-between; gap: 10px; }
-  .tag { color: var(--cyan); font-family: var(--mono); font-size: 11px; letter-spacing: .17em; text-transform: uppercase; }
-  .metric { padding: clamp(16px, 2vw, 24px); min-height: 150px; display: grid; align-content: space-between; position: relative; overflow: hidden; }
-  .metric::after { content:""; position:absolute; right:-48px; bottom:-60px; width:150px; height:150px; border-radius:50%; border:1px solid rgba(98,232,255,.22); }
-  .num { font-size: clamp(42px, 5.6vw, 78px); font-weight: 950; line-height: .85; letter-spacing: -.075em; }
-  .bullets { margin: 0; padding: 0; list-style: none; display: grid; gap: 14px; }
-  .bullets li { color: var(--muted); font-size: clamp(17px, 1.85vw, 24px); line-height: 1.22; display: grid; grid-template-columns: 22px 1fr; gap: 12px; }
-  .bullets li::before { content: ""; width: 10px; height: 10px; border-radius: 50%; margin-top: .45em; background: linear-gradient(135deg, var(--cyan), var(--violet)); box-shadow: 0 0 18px rgba(98,232,255,.6); }
+/* Slide 1: context wall */
+.title-stage { display: grid; grid-template-columns: 1.03fr .97fr; align-items: center; gap: clamp(24px, 4vw, 56px); }
+.context-box {
+  height: 330px;
+  padding: 26px;
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  align-content: center;
+  gap: 18px;
+}
+.gpu-memory {
+  height: 132px;
+  border: 2px solid rgba(103,232,249,.38);
+  border-radius: 20px;
+  background: rgba(103,232,249,.055);
+  position: relative;
+  overflow: hidden;
+}
+.gpu-memory::before {
+  content: "ONE GPU MEMORY";
+  position: absolute;
+  left: 14px;
+  top: 12px;
+  color: var(--dim);
+  font: 900 11px/1 var(--mono);
+  letter-spacing: .12em;
+}
+.ctx-strip {
+  position: absolute;
+  left: 18px;
+  top: 62px;
+  width: 28%;
+  display: flex;
+  gap: 5px;
+  transition: width .9s cubic-bezier(.2,.8,.2,1);
+}
+.slide[data-step="1"] .ctx-strip { width: 126%; }
+.overflow-wall {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 7px;
+  height: 100%;
+  background: var(--red);
+  opacity: .2;
+  box-shadow: none;
+  transition: opacity .4s ease, box-shadow .4s ease;
+}
+.slide[data-step="1"] .overflow-wall {
+  opacity: 1;
+  box-shadow: 0 0 28px rgba(255,69,107,.8);
+}
+.ctx-caption {
+  padding: 15px 16px;
+  border-radius: 16px;
+  background: rgba(255,111,145,.10);
+  border: 1px solid rgba(255,111,145,.28);
+  color: #ffe6ec;
+}
 
-  @keyframes pulse { 0%,100% { filter: drop-shadow(0 0 8px rgba(98,232,255,.30)); opacity: .86; } 50% { filter: drop-shadow(0 0 24px rgba(98,232,255,.72)); opacity: 1; } }
-  @keyframes drift { 0%,100% { transform: translate3d(0,0,0); } 50% { transform: translate3d(14px,-10px,0); } }
-  @keyframes dash { to { stroke-dashoffset: -110; } }
-  @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
-  .orb { position: absolute; width: 9px; height: 9px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 22px var(--cyan); animation: drift 5s ease-in-out infinite; }
-  .orb:nth-of-type(2n) { background: var(--violet); box-shadow: 0 0 20px var(--violet); animation-duration: 6.3s; }
-  .orb:nth-of-type(3n) { background: var(--green); box-shadow: 0 0 18px var(--green); animation-duration: 7.1s; }
-  .tokens-row { display: grid; grid-template-columns: repeat(18, 1fr); gap: 5px; height: 42px; }
-  .tok { border-radius: 10px; background: linear-gradient(180deg, var(--cyan), rgba(93,140,255,.38)); animation: pulse 2.6s ease-in-out infinite; animation-delay: calc(var(--i) * 45ms); }
-  .tok.greenish { background: linear-gradient(180deg, var(--green), rgba(170,130,255,.38)); }
-  svg { width: 100%; height: 100%; display: block; }
-  .diagram { height: 100%; min-height: 0; padding: 18px; }
-  .svg-title { fill: var(--text); font-family: var(--sans); font-size: 22px; font-weight: 850; }
-  .svg-label { fill: var(--muted); font-family: var(--mono); font-size: 13px; }
-  .box { fill: rgba(255,255,255,.055); stroke: rgba(137,180,255,.35); stroke-width: 1.2; rx: 18; }
-  .box.purple { fill: rgba(170,130,255,.10); stroke: rgba(170,130,255,.55); }
-  .token { fill: url(#tokenGrad); stroke: rgba(255,255,255,.18); stroke-width: .6; rx: 7; animation: pulse 2.4s ease-in-out infinite; }
-  .token.g { fill: url(#tokenGrad2); }
-  .path { fill: none; stroke: var(--cyan); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 10 12; animation: dash 2.4s linear infinite; filter: drop-shadow(0 0 8px rgba(98,232,255,.7)); }
-  .toy { display: grid; grid-template-columns: 1fr 90px 1fr; gap: 18px; align-items: center; min-height: 0; }
-  .toy-board { height: 100%; min-height: 330px; padding: 22px; display: grid; gap: 16px; align-content: center; }
-  .lane { display: grid; grid-template-columns: 56px 1fr; gap: 10px; align-items: center; }
-  .lane-label { color: var(--cyan); font-family: var(--mono); font-size: 13px; }
-  .toy-tokens { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
-  .toy-token { height: 28px; border-radius: 9px; background: linear-gradient(180deg, var(--cyan), rgba(93,140,255,.48)); box-shadow: 0 0 16px rgba(98,232,255,.24); animation: pulse 2.5s ease-in-out infinite; }
-  .toy-token.b { background: linear-gradient(180deg, var(--green), rgba(170,130,255,.46)); }
-  .heads { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .head { min-height: 82px; padding: 14px; border-radius: 18px; border: 1px solid rgba(170,130,255,.46); background: rgba(170,130,255,.10); display: grid; align-content: space-between; animation: float 3.4s ease-in-out infinite; }
-  .head:nth-child(2n) { animation-delay: .45s; }
-  .arrowfield { height: 330px; position: relative; }
-  .arrowfield::after { content: "all-to-all"; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-family: var(--mono); color: var(--cyan); font-size: 12px; letter-spacing: .12em; }
-  .eq { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-  .eq-card { min-height: 132px; padding: 18px; display: grid; place-items: center; text-align: center; gap: 8px; }
-  .eq-big { font-family: var(--mono); font-size: clamp(26px, 4vw, 52px); font-weight: 950; }
-  .bar { height: 38px; border-radius: 999px; overflow: hidden; border: 1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.06); }
-  .bar span { display: block; height: 100%; width: var(--w); border-radius: 999px; background: linear-gradient(90deg, var(--cyan), var(--blue)); animation: pulse 2.2s ease-in-out infinite; }
-  .bar.red span { background: linear-gradient(90deg, var(--red), var(--amber)); }
-  .formula-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .formula { padding: 22px; display: grid; gap: 12px; }
-  .formula .big { font-family: var(--mono); font-size: clamp(30px, 4.4vw, 58px); line-height: 1; }
+/* Slide 2: axes */
+.axis-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; }
+.axis-card {
+  height: 170px;
+  padding: 18px;
+  position: relative;
+  overflow: hidden;
+}
+.axis-letter {
+  font-size: clamp(48px, 5vw, 72px);
+  line-height: .8;
+  font-weight: 950;
+  letter-spacing: -.08em;
+}
+.axis-card p { font-size: clamp(11px, .96vw, 13px); margin-top: 12px; }
+.axis-card.n {
+  border-color: rgba(103,232,249,.22);
+  transition: transform .35s ease, border-color .35s ease, box-shadow .35s ease;
+}
+.slide[data-step="1"] .axis-card:not(.n) { opacity: .42; }
+.slide[data-step="1"] .axis-card.n {
+  transform: translateY(-10px) scale(1.04);
+  border-color: rgba(103,232,249,.75);
+  box-shadow: 0 0 0 1px rgba(103,232,249,.20) inset, 0 20px 60px rgba(103,232,249,.12);
+}
+.axis-card.n .axis-letter { color: var(--cyan); }
+.sequence-ribbon {
+  height: 68px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.045);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+}
+.sequence-ribbon .fade { margin-left: auto; color: var(--pink); font-weight: 900; }
 
-  .reveal { opacity: 0; transform: translateY(16px); transition: opacity .4s ease, transform .45s ease; }
-  .active .reveal { opacity: 1; transform: none; }
-  .active .reveal:nth-child(2) { transition-delay: .06s; }
-  .active .reveal:nth-child(3) { transition-delay: .12s; }
-  .active .reveal:nth-child(4) { transition-delay: .18s; }
-  .active .reveal:nth-child(5) { transition-delay: .24s; }
-  .progress { position: fixed; left: 0; bottom: 0; height: 4px; background: linear-gradient(90deg, var(--cyan), var(--blue), var(--violet)); width: 0%; z-index: 20; transition: width .25s ease; }
-  .navhint { position: fixed; right: 20px; bottom: 14px; color: rgba(245,247,255,.42); font-family: var(--mono); font-size: 11px; }
+/* Slide 3: before attention */
+.seq-layout { display: grid; grid-template-columns: .9fr 1.1fr; align-items: center; gap: 30px; }
+.gpu-stack { display: grid; gap: 12px; }
+.gpu.big { min-height: 84px; padding: 14px 16px; }
+.heads-muted {
+  display: flex;
+  gap: 5px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.head-pill {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(185,151,255,.10);
+  border: 1px solid rgba(185,151,255,.22);
+  color: rgba(235,225,255,.72);
+  font: 800 10px/1 var(--mono);
+}
+.long-strip {
+  min-height: 112px;
+  padding: 18px;
+  display: grid;
+  align-content: center;
+  gap: 12px;
+  overflow: hidden;
+}
+.sequence-note {
+  margin-top: 18px;
+  padding: 15px 16px;
+  border-radius: 16px;
+  background: rgba(103,232,249,.07);
+  border: 1px solid rgba(103,232,249,.20);
+  color: #dffbff;
+}
+.split-arrow {
+  font-size: clamp(38px, 4vw, 58px);
+  color: var(--cyan);
+  text-align: center;
+  text-shadow: 0 0 24px rgba(103,232,249,.35);
+}
 
-  @media (max-width: 900px) {
-    .frame { width: 96vw; height: 92vh; padding: 20px; border-radius: 24px; }
-    .two, .wide-narrow, .toy, .formula-grid { grid-template-columns: 1fr; }
-    .grid4, .grid3, .eq { grid-template-columns: 1fr 1fr; }
-    .arrowfield { display: none; }
-    .toy-board { min-height: auto; }
-  }
-  @media (max-width: 560px) {
-    .frame { height: 94vh; }
-    h1 { font-size: 46px; }
-    h2 { font-size: 32px; }
-    .lead { font-size: 16px; }
-    .grid4, .grid3, .eq, .heads { grid-template-columns: 1fr; }
-    .card, .metric { min-height: auto; }
-    .navhint { display: none; }
-  }
-  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+/* Slide 4: all-to-all */
+.swap-stage {
+  position: relative;
+  height: 438px;
+  display: grid;
+  grid-template-columns: 1fr 140px 1fr;
+  gap: 18px;
+  align-items: center;
+}
+.swap-side {
+  height: 390px;
+  padding: 16px;
+  display: grid;
+  align-content: stretch;
+  gap: 10px;
+  transition: opacity .3s ease, transform .3s ease;
+}
+.swap-side h3 { margin-bottom: 2px; }
+.slide[data-step="0"] .after-side { opacity: .24; }
+.slide[data-step="2"] .before-side { opacity: .28; }
+.slide[data-step="2"] .after-side {
+  border-color: rgba(124,247,177,.48);
+  box-shadow: 0 0 0 1px rgba(124,247,177,.12) inset;
+}
+.all2all-core {
+  height: 390px;
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+.all2all-core svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.all2all-core path {
+  fill: none;
+  stroke: rgba(103,232,249,.62);
+  stroke-width: 3;
+  stroke-dasharray: 8 10;
+  stroke-dashoffset: 0;
+}
+.slide[data-step="1"] .all2all-core path { animation: dash 1.7s linear infinite; }
+.all2all-core strong {
+  z-index: 2;
+  width: 104px;
+  height: 92px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  background: rgba(103,232,249,.12);
+  border: 1px solid rgba(103,232,249,.40);
+  box-shadow: 0 0 32px rgba(103,232,249,.22);
+  color: var(--cyan);
+  font: 900 10px/1.16 var(--mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.packet {
+  position: absolute;
+  left: -12px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  opacity: 0;
+  background: var(--cyan);
+  box-shadow: 0 0 16px var(--cyan);
+}
+.packet.p2 { top: 120px; background: var(--green); box-shadow: 0 0 16px var(--green); }
+.packet.p3 { top: 198px; background: var(--yellow); box-shadow: 0 0 16px var(--yellow); }
+.packet.p4 { top: 276px; background: var(--pink); box-shadow: 0 0 16px var(--pink); }
+.packet.p1 { top: 58px; }
+.slide[data-step="1"] .packet { animation: packet-lr 1.25s ease-in-out infinite alternate; }
+.slide[data-step="1"] .packet.p2 { animation-delay: .14s; }
+.slide[data-step="1"] .packet.p3 { animation-delay: .28s; }
+.slide[data-step="1"] .packet.p4 { animation-delay: .42s; }
+.head-card {
+  min-height: 66px;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(185,151,255,.10);
+  border: 1px solid rgba(185,151,255,.24);
+}
+
+/* Slide 5: local attention */
+.attention-stage { display: grid; grid-template-columns: .88fr 1.12fr; align-items: center; gap: 24px; }
+.attention-box {
+  min-height: 392px;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+.attention-box::after {
+  content: "";
+  position: absolute;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(103,232,249,.48), transparent 70%);
+  left: 36px;
+  top: 104px;
+  opacity: 0;
+}
+.slide[data-step="1"] .attention-box::after { animation: matrix-scan 2s ease-in-out infinite; }
+.head-columns { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 18px; }
+.head-col {
+  min-height: 116px;
+  padding: 14px;
+  display: grid;
+  align-content: center;
+  gap: 10px;
+}
+.matrix {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 4px;
+  margin-top: 14px;
+}
+.cell {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  background: rgba(103,232,249,.12);
+}
+.cell.hot { background: var(--cyan); }
+.slide[data-step="1"] .cell.hot { animation: pulse 1.8s ease-in-out infinite; }
+
+/* Slide 6: block recipe */
+.recipe {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  gap: 12px;
+}
+.step-card {
+  min-height: 160px;
+  padding: 17px;
+  position: relative;
+  overflow: hidden;
+}
+.step-num {
+  font-size: clamp(38px, 4.2vw, 58px);
+  line-height: .78;
+  font-weight: 950;
+  color: var(--cyan);
+  letter-spacing: -.08em;
+}
+.step-card h3 { margin-top: 12px; }
+.step-card p { font-size: clamp(10px, .92vw, 13px); margin-top: 7px; }
+.step-card.exchange-step {
+  border-color: rgba(103,232,249,.42);
+  transition: transform .35s ease, box-shadow .35s ease;
+}
+.slide[data-step="1"] .exchange-step {
+  transform: translateY(-8px);
+  box-shadow: 0 0 0 1px rgba(103,232,249,.18) inset, 0 20px 60px rgba(103,232,249,.10);
+}
+
+/* Slide 7: scaling */
+.scale-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.formula {
+  padding: 20px;
+  min-height: 130px;
+  display: grid;
+  align-content: center;
+  gap: 8px;
+}
+.formula .big {
+  font: 950 clamp(28px, 4vw, 50px)/.9 var(--mono);
+  letter-spacing: -.08em;
+}
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.bar-card { padding: 18px; min-height: 150px; }
+.bar {
+  height: 18px;
+  margin-top: 18px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  overflow: hidden;
+}
+.bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transform-origin: left;
+  transform: scaleX(.12);
+}
+.slide[data-step="1"] .bar .long {
+  background: linear-gradient(90deg,var(--pink),var(--yellow));
+  animation: grow 1s ease both;
+}
+.slide[data-step="1"] .bar .short {
+  background: linear-gradient(90deg,var(--cyan),var(--blue));
+  animation: grow 1s .18s ease both;
+  width: 18%;
+}
+.bar .long { width: 100%; background: linear-gradient(90deg,var(--pink),var(--yellow)); }
+.bar .short { width: 18%; background: linear-gradient(90deg,var(--cyan),var(--blue)); }
+
+/* Slide 8: results + critique */
+.results-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; }
+.result {
+  min-height: 176px;
+  padding: 18px;
+  display: grid;
+  align-content: space-between;
+}
+.num {
+  font-size: clamp(38px, 5vw, 66px);
+  line-height: .82;
+  font-weight: 950;
+  letter-spacing: -.08em;
+}
+.result p { font-size: clamp(10px, .92vw, 13px); }
+.critique-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  opacity: .18;
+  transform: translateY(12px);
+  transition: opacity .35s ease, transform .35s ease;
+}
+.slide[data-step="1"] .critique-grid { opacity: 1; transform: translateY(0); }
+.critique {
+  min-height: 95px;
+  padding: 15px;
+  border-color: rgba(255,209,102,.25);
+}
+.critique b { display: block; color: #fff2c7; margin-bottom: 7px; }
+.final-map {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  gap: 12px;
+  align-items: stretch;
+}
+.map-card {
+  min-height: 142px;
+  padding: 18px;
+  display: grid;
+  align-content: center;
+  gap: 10px;
+  text-align: center;
+  position: relative;
+}
+.map-card::after {
+  content: "→";
+  position: absolute;
+  right: -18px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--cyan);
+  font-size: 28px;
+  font-weight: 950;
+  text-shadow: 0 0 18px rgba(103,232,249,.45);
+}
+.map-card:last-child::after { display: none; }
+.map-icon {
+  font: 950 clamp(24px, 3.2vw, 42px)/1 var(--mono);
+  letter-spacing: -.07em;
+}
+.final-qa {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 12px;
+  opacity: .20;
+  transform: translateY(12px);
+  transition: opacity .35s ease, transform .35s ease;
+}
+.slide[data-step="1"] .final-qa { opacity: 1; transform: translateY(0); }
+.qa-card {
+  min-height: 102px;
+  padding: 15px;
+  border-color: rgba(103,232,249,.24);
+}
+.qa-card b { display: block; margin-bottom: 7px; color: #e9fbff; }
+
+@media (max-height: 680px) {
+  .content { inset: 58px 44px 36px; gap: 12px; }
+  h1 { font-size: clamp(46px, 6.6vw, 78px); }
+  h2 { font-size: clamp(31px, 4.5vw, 56px); }
+  p { font-size: clamp(13px, 1.2vw, 16px); }
+  .context-box { height: 292px; }
+  .swap-stage { height: 410px; }
+  .swap-side, .all2all-core { height: 362px; }
+  .attention-box { min-height: 350px; }
+}
+#qa-output {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  margin: 0;
+  padding: 20px;
+  color: #fff;
+  background: #000;
+  white-space: pre-wrap;
+  font: 12px/1.4 var(--mono);
+}
 </style>
 </head>
 <body>
-<main id="deck">
+<main id="deck" aria-label="DeepSpeed Ulysses presentation">
 
-<section class="slide active" data-title="Title">
+<section class="slide active" data-title="Context wall" data-steps="2" data-step="0">
   <div class="frame">
-    <div class="top"><span>GROUP PAPER PRESENTATION</span><span>DeepSpeed Ulysses · PODC ’24</span></div>
-    <div class="content center">
-      <span class="orb" style="left:11%;top:21%"></span><span class="orb" style="left:78%;top:18%"></span><span class="orb" style="left:72%;top:82%"></span>
-      <div class="chip reveal">Extreme long-sequence Transformer training</div>
-      <h1 class="reveal"><span class="gradient-text">Training past the context wall</span></h1>
-      <p class="lead reveal">DeepSpeed Ulysses makes <span class="cyan">sequence length</span> a dimension we can parallelize.</p>
-      <p class="small reveal">Sam Ade Jacobs et al. · Microsoft · arXiv:2309.14509</p>
-    </div>
-  </div>
-</section>
-
-<section class="slide" data-title="Examples">
-  <div class="frame">
-    <div class="top"><span>01 · EXAMPLES</span><span>What does “long sequence” mean?</span></div>
-    <div class="content wide-narrow">
-      <div class="stack">
-        <div class="kicker reveal">Concrete stakes</div>
-        <h2 class="reveal">One example can be too large for one GPU.</h2>
-        <p class="lead reveal">A whole artifact—not a short prompt—is the training sample.</p>
-      </div>
-      <div class="grid4">
-        <div class="card panel reveal"><div class="tag">Docs</div><h3>Book or legal case</h3><p class="small">100K+ tokens with dependencies across chapters.</p></div>
-        <div class="card panel reveal"><div class="tag">Bio</div><h3>Genome string</h3><p class="small">Signals can be millions of symbols apart.</p></div>
-        <div class="card panel reveal"><div class="tag">Climate</div><h3>1536² grid</h3><p class="small">Hundreds of thousands of patch tokens.</p></div>
-        <div class="card panel reveal"><div class="tag">Health</div><h3>Patient timeline</h3><p class="small">Years of visits, labs, diagnoses, medication.</p></div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="slide" data-title="Gap">
-  <div class="frame">
-    <div class="top"><span>02 · THE GAP</span><span>Classic parallelism misses the sequence axis</span></div>
-    <div class="content stack">
-      <div><div class="kicker reveal">Transformer axes</div><h2 class="reveal">Batch, hidden size, and layers are covered. Sequence length is the hard part.</h2></div>
-      <div class="grid4">
-        <div class="metric panel reveal"><div class="num">B</div><div><h3>Batch</h3><p class="small">data parallel</p></div></div>
-        <div class="metric panel reveal"><div class="num">H</div><div><h3>Hidden</h3><p class="small">tensor parallel</p></div></div>
-        <div class="metric panel reveal"><div class="num">L</div><div><h3>Layers</h3><p class="small">pipeline parallel</p></div></div>
-        <div class="metric panel reveal" style="border-color:rgba(98,232,255,.65)"><div class="num cyan">N</div><div><h3>Sequence</h3><p class="small">the missing axis</p></div></div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="slide" data-title="Core idea">
-  <div class="frame">
-    <div class="top"><span>03 · CORE IDEA</span><span>Sequence-parallel ↔ head-parallel</span></div>
-    <div class="content two">
-      <div class="stack">
-        <div class="kicker reveal">The trick</div>
-        <h2 class="reveal">Change the layout, not the attention math.</h2>
-        <p class="lead reveal">Most of the layer is split by <span class="cyan">tokens</span>. Attention is computed after an all-to-all regrouping by <span class="violet">heads</span>.</p>
-      </div>
-      <div class="diagram panel reveal">
-        <svg viewBox="0 0 560 390" role="img" aria-label="Sequence shards move to head shards">
-          <defs>
-            <linearGradient id="tokenGrad" x1="0" x2="1"><stop stop-color="#62e8ff"/><stop offset="1" stop-color="#5d8cff"/></linearGradient>
-            <linearGradient id="tokenGrad2" x1="0" x2="1"><stop stop-color="#72f0a8"/><stop offset="1" stop-color="#aa82ff"/></linearGradient>
-          </defs>
-          <text x="34" y="46" class="svg-title">Before attention</text>
-          <text x="352" y="46" class="svg-title">During attention</text>
-          <rect x="32" y="78" width="168" height="230" class="box"/>
-          <rect x="352" y="78" width="168" height="230" class="box purple"/>
-          <text x="54" y="108" class="svg-label">N/P tokens · all heads</text>
-          <text x="374" y="108" class="svg-label">full N · H/P heads</text>
-          <rect x="58" y="142" width="34" height="30" class="token"/><rect x="102" y="142" width="34" height="30" class="token"/><rect x="146" y="142" width="34" height="30" class="token"/>
-          <rect x="58" y="190" width="34" height="30" class="token g"/><rect x="102" y="190" width="34" height="30" class="token g"/><rect x="146" y="190" width="34" height="30" class="token g"/>
-          <path d="M214 150 C284 82, 324 82, 344 150" class="path"/>
-          <path d="M344 238 C286 322, 242 322, 214 238" class="path"/>
-          <rect x="400" y="184" width="34" height="30" class="token"/><rect x="444" y="184" width="34" height="30" class="token"/><rect x="488" y="184" width="34" height="30" class="token"/>
-          <text x="238" y="201" class="svg-label">all-to-all</text>
-        </svg>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="slide" data-title="Toy example">
-  <div class="frame">
-    <div class="top"><span>04 · TOY EXAMPLE</span><span>16 tokens · 4 GPUs · 8 heads</span></div>
-    <div class="content stack">
-      <div><div class="kicker reveal">Make it concrete</div><h2 class="reveal">All-to-all is a layout transform.</h2></div>
-      <div class="toy reveal">
-        <div class="toy-board panel">
-          <div class="tag">Before attention · sequence-parallel</div>
-          <div class="lane"><div class="lane-label">GPU 0</div><div class="toy-tokens"><span class="toy-token"></span><span class="toy-token"></span><span class="toy-token"></span><span class="toy-token"></span></div></div>
-          <div class="lane"><div class="lane-label">GPU 1</div><div class="toy-tokens"><span class="toy-token b"></span><span class="toy-token b"></span><span class="toy-token b"></span><span class="toy-token b"></span></div></div>
-          <div class="lane"><div class="lane-label">GPU 2</div><div class="toy-tokens"><span class="toy-token"></span><span class="toy-token"></span><span class="toy-token"></span><span class="toy-token"></span></div></div>
-          <div class="lane"><div class="lane-label">GPU 3</div><div class="toy-tokens"><span class="toy-token b"></span><span class="toy-token b"></span><span class="toy-token b"></span><span class="toy-token b"></span></div></div>
-          <p class="small">Each GPU owns 4 tokens and all heads.</p>
-        </div>
-        <div class="arrowfield">
-          <svg viewBox="0 0 90 330"><path class="path" d="M12 55 C82 88, 82 142, 12 175"/><path class="path" d="M78 155 C10 190, 10 240, 78 275"/></svg>
-        </div>
-        <div class="toy-board panel">
-          <div class="tag">During attention · head-parallel</div>
-          <div class="heads">
-            <div class="head"><h3>Heads 0-1</h3><p class="small">full 16-token view</p></div>
-            <div class="head"><h3>Heads 2-3</h3><p class="small">full 16-token view</p></div>
-            <div class="head"><h3>Heads 4-5</h3><p class="small">full 16-token view</p></div>
-            <div class="head"><h3>Heads 6-7</h3><p class="small">full 16-token view</p></div>
-          </div>
-          <p class="small">Each GPU computes different heads over the whole sequence.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="slide" data-title="Mechanism">
-  <div class="frame">
-    <div class="top"><span>05 · MECHANISM</span><span>Two all-to-alls per Transformer block</span></div>
-    <div class="content stack">
-      <div><div class="kicker reveal">The block choreography</div><h2 class="reveal">Only attention needs the layout swap.</h2></div>
-      <div class="grid4">
-        <div class="card panel reveal"><div class="num cyan">1</div><h3>Q/K/V</h3><p class="small">project while sequence-parallel</p></div>
-        <div class="card panel reveal"><div class="num violet">2</div><h3>All-to-all</h3><p class="small">tokens → heads</p></div>
-        <div class="card panel reveal"><div class="num green">3</div><h3>Attention</h3><p class="small">ordinary local full attention</p></div>
-        <div class="card panel reveal"><div class="num amber">4</div><h3>All-to-all back</h3><p class="small">heads → tokens for MLP/norms</p></div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="slide" data-title="Scaling">
-  <div class="frame">
-    <div class="top"><span>06 · SCALING</span><span>The communication trick</span></div>
-    <div class="content stack">
-      <div><div class="kicker reveal">Intuition before formula</div><h2 class="reveal">The win is fewer duplicated tokens.</h2></div>
-      <div class="eq reveal">
-        <div class="eq-card panel"><div class="eq-big">N = 1M</div><div class="tokens-row"><span class="tok"></span><span class="tok"></span><span class="tok"></span><span class="tok"></span><span class="tok"></span><span class="tok"></span><span class="tok"></span><span class="tok"></span><span class="tok"></span><span class="tok"></span><span class="tok"></span><span class="tok"></span><span class="tok"></span><span class="tok"></span><span class="tok"></span><span class="tok"></span><span class="tok"></span><span class="tok"></span></div><p class="small">full sequence</p></div>
-        <div class="eq-card panel"><div class="eq-big">P = 64</div><p class="small">GPUs in the sequence-parallel group</p></div>
-        <div class="eq-card panel"><div class="eq-big green">N/P ≈ 16K</div><p class="small">what each GPU carries outside attention</p></div>
-      </div>
-      <div class="formula-grid reveal">
-        <div class="formula panel"><h3>Megatron / ColAI</h3><div class="big red">4Nd</div><p class="small">all-gather style: everyone sees too much</p><div class="bar red"><span style="--w:100%"></span></div></div>
-        <div class="formula panel"><h3>Ulysses</h3><div class="big green">4Nd / P</div><p class="small">each pair exchanges only its slice</p><div class="bar"><span style="--w:18%"></span></div></div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="slide" data-title="Results">
-  <div class="frame">
-    <div class="top"><span>07 · RESULTS</span><span>What the paper claims</span></div>
-    <div class="content stack">
-      <div><div class="kicker reveal">Headline evaluation</div><h2 class="reveal">Longer sequences, higher throughput, less communication.</h2></div>
-      <div class="grid4">
-        <div class="metric panel reveal"><div class="num">1M+</div><div><h3>tokens</h3><p class="small">context on a 1.2B GPT model</p></div></div>
-        <div class="metric panel reveal"><div class="num">2.5×</div><div><h3>throughput</h3><p class="small">higher than SOTA baseline</p></div></div>
-        <div class="metric panel reveal"><div class="num">4×</div><div><h3>longer</h3><p class="small">sequences than existing systems</p></div></div>
-        <div class="metric panel reveal"><div class="num">10×</div><div><h3>less comm.</h3><p class="small">communication volume reduction</p></div></div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="slide" data-title="Critique">
-  <div class="frame">
-    <div class="top"><span>08 · CRITIQUE</span><span>Strong result, real assumptions</span></div>
-    <div class="content two">
-      <div class="stack"><div class="kicker reveal">Critical reading</div><h2 class="reveal">The trick is powerful—but not free.</h2></div>
-      <ul class="bullets panel" style="padding: clamp(20px, 2.8vw, 34px);">
-        <li class="reveal">All-to-all needs a fast interconnect.</li>
-        <li class="reveal">Parallel degree is capped by attention heads.</li>
-        <li class="reveal">“Constant communication” assumes N and P scale together.</li>
-        <li class="reveal">Newer Ring Attention / context-parallel methods are the obvious follow-up.</li>
-      </ul>
-    </div>
-  </div>
-</section>
-
-<section class="slide" data-title="Takeaway">
-  <div class="frame">
-    <div class="top"><span>09 · TAKEAWAY + Q&A</span><span>The slide to remember</span></div>
-    <div class="content stack">
+    <div class="top"><span>GROUP PAPER PRESENTATION</span><span>DeepSpeed Ulysses · long-sequence training</span></div>
+    <div class="content title-stage">
       <div>
-        <div class="kicker reveal">Main takeaway</div>
-        <h2 class="reveal">Sequence length becomes a parallel dimension.</h2>
-        <p class="lead reveal">Remember the layout story: <span class="cyan">tokens</span> → <span class="violet">heads</span> → attention → <span class="cyan">tokens</span>.</p>
+        <div class="badge"><span class="badge-dot"></span> The paper in one sentence</div>
+        <h1 style="margin-top:18px">Train past the <span class="accent">context wall</span>.</h1>
+        <p style="margin-top:18px">The paper demonstrates up to million-token training by changing how activations are laid out across GPUs.</p>
       </div>
-      <div class="grid3">
-        <div class="card panel reveal"><div class="tag">1</div><h3>Fixed GPU budget?</h3><p class="small">If N grows but P cannot, how much advantage remains?</p></div>
-        <div class="card panel reveal"><div class="tag">2</div><h3>Few attention heads?</h3><p class="small">How limiting is the head-count cap with GQA/MQA?</p></div>
-        <div class="card panel reveal"><div class="tag">3</div><h3>Newer methods?</h3><p class="small">Does Ring Attention replace Ulysses or compose with it?</p></div>
+      <div class="card context-box">
+        <div class="gpu-memory">
+          <div class="ctx-strip" aria-hidden="true">
+            <span class="token"></span><span class="token g"></span><span class="token y"></span><span class="token p"></span><span class="token"></span><span class="token g"></span><span class="token y"></span><span class="token p"></span><span class="token"></span><span class="token g"></span><span class="token y"></span><span class="token p"></span><span class="token"></span><span class="token g"></span><span class="token y"></span><span class="token p"></span><span class="token"></span><span class="token g"></span><span class="token y"></span><span class="token p"></span><span class="token"></span><span class="token g"></span><span class="token y"></span><span class="token p"></span><span class="token"></span><span class="token g"></span>
+          </div>
+          <div class="overflow-wall"></div>
+        </div>
+        <div class="ctx-caption small"><b class="pink">Problem:</b> a whole book, genome, or long record can be one example. Extreme lengths become activation-memory bound.</div>
       </div>
     </div>
+    <div class="step-indicator">step <span data-step-label></span></div>
+    <div class="hint">→ grows the sequence</div>
+  </div>
+</section>
+
+<section class="slide" data-title="Missing axis" data-steps="2" data-step="0">
+  <div class="frame">
+    <div class="top"><span>01 · BOTTLENECK</span><span>Classic parallelism misses sequence length</span></div>
+    <div class="content stack">
+      <div><div class="kicker">Transformer axes</div><h2>Batch, hidden size, and layers are covered. <span class="accent">Sequence length</span> is the hard part.</h2></div>
+      <div class="axis-grid">
+        <div class="card axis-card"><div class="axis-letter">B</div><p>Data parallel splits examples.</p></div>
+        <div class="card axis-card"><div class="axis-letter">H</div><p>Tensor parallel splits hidden dimensions.</p></div>
+        <div class="card axis-card"><div class="axis-letter">L</div><p>Pipeline parallel splits layers.</p></div>
+        <div class="card axis-card n"><div class="axis-letter">N</div><p>Ulysses targets the sequence axis.</p></div>
+      </div>
+      <div class="sequence-ribbon">
+        <span class="small" style="margin-right:12px;color:#e8f5ff;font-weight:900">one example:</span>
+        <div class="token-line" aria-hidden="true"><span class="token"></span><span class="token g"></span><span class="token y"></span><span class="token p"></span><span class="token"></span><span class="token g"></span><span class="token y"></span><span class="token p"></span><span class="token"></span><span class="token g"></span><span class="token y"></span><span class="token p"></span><span class="token dimtoken"></span><span class="token dimtoken"></span><span class="token dimtoken"></span></div>
+        <span class="fade">… too long</span>
+      </div>
+    </div>
+    <div class="step-indicator">step <span data-step-label></span></div>
+    <div class="hint">→ highlights N</div>
+  </div>
+</section>
+
+<section class="slide" data-title="Sequence-sharded" data-steps="1" data-step="0">
+  <div class="frame">
+    <div class="top"><span>02 · BEFORE ATTENTION</span><span>Sequence-parallel layout</span></div>
+    <div class="content seq-layout">
+      <div>
+        <div class="kicker">State A</div>
+        <h2>Before attention: split by <span class="accent">tokens</span>.</h2>
+        <p style="margin-top:16px">This is memory-friendly, but attention will soon need global token context.</p>
+        <div class="card long-strip" style="margin-top:20px">
+          <div class="small">full sequence, conceptually one training example</div>
+          <div class="token-line"><span class="token"></span><span class="token"></span><span class="token"></span><span class="token"></span><span class="token g"></span><span class="token g"></span><span class="token g"></span><span class="token g"></span><span class="token y"></span><span class="token y"></span><span class="token y"></span><span class="token y"></span><span class="token p"></span><span class="token p"></span><span class="token p"></span><span class="token p"></span></div>
+        </div>
+        <div class="sequence-note small"><b>Read the right side:</b> each row is one GPU, and each color is the token slice it owns.</div>
+      </div>
+      <div class="gpu-stack">
+        <div class="gpu big"><div class="gpu-label"><b>GPU 0</b><span>tokens 0–3</span></div><div class="token-line"><span class="token"></span><span class="token"></span><span class="token"></span><span class="token"></span></div><div class="heads-muted"><span class="head-pill">H0</span><span class="head-pill">H1</span><span class="head-pill">…</span><span class="head-pill">H7</span></div></div>
+        <div class="gpu big"><div class="gpu-label"><b>GPU 1</b><span>tokens 4–7</span></div><div class="token-line"><span class="token g"></span><span class="token g"></span><span class="token g"></span><span class="token g"></span></div><div class="heads-muted"><span class="head-pill">H0</span><span class="head-pill">H1</span><span class="head-pill">…</span><span class="head-pill">H7</span></div></div>
+        <div class="gpu big"><div class="gpu-label"><b>GPU 2</b><span>tokens 8–11</span></div><div class="token-line"><span class="token y"></span><span class="token y"></span><span class="token y"></span><span class="token y"></span></div><div class="heads-muted"><span class="head-pill">H0</span><span class="head-pill">H1</span><span class="head-pill">…</span><span class="head-pill">H7</span></div></div>
+        <div class="gpu big"><div class="gpu-label"><b>GPU 3</b><span>tokens 12–15</span></div><div class="token-line"><span class="token p"></span><span class="token p"></span><span class="token p"></span><span class="token p"></span></div><div class="heads-muted"><span class="head-pill">H0</span><span class="head-pill">H1</span><span class="head-pill">…</span><span class="head-pill">H7</span></div></div>
+      </div>
+    </div>
+    <div class="step-indicator">step <span data-step-label></span></div>
+    <div class="hint">colors = token slices</div>
+  </div>
+</section>
+
+<section class="slide" data-title="All-to-all swap" data-steps="3" data-step="0">
+  <div class="frame">
+    <div class="top"><span>03 · THE KEY MOVE</span><span>All-to-all changes token layout into head layout</span></div>
+    <div class="content stack">
+      <div><div class="kicker">State transition</div><h2>All-to-all is not decoration. It is the layout transform.</h2></div>
+      <div class="swap-stage">
+        <div class="card swap-side before-side">
+          <h3>Before: token shards</h3><p class="small">each GPU has some tokens, all heads</p>
+          <div class="gpu"><div class="gpu-label"><b>GPU 0</b><span>T0–3</span></div><div class="token-line"><span class="token"></span><span class="token"></span><span class="token"></span><span class="token"></span></div></div>
+          <div class="gpu"><div class="gpu-label"><b>GPU 1</b><span>T4–7</span></div><div class="token-line"><span class="token g"></span><span class="token g"></span><span class="token g"></span><span class="token g"></span></div></div>
+          <div class="gpu"><div class="gpu-label"><b>GPU 2</b><span>T8–11</span></div><div class="token-line"><span class="token y"></span><span class="token y"></span><span class="token y"></span><span class="token y"></span></div></div>
+          <div class="gpu"><div class="gpu-label"><b>GPU 3</b><span>T12–15</span></div><div class="token-line"><span class="token p"></span><span class="token p"></span><span class="token p"></span><span class="token p"></span></div></div>
+        </div>
+        <div class="all2all-core">
+          <svg viewBox="0 0 140 390" aria-hidden="true"><path d="M12 58 C128 96 128 260 12 330"/><path d="M128 58 C12 96 12 260 128 330"/><path d="M70 32 C22 136 118 238 70 358"/></svg>
+          <span class="packet p1"></span><span class="packet p2"></span><span class="packet p3"></span><span class="packet p4"></span>
+          <strong>peer<br>all-to-all<br>collective</strong>
+        </div>
+        <div class="card swap-side after-side">
+          <h3>After: head shards</h3><p class="small">all colors = full sequence; labels = assigned heads</p>
+          <div class="head-card"><div class="gpu-label"><b>GPU 0</b><span>H0–1</span></div><div class="token-line"><span class="token"></span><span class="token g"></span><span class="token y"></span><span class="token p"></span></div></div>
+          <div class="head-card"><div class="gpu-label"><b>GPU 1</b><span>H2–3</span></div><div class="token-line"><span class="token"></span><span class="token g"></span><span class="token y"></span><span class="token p"></span></div></div>
+          <div class="head-card"><div class="gpu-label"><b>GPU 2</b><span>H4–5</span></div><div class="token-line"><span class="token"></span><span class="token g"></span><span class="token y"></span><span class="token p"></span></div></div>
+          <div class="head-card"><div class="gpu-label"><b>GPU 3</b><span>H6–7</span></div><div class="token-line"><span class="token"></span><span class="token g"></span><span class="token y"></span><span class="token p"></span></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="step-indicator">step <span data-step-label></span></div>
+    <div class="hint">→ before · moving · after</div>
+  </div>
+</section>
+
+<section class="slide" data-title="Local attention" data-steps="2" data-step="0">
+  <div class="frame">
+    <div class="top"><span>04 · WHY IT WORKS</span><span>Attention is local after the layout swap</span></div>
+    <div class="content attention-stage">
+      <div>
+        <div class="kicker">State B</div>
+        <h2>Each GPU now has the <span class="green">full sequence</span> for its assigned heads.</h2>
+        <p style="margin-top:16px">That is enough because multi-head attention can be computed independently per head before the output projection.</p>
+      </div>
+      <div class="card attention-box">
+        <h3>GPU 0 computes attention for heads 0–1</h3>
+        <p class="small">full sequence is local, but only for this head group</p>
+        <div class="head-columns">
+          <div class="card head-col"><div class="gpu-label"><b>H0</b><span>tokens 0–15</span></div><div class="token-line"><span class="token"></span><span class="token g"></span><span class="token y"></span><span class="token p"></span><span class="token"></span><span class="token g"></span></div></div>
+          <div class="card head-col"><div class="gpu-label"><b>H1</b><span>tokens 0–15</span></div><div class="token-line"><span class="token"></span><span class="token g"></span><span class="token y"></span><span class="token p"></span><span class="token"></span><span class="token g"></span></div></div>
+        </div>
+        <div class="matrix" aria-label="attention matrix">
+          <span class="cell hot"></span><span class="cell"></span><span class="cell"></span><span class="cell hot"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell hot"></span><span class="cell"></span><span class="cell"></span>
+          <span class="cell"></span><span class="cell hot"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell hot"></span><span class="cell"></span><span class="cell"></span><span class="cell hot"></span><span class="cell"></span>
+          <span class="cell"></span><span class="cell"></span><span class="cell hot"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell hot"></span><span class="cell"></span><span class="cell"></span><span class="cell hot"></span>
+        </div>
+      </div>
+    </div>
+    <div class="step-indicator">step <span data-step-label></span></div>
+    <div class="hint">→ lights up local attention</div>
+  </div>
+</section>
+
+<section class="slide" data-title="Block recipe" data-steps="2" data-step="0">
+  <div class="frame">
+    <div class="top"><span>05 · TRANSFORMER BLOCK</span><span>Two all-to-alls per block</span></div>
+    <div class="content stack">
+      <div><div class="kicker">Operational rhythm</div><h2>The Transformer math stays the same. Ulysses changes tensor placement twice.</h2></div>
+      <div class="recipe">
+        <div class="card step-card"><div class="step-num">1</div><h3>Q/K/V</h3><p>Project from token-sharded activations.</p></div>
+        <div class="card step-card exchange-step"><div class="step-num">2</div><h3>All-to-all</h3><p>Tokens → heads before attention.</p></div>
+        <div class="card step-card"><div class="step-num">3</div><h3>Attention</h3><p>Each GPU computes assigned heads locally.</p></div>
+        <div class="card step-card exchange-step"><div class="step-num">4</div><h3>All-to-all back</h3><p>Heads → tokens for feed-forward.</p></div>
+      </div>
+      <p><b class="accent">Memorable version:</b> tokens → heads → attention → tokens.</p>
+    </div>
+    <div class="step-indicator">step <span data-step-label></span></div>
+    <div class="hint">→ highlights communication points</div>
+  </div>
+</section>
+
+<section class="slide" data-title="Scaling" data-steps="2" data-step="0">
+  <div class="frame">
+    <div class="top"><span>06 · SCALING INTUITION</span><span>Why per-GPU cost becomes manageable</span></div>
+    <div class="content stack">
+      <div><div class="kicker">The win</div><h2>Split the sequence across <span class="green">P</span> GPUs, so each GPU carries roughly <span class="green">N/P</span> tokens.</h2></div>
+      <div class="scale-row">
+        <div class="card formula"><span class="small">full sequence</span><span class="big">N = 1M</span></div>
+        <div class="card formula"><span class="small">sequence-parallel GPUs</span><span class="big">P = 64</span></div>
+        <div class="card formula"><span class="small">per-GPU token slice</span><span class="big green">N/P ≈ 16K</span></div>
+      </div>
+      <div class="compare">
+        <div class="card bar-card"><h3>Baseline communication</h3><p class="small"><b class="pink">4Nh</b> per link; not divided by P.</p><div class="bar"><span class="long"></span></div></div>
+        <div class="card bar-card"><h3>Ulysses communication</h3><p class="small"><b class="green">4Nh / P</b> per link; O(N/P) communication.</p><div class="bar"><span class="short"></span></div></div>
+      </div>
+    </div>
+    <div class="step-indicator">step <span data-step-label></span></div>
+    <div class="hint">→ compares bars</div>
+  </div>
+</section>
+
+<section class="slide" data-title="Results and critique" data-steps="2" data-step="0">
+  <div class="frame">
+    <div class="top"><span>07 · CLAIMS + CRITIQUE</span><span>Strong result, real assumptions</span></div>
+    <div class="content stack">
+      <div><div class="kicker">Reported evaluation</div><h2>Paper-reported gains: longer sequences, higher throughput, less communication.</h2></div>
+      <div class="results-grid">
+        <div class="card result"><div><div class="num">1M+</div><h3>tokens</h3></div><p>context on 1.2B GPT-style model.</p></div>
+        <div class="card result"><div><div class="num">2.5×</div><h3>throughput</h3></div><p>up to 2.5× throughput vs. existing SOTA baseline.</p></div>
+        <div class="card result"><div><div class="num">4×</div><h3>longer</h3></div><p>larger sequence length than existing systems.</p></div>
+        <div class="card result"><div><div class="num">10×+</div><h3>less comm.</h3></div><p>over 10× communication reduction.</p></div>
+      </div>
+      <div class="critique-grid">
+        <div class="card critique small"><b>Fast fabric assumed</b>Gains rely on efficient all-to-all interconnect.</div>
+        <div class="card critique small"><b>Head divisibility</b>SP size must divide attention heads.</div>
+        <div class="card critique small"><b>Sparse kernel caveat</b>Paper notes local sparse attention can bottleneck throughput.</div>
+      </div>
+    </div>
+    <div class="step-indicator">step <span data-step-label></span></div>
+    <div class="hint">→ reveals critique</div>
+  </div>
+</section>
+
+<section class="slide" data-title="Takeaway" data-steps="2" data-step="0">
+  <div class="frame">
+    <div class="top"><span>08 · FINAL TAKEAWAY</span><span>The slide to remember</span></div>
+    <div class="content stack">
+      <div><div class="kicker">One-line answer</div><h2>Ulysses makes sequence length a <span class="accent">parallel dimension</span>.</h2></div>
+      <div class="final-map">
+        <div class="card map-card"><div class="map-icon accent">TOK</div><h3>tokens split</h3><p class="small">sequence shards across GPUs</p></div>
+        <div class="card map-card"><div class="map-icon violet">HEAD</div><h3>heads split</h3><p class="small">all-to-all regroups activations</p></div>
+        <div class="card map-card"><div class="map-icon green">ATTN</div><h3>attention</h3><p class="small">ordinary local attention per head group</p></div>
+        <div class="card map-card"><div class="map-icon accent">TOK</div><h3>tokens back</h3><p class="small">all-to-all returns to sequence layout</p></div>
+      </div>
+      <div class="final-qa">
+        <div class="card qa-card small"><b>Best use case?</b>Extremely long sequences where one example is the bottleneck.</div>
+        <div class="card qa-card small"><b>Main cost?</b>Fast all-to-all communication is required.</div>
+        <div class="card qa-card small"><b>Main limit?</b>SP size must divide attention heads.</div>
+      </div>
+    </div>
+    <div class="step-indicator">step <span data-step-label></span></div>
+    <div class="hint">→ reveals Q&A prompts</div>
   </div>
 </section>
 
 </main>
-<div class="progress" id="progress"></div>
-<div class="navhint">← / → · space · swipe</div>
+<div id="progress" class="progress" aria-hidden="true"></div>
 <script>
 class Deck {
   constructor() {
     this.slides = [...document.querySelectorAll('.slide')];
     this.i = 0;
+    this.step = 0;
     this.progress = document.getElementById('progress');
     this.bind();
-    this.show(0);
+    this.loadInitial();
+  }
+  maxStep(i = this.i) {
+    return Number(this.slides[i].dataset.steps || 1) - 1;
+  }
+  loadInitial() {
+    const params = new URLSearchParams(location.search);
+    const hash = location.hash.replace('#', '');
+    if (params.has('slide')) {
+      this.show(Number(params.get('slide')) - 1, Number(params.get('step') || 0), false);
+    } else if (/^\d+(\.\d+)?$/.test(hash)) {
+      const [s, st = '0'] = hash.split('.');
+      this.show(Number(s) - 1, Number(st), false);
+    } else {
+      this.show(0, 0, false);
+    }
+    if (params.get('qa') === '1') requestAnimationFrame(() => this.emitQA());
   }
   bind() {
     document.addEventListener('keydown', e => {
       if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); this.next(); }
       if (['ArrowLeft', 'PageUp', 'Backspace'].includes(e.key)) { e.preventDefault(); this.prev(); }
-      if (e.key === 'Home') this.show(0);
-      if (e.key === 'End') this.show(this.slides.length - 1);
+      if (e.key === 'Home') this.show(0, 0);
+      if (e.key === 'End') this.show(this.slides.length - 1, this.maxStep(this.slides.length - 1));
     });
     let locked = false;
     document.addEventListener('wheel', e => {
-      if (Math.abs(e.deltaY) < 35 || locked) return;
-      locked = true; e.deltaY > 0 ? this.next() : this.prev();
-      setTimeout(() => locked = false, 480);
+      if (locked || Math.abs(e.deltaY) < 20) return;
+      locked = true;
+      e.deltaY > 0 ? this.next() : this.prev();
+      setTimeout(() => locked = false, 460);
     }, { passive: true });
-    let sx = null;
-    document.addEventListener('touchstart', e => sx = e.changedTouches[0].clientX, { passive: true });
+    let x0 = null;
+    document.addEventListener('touchstart', e => x0 = e.touches[0].clientX, { passive: true });
     document.addEventListener('touchend', e => {
-      if (sx === null) return;
-      const dx = e.changedTouches[0].clientX - sx;
+      if (x0 == null) return;
+      const dx = e.changedTouches[0].clientX - x0;
       if (Math.abs(dx) > 45) dx < 0 ? this.next() : this.prev();
-      sx = null;
+      x0 = null;
     }, { passive: true });
   }
-  show(n) {
-    this.i = Math.max(0, Math.min(this.slides.length - 1, n));
+  show(slideIndex, stepIndex = 0, updateHash = true) {
+    this.i = Math.max(0, Math.min(this.slides.length - 1, slideIndex));
+    this.step = Math.max(0, Math.min(this.maxStep(this.i), stepIndex));
     this.slides.forEach((s, idx) => {
-      s.classList.toggle('active', idx === this.i);
+      const active = idx === this.i;
+      s.classList.toggle('active', active);
       s.classList.toggle('exit-left', idx < this.i);
-      s.setAttribute('aria-hidden', idx === this.i ? 'false' : 'true');
+      s.setAttribute('aria-hidden', active ? 'false' : 'true');
+      s.dataset.step = active ? String(this.step) : '0';
+      const label = s.querySelector('[data-step-label]');
+      if (label) label.textContent = `${active ? this.step + 1 : 1}/${Number(s.dataset.steps || 1)}`;
     });
-    this.progress.style.width = `${((this.i + 1) / this.slides.length) * 100}%`;
-    history.replaceState(null, '', `#${String(this.i + 1).padStart(2, '0')}`);
+    const absolute = this.slides.slice(0, this.i).reduce((sum, s) => sum + Number(s.dataset.steps || 1), 0) + this.step + 1;
+    const total = this.slides.reduce((sum, s) => sum + Number(s.dataset.steps || 1), 0);
+    this.progress.style.width = `${(absolute / total) * 100}%`;
+    if (updateHash) history.replaceState(null, '', `#${this.i + 1}.${this.step}`);
   }
-  next() { this.show(this.i + 1); }
-  prev() { this.show(this.i - 1); }
+  next() {
+    if (this.step < this.maxStep()) this.show(this.i, this.step + 1);
+    else this.show(this.i + 1, 0);
+  }
+  prev() {
+    if (this.step > 0) this.show(this.i, this.step - 1);
+    else this.show(this.i - 1, this.maxStep(this.i - 1));
+  }
+  emitQA() {
+    const slide = this.slides[this.i];
+    const frame = slide.querySelector('.frame');
+    const fr = frame.getBoundingClientRect();
+    const bad = [];
+    for (const el of frame.querySelectorAll('*')) {
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      if (r.width < 1 || r.height < 1 || cs.display === 'none' || cs.visibility === 'hidden') continue;
+      if (r.left < fr.left - 1 || r.top < fr.top - 1 || r.right > fr.right + 1 || r.bottom > fr.bottom + 1) {
+        bad.push({
+          tag: el.tagName,
+          cls: String(el.className || ''),
+          text: (el.innerText || el.textContent || '').trim().slice(0, 60),
+          rect: [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)]
+        });
+      }
+    }
+    const data = {
+      slide: this.i + 1,
+      step: this.step,
+      title: slide.dataset.title,
+      frame: [Math.round(fr.width), Math.round(fr.height)],
+      viewport: [innerWidth, innerHeight],
+      overflowCount: bad.length,
+      overflow: bad.slice(0, 12)
+    };
+    const pre = document.createElement('pre');
+    pre.id = 'qa-output';
+    pre.textContent = JSON.stringify(data, null, 2);
+    document.body.appendChild(pre);
+  }
 }
-const initialHash = Number(location.hash.replace('#', ''));
-const deck = new Deck();
-if (initialHash) deck.show(initialHash - 1);
+window.deck = new Deck();
 </script>
 </body>
 </html>

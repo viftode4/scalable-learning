@@ -1,38 +1,51 @@
-# DeepSpeed Ulysses presentation outline
+# Group 7 — DeepSpeed Ulysses presentation outline
 
-Target: **8-10 minutes** plus Q&A. Keep the slides visual; put detail in speech.
+Goal: make the mechanism understandable from the visuals before the speaker explains it. Presentation slot: Tuesday 9 June 2026, 14:30, Group 7.
 
-Deck: [`deepspeed-ulysses-presentation.html`](deepspeed-ulysses-presentation.html)
+The deck is now a **9-slide / 18-state visual explainer**. The right arrow advances animation states first, then slides.
 
-## Final short story arc
+## Story arc
 
-1. **Title — Training past the context wall**
-   Frame Ulysses as a systems paper about parallelizing sequence length.
-2. **Examples**
-   Book/legal case, genome string, climate grid, patient timeline.
-3. **The gap**
-   Batch, hidden, and layer axes are covered; sequence length is the missing axis.
-4. **Core idea**
-   Change layout, not attention math: sequence-parallel outside attention, head-parallel during attention.
-5. **Toy example**
-   16 tokens / 4 GPUs / 8 heads. This is the main explanation slide.
-6. **Mechanism**
-   Q/K/V → all-to-all → local attention → all-to-all back.
-7. **Scaling**
-   Ground `4Nd/P` with `N = 1M`, `P = 64`, `N/P ≈ 16K`.
-8. **Results**
-   1M+ tokens, 2.5× throughput, 4× longer sequences, 10× less communication.
-9. **Critique**
-   Network dependence, head-count cap, N/P scaling assumption, newer context-parallel methods.
-10. **Takeaway + Q&A**
-   Tokens → heads → attention → tokens, plus three discussion prompts.
+1. **Context wall** — 2 states
+   A short token strip fits in one GPU; then it grows past the GPU memory boundary.
+   Takeaway: one long document/genome/timeline can be a single training example, making activation memory the bottleneck.
 
-## Suggested speaker split
+2. **Missing axis** — 2 states
+   Existing parallelism covers batch `B`, hidden `H`, and layers `L`; then sequence `N` is highlighted.
+   Takeaway: Ulysses targets sequence length as the parallel dimension.
 
-- **Presenter 1:** slides 1-3 — examples and problem.
-- **Presenter 2:** slides 4-7 — mechanism and scaling.
-- **Presenter 3:** slides 8-10 — results, critique, and discussion.
+3. **Sequence-sharded layout** — 1 state
+   Four GPUs each own four toy tokens, with all heads still conceptually present.
+   Takeaway: before attention, memory is saved by splitting tokens across devices.
 
-## Rehearsal rule
+4. **All-to-all layout swap** — 3 states
+   Before: GPUs own token chunks. Moving: packets cross through a peer all-to-all collective. After: GPUs own all tokens for a subset of heads.
+   Takeaway: all-to-all is the central layout transform, not decorative communication.
 
-Do not rush slide 5. If time is short, compress slide 8; do not cut the toy example or critique.
+5. **Local attention** — 2 states
+   Zoom into one GPU; then the attention matrix lights up.
+   Takeaway: after the swap, ordinary attention can run locally per head group.
+
+6. **Transformer block recipe** — 2 states
+   Q/K/V → all-to-all → attention → all-to-all back, with the communication steps highlighted.
+   Takeaway: the Transformer math stays the same; activation placement changes twice.
+
+7. **Scaling intuition** — 2 states
+   Show `N = 1M`, `P = 64`, `N/P ≈ 16K`; then compare baseline and Ulysses communication bars.
+   Takeaway: per-GPU token slice and communication shrink with sequence parallel degree.
+
+8. **Claims + critique** — 2 states
+   Show headline paper claims; then reveal assumptions.
+   Takeaway: strong reported results, but fast all-to-all, head divisibility, and local attention kernels matter.
+
+9. **Final takeaway** — 2 states
+   Repeat the mechanism as a four-part map: tokens → heads → attention → tokens; then reveal Q&A prompts.
+   Takeaway: Ulysses makes sequence length a parallel dimension by temporarily changing the activation layout.
+
+## Rehearsal spine
+
+Repeat this phrase several times:
+
+> **tokens → heads → attention → tokens**
+
+That is the mechanism the audience should remember.
