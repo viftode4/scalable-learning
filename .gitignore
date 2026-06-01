@@ -57,7 +57,7 @@ code/harness/rolora-supplement/RoLoRA-code/sst2/.locks/
 
 # Generated presentation inspection thumbnails
 docs/presentations/**/source-thumbnails/
-docs/presentations/**/preview-screenshots/
+docs/presentations/**/preview-screenshots*/
 
 .env
 docs/presentations/**/paper-page-previews/
