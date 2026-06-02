@@ -4,6 +4,40 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>DeepSpeed Ulysses — visual explainer</title>
+
+<script>
+/* ?still=1 — capture aid: snap CSS transitions so headless screenshots show settled states */
+if (new URLSearchParams(location.search).has('still')) document.documentElement.classList.add('still');
+/* early error trap so headless screenshots reveal module/runtime failures in #dbg */
+window.addEventListener('error', e => {
+  const d = document.getElementById('dbg'); if (!d) return;
+  d.style.display = 'block';
+  const msg = e.message ? `${e.message} @ ${e.filename||''}:${e.lineno||''}` : `resource error: ${(e.target&&(e.target.src||e.target.href))||'?'}`;
+  d.textContent = 'ERR: ' + msg + '\n' + (d.textContent || '');
+}, true);
+window.addEventListener('unhandledrejection', e => {
+  const d = document.getElementById('dbg'); if (!d) return;
+  d.style.display = 'block';
+  d.textContent = 'REJECT: ' + (e.reason && (e.reason.stack || e.reason.message) || e.reason) + '\n' + (d.textContent || '');
+});
+</script>
+
+<!-- Math (KaTeX, vendored offline). UMD global `katex`. -->
+<link rel="stylesheet" href="./vendor/katex/katex.min.css" />
+<script defer src="./vendor/katex/katex.min.js"></script>
+
+<!-- 3D + motion (vendored offline; jsDelivr fallback commented in vendor/IMPORTMAP-snippet.html) -->
+<script type="importmap">
+{
+  "imports": {
+    "three":                 "./vendor/three/build/three.module.js",
+    "three/addons/":         "./vendor/three/examples/jsm/",
+    "gsap":                  "./vendor/gsap/index.js",
+    "gsap/MotionPathPlugin": "./vendor/gsap/MotionPathPlugin.js"
+  }
+}
+</script>
+
 <style>
 :root {
   color-scheme: dark;
@@ -21,6 +55,12 @@
   --pink: #ff6f91;
   --violet: #b997ff;
   --red: #ff456b;
+  /* identity channel aliases (object permanence) */
+  --tok0: #67e8f9;   /* token 0 — cyan  */
+  --tok1: #7cf7b1;   /* token 1 — green */
+  --tok2: #b997ff;   /* token 2 — violet */
+  --tok3: #ff6f91;   /* token 3 — pink  */
+  --head-glow: #ffd166; /* head channel highlight (yellow) */
   --radius: 24px;
   --shadow: 0 24px 90px rgba(0, 0, 0, .42);
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
@@ -172,6 +212,7 @@ p {
 .pink { color: var(--pink); }
 .violet { color: var(--violet); }
 .yellow { color: var(--yellow); }
+.red { color: var(--red); }
 .two { grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); align-items: center; }
 .stack { align-content: center; }
 .center { place-items: center; text-align: center; }
@@ -229,7 +270,76 @@ p {
   z-index: 6;
 }
 
-/* shared diagram primitives */
+/* ===== 3D world canvas ===== */
+#world {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;            /* above .frame bg, below .content (z2) and .top (z5) */
+  display: block;
+  pointer-events: none;
+}
+#world.hidden { display: none; }
+
+/* world-slide content: compact text top, equation bottom, 3D fills the middle */
+.content.world { display: flex; flex-direction: column; justify-content: space-between; gap: 8px; }
+.content.world .wtop { max-width: 62%; }
+.content.world h2 { font-size: clamp(22px, 3.0vw, 40px); max-width: 100%; }
+.content.world .wtop p { font-size: clamp(12px, 1.05vw, 15px); max-width: 30ch; }
+.content.world .weq { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
+
+/* KaTeX secondary "confirmation" layer */
+.eq {
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity .5s ease, transform .5s ease;
+  padding: 9px 14px;
+  border-radius: 12px;
+  background: rgba(8,12,22,.62);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(3px);
+  font-size: clamp(13px, 1.3vw, 19px);
+  width: max-content;
+  max-width: 100%;
+}
+.eq.on { opacity: 1; transform: translateY(0); }
+.eq .katex { color: #eaf4ff; }
+.mantra {
+  font: 800 clamp(11px, 1.15vw, 15px)/1 var(--mono);
+  letter-spacing: .04em;
+  color: var(--dim);
+}
+.mantra b { color: var(--cyan); transition: color .3s ease; }
+
+/* labels pinned over the canvas (projected from 3D) */
+.pinlabel {
+  position: absolute;
+  z-index: 3;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  font: 800 clamp(9px,.9vw,12px)/1 var(--mono);
+  letter-spacing: .04em;
+  color: #dce8f5;
+  text-shadow: 0 1px 6px rgba(0,0,0,.8);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity .3s ease;
+}
+.pinlabel.on { opacity: 1; }
+
+/* animations (cheap accents for non-3D slides) */
+@keyframes pulse {
+  0%, 100% { opacity: .62; filter: drop-shadow(0 0 8px rgba(103,232,249,.35)); }
+  50% { opacity: 1; filter: drop-shadow(0 0 24px rgba(103,232,249,.85)); }
+}
+@keyframes grow { from { transform: scaleX(.12); } to { transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition-duration: .01ms !important; }
+}
+html.still *, html.still *::before, html.still *::after { transition-duration: 0s !important; animation-duration: 0s !important; }
+
+/* shared diagram primitives (used by CSS slides 1 & 2) */
 .token-line { display: flex; gap: 6px; align-items: center; min-width: 0; }
 .token {
   width: clamp(13px, 1.55vw, 20px);
@@ -240,506 +350,105 @@ p {
   opacity: .94;
 }
 .g { background: linear-gradient(180deg, var(--green), #3bcaa0); box-shadow: 0 0 16px rgba(124,247,177,.36); }
-.y { background: linear-gradient(180deg, var(--yellow), #f28f3b); box-shadow: 0 0 16px rgba(255,209,102,.34); }
+.v { background: linear-gradient(180deg, var(--violet), #7d5cff); box-shadow: 0 0 16px rgba(185,151,255,.34); }
 .p { background: linear-gradient(180deg, var(--pink), #b86cff); box-shadow: 0 0 16px rgba(255,111,145,.34); }
 .dimtoken { opacity: .25; box-shadow: none; }
-.gpu {
-  padding: clamp(10px, 1.15vw, 14px);
-  min-width: 0;
-  border: 1px solid var(--line);
-  background: rgba(255,255,255,.055);
-  border-radius: 16px;
-}
-.gpu-label {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  color: #dce8f5;
-  font: 900 clamp(10px, .95vw, 12px)/1 var(--mono);
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  margin-bottom: 8px;
-}
-.gpu-label span:last-child { color: var(--dim); font-weight: 800; }
-
-/* animations */
-@keyframes pulse {
-  0%, 100% { opacity: .62; filter: drop-shadow(0 0 8px rgba(103,232,249,.35)); }
-  50% { opacity: 1; filter: drop-shadow(0 0 24px rgba(103,232,249,.85)); }
-}
-@keyframes dash { to { stroke-dashoffset: -120; } }
-@keyframes grow { from { transform: scaleX(.12); } to { transform: scaleX(1); } }
-@keyframes packet-lr {
-  0% { transform: translateX(-16px); opacity: .18; }
-  35% { opacity: 1; }
-  100% { transform: translateX(170px); opacity: .22; }
-}
-@keyframes matrix-scan {
-  0% { transform: translate(-18px, -18px); opacity: .22; }
-  45% { opacity: 1; }
-  100% { transform: translate(190px, 118px); opacity: .18; }
-}
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation: none !important; transition-duration: .01ms !important; }
-}
 
 /* Slide 1: context wall */
 .title-stage { display: grid; grid-template-columns: 1.03fr .97fr; align-items: center; gap: clamp(24px, 4vw, 56px); }
-.context-box {
-  height: 330px;
-  padding: 26px;
-  position: relative;
-  overflow: hidden;
-  display: grid;
-  align-content: center;
-  gap: 18px;
-}
+.context-box { height: 330px; padding: 26px; position: relative; overflow: hidden; display: grid; align-content: center; gap: 18px; }
 .gpu-memory {
-  height: 132px;
-  border: 2px solid rgba(103,232,249,.38);
-  border-radius: 20px;
-  background: rgba(103,232,249,.055);
-  position: relative;
-  overflow: hidden;
+  height: 132px; border: 2px solid rgba(103,232,249,.38); border-radius: 20px;
+  background: rgba(103,232,249,.055); position: relative; overflow: hidden;
 }
 .gpu-memory::before {
-  content: "ONE GPU MEMORY";
-  position: absolute;
-  left: 14px;
-  top: 12px;
-  color: var(--dim);
-  font: 900 11px/1 var(--mono);
-  letter-spacing: .12em;
+  content: "ONE GPU MEMORY"; position: absolute; left: 14px; top: 12px;
+  color: var(--dim); font: 900 11px/1 var(--mono); letter-spacing: .12em;
 }
-.ctx-strip {
-  position: absolute;
-  left: 18px;
-  top: 62px;
-  width: 28%;
-  display: flex;
-  gap: 5px;
-  transition: width .9s cubic-bezier(.2,.8,.2,1);
-}
+.ctx-strip { position: absolute; left: 18px; top: 62px; width: 28%; display: flex; gap: 5px; transition: width .9s cubic-bezier(.2,.8,.2,1); }
 .slide[data-step="1"] .ctx-strip { width: 126%; }
-.overflow-wall {
-  position: absolute;
-  right: 0;
-  top: 0;
-  width: 7px;
-  height: 100%;
-  background: var(--red);
-  opacity: .2;
-  box-shadow: none;
-  transition: opacity .4s ease, box-shadow .4s ease;
-}
-.slide[data-step="1"] .overflow-wall {
-  opacity: 1;
-  box-shadow: 0 0 28px rgba(255,69,107,.8);
-}
-.ctx-caption {
-  padding: 15px 16px;
-  border-radius: 16px;
-  background: rgba(255,111,145,.10);
-  border: 1px solid rgba(255,111,145,.28);
-  color: #ffe6ec;
-}
+.overflow-wall { position: absolute; right: 0; top: 0; width: 7px; height: 100%; background: var(--red); opacity: .2; transition: opacity .4s ease, box-shadow .4s ease; }
+.slide[data-step="1"] .overflow-wall { opacity: 1; box-shadow: 0 0 28px rgba(255,69,107,.8); }
+.ctx-caption { padding: 15px 16px; border-radius: 16px; background: rgba(255,111,145,.10); border: 1px solid rgba(255,111,145,.28); color: #ffe6ec; }
 
 /* Slide 2: axes */
 .axis-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; }
-.axis-card {
-  height: 170px;
-  padding: 18px;
-  position: relative;
-  overflow: hidden;
-}
-.axis-letter {
-  font-size: clamp(48px, 5vw, 72px);
-  line-height: .8;
-  font-weight: 950;
-  letter-spacing: -.08em;
-}
+.axis-card { height: 170px; padding: 18px; position: relative; overflow: hidden; }
+.axis-letter { font-size: clamp(48px, 5vw, 72px); line-height: .8; font-weight: 950; letter-spacing: -.08em; }
 .axis-card p { font-size: clamp(11px, .96vw, 13px); margin-top: 12px; }
-.axis-card.n {
-  border-color: rgba(103,232,249,.22);
-  transition: transform .35s ease, border-color .35s ease, box-shadow .35s ease;
-}
+.axis-card.n { border-color: rgba(103,232,249,.22); transition: transform .35s ease, border-color .35s ease, box-shadow .35s ease; }
 .slide[data-step="1"] .axis-card:not(.n) { opacity: .42; }
 .slide[data-step="1"] .axis-card.n {
-  transform: translateY(-10px) scale(1.04);
-  border-color: rgba(103,232,249,.75);
+  transform: translateY(-10px) scale(1.04); border-color: rgba(103,232,249,.75);
   box-shadow: 0 0 0 1px rgba(103,232,249,.20) inset, 0 20px 60px rgba(103,232,249,.12);
 }
 .axis-card.n .axis-letter { color: var(--cyan); }
-.sequence-ribbon {
-  height: 68px;
-  border-radius: 18px;
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(255,255,255,.045);
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  padding: 0 14px;
-}
+.sequence-ribbon { height: 68px; border-radius: 18px; border: 1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.045); overflow: hidden; display: flex; align-items: center; padding: 0 14px; }
 .sequence-ribbon .fade { margin-left: auto; color: var(--pink); font-weight: 900; }
 
-/* Slide 3: before attention */
-.seq-layout { display: grid; grid-template-columns: .9fr 1.1fr; align-items: center; gap: 30px; }
-.gpu-stack { display: grid; gap: 12px; }
-.gpu.big { min-height: 84px; padding: 14px 16px; }
-.heads-muted {
-  display: flex;
-  gap: 5px;
-  margin-top: 12px;
-  flex-wrap: wrap;
-}
-.head-pill {
-  padding: 5px 8px;
-  border-radius: 999px;
-  background: rgba(185,151,255,.10);
-  border: 1px solid rgba(185,151,255,.22);
-  color: rgba(235,225,255,.72);
-  font: 800 10px/1 var(--mono);
-}
-.long-strip {
-  min-height: 112px;
-  padding: 18px;
-  display: grid;
-  align-content: center;
-  gap: 12px;
-  overflow: hidden;
-}
-.sequence-note {
-  margin-top: 18px;
-  padding: 15px 16px;
-  border-radius: 16px;
-  background: rgba(103,232,249,.07);
-  border: 1px solid rgba(103,232,249,.20);
-  color: #dffbff;
-}
-.split-arrow {
-  font-size: clamp(38px, 4vw, 58px);
-  color: var(--cyan);
-  text-align: center;
-  text-shadow: 0 0 24px rgba(103,232,249,.35);
-}
-
-/* Slide 4: all-to-all */
-.swap-stage {
-  position: relative;
-  height: 438px;
-  display: grid;
-  grid-template-columns: 1fr 140px 1fr;
-  gap: 18px;
-  align-items: center;
-}
-.swap-side {
-  height: 390px;
-  padding: 16px;
-  display: grid;
-  align-content: stretch;
-  gap: 10px;
-  transition: opacity .3s ease, transform .3s ease;
-}
-.swap-side h3 { margin-bottom: 2px; }
-.slide[data-step="0"] .after-side { opacity: .24; }
-.slide[data-step="2"] .before-side { opacity: .28; }
-.slide[data-step="2"] .after-side {
-  border-color: rgba(124,247,177,.48);
-  box-shadow: 0 0 0 1px rgba(124,247,177,.12) inset;
-}
-.all2all-core {
-  height: 390px;
-  position: relative;
-  display: grid;
-  place-items: center;
-}
-.all2all-core svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-.all2all-core path {
-  fill: none;
-  stroke: rgba(103,232,249,.62);
-  stroke-width: 3;
-  stroke-dasharray: 8 10;
-  stroke-dashoffset: 0;
-}
-.slide[data-step="1"] .all2all-core path { animation: dash 1.7s linear infinite; }
-.all2all-core strong {
-  z-index: 2;
-  width: 104px;
-  height: 92px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  text-align: center;
-  background: rgba(103,232,249,.12);
-  border: 1px solid rgba(103,232,249,.40);
-  box-shadow: 0 0 32px rgba(103,232,249,.22);
-  color: var(--cyan);
-  font: 900 10px/1.16 var(--mono);
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
-.packet {
-  position: absolute;
-  left: -12px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  opacity: 0;
-  background: var(--cyan);
-  box-shadow: 0 0 16px var(--cyan);
-}
-.packet.p2 { top: 120px; background: var(--green); box-shadow: 0 0 16px var(--green); }
-.packet.p3 { top: 198px; background: var(--yellow); box-shadow: 0 0 16px var(--yellow); }
-.packet.p4 { top: 276px; background: var(--pink); box-shadow: 0 0 16px var(--pink); }
-.packet.p1 { top: 58px; }
-.slide[data-step="1"] .packet { animation: packet-lr 1.25s ease-in-out infinite alternate; }
-.slide[data-step="1"] .packet.p2 { animation-delay: .14s; }
-.slide[data-step="1"] .packet.p3 { animation-delay: .28s; }
-.slide[data-step="1"] .packet.p4 { animation-delay: .42s; }
-.head-card {
-  min-height: 66px;
-  padding: 12px;
-  border-radius: 14px;
-  background: rgba(185,151,255,.10);
-  border: 1px solid rgba(185,151,255,.24);
-}
-
-/* Slide 5: local attention */
-.attention-stage { display: grid; grid-template-columns: .88fr 1.12fr; align-items: center; gap: 24px; }
-.attention-box {
-  min-height: 392px;
-  padding: 20px;
-  position: relative;
-  overflow: hidden;
-}
-.attention-box::after {
-  content: "";
-  position: absolute;
-  width: 70px;
-  height: 70px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(103,232,249,.48), transparent 70%);
-  left: 36px;
-  top: 104px;
-  opacity: 0;
-}
-.slide[data-step="1"] .attention-box::after { animation: matrix-scan 2s ease-in-out infinite; }
-.head-columns { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 18px; }
-.head-col {
-  min-height: 116px;
-  padding: 14px;
-  display: grid;
-  align-content: center;
-  gap: 10px;
-}
-.matrix {
-  display: grid;
-  grid-template-columns: repeat(10, 1fr);
-  gap: 4px;
-  margin-top: 14px;
-}
-.cell {
-  aspect-ratio: 1;
-  border-radius: 4px;
-  background: rgba(103,232,249,.12);
-}
-.cell.hot { background: var(--cyan); }
-.slide[data-step="1"] .cell.hot { animation: pulse 1.8s ease-in-out infinite; }
-
-/* Slide 6: block recipe */
-.recipe {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0,1fr));
-  gap: 12px;
-}
-.step-card {
-  min-height: 160px;
-  padding: 17px;
-  position: relative;
-  overflow: hidden;
-}
-.step-num {
-  font-size: clamp(38px, 4.2vw, 58px);
-  line-height: .78;
-  font-weight: 950;
-  color: var(--cyan);
-  letter-spacing: -.08em;
-}
-.step-card h3 { margin-top: 12px; }
-.step-card p { font-size: clamp(10px, .92vw, 13px); margin-top: 7px; }
-.step-card.exchange-step {
-  border-color: rgba(103,232,249,.42);
-  transition: transform .35s ease, box-shadow .35s ease;
-}
-.slide[data-step="1"] .exchange-step {
-  transform: translateY(-8px);
-  box-shadow: 0 0 0 1px rgba(103,232,249,.18) inset, 0 20px 60px rgba(103,232,249,.10);
-}
-
-/* Slide 7: scaling */
-.scale-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-.formula {
-  padding: 20px;
-  min-height: 130px;
-  display: grid;
-  align-content: center;
-  gap: 8px;
-}
-.formula .big {
-  font: 950 clamp(28px, 4vw, 50px)/.9 var(--mono);
-  letter-spacing: -.08em;
-}
-.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.bar-card { padding: 18px; min-height: 150px; }
-.bar {
-  height: 18px;
-  margin-top: 18px;
-  border-radius: 999px;
-  background: rgba(255,255,255,.08);
-  overflow: hidden;
-}
-.bar span {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  transform-origin: left;
-  transform: scaleX(.12);
-}
-.slide[data-step="1"] .bar .long {
-  background: linear-gradient(90deg,var(--pink),var(--yellow));
-  animation: grow 1s ease both;
-}
-.slide[data-step="1"] .bar .short {
-  background: linear-gradient(90deg,var(--cyan),var(--blue));
-  animation: grow 1s .18s ease both;
-  width: 18%;
-}
-.bar .long { width: 100%; background: linear-gradient(90deg,var(--pink),var(--yellow)); }
-.bar .short { width: 18%; background: linear-gradient(90deg,var(--cyan),var(--blue)); }
-
-/* Slide 8: results + critique */
+/* Slide 8: numbers + divisibility (DOM) */
 .results-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; }
-.result {
-  min-height: 176px;
-  padding: 18px;
-  display: grid;
-  align-content: space-between;
-}
-.num {
-  font-size: clamp(38px, 5vw, 66px);
-  line-height: .82;
-  font-weight: 950;
-  letter-spacing: -.08em;
-}
+.result { min-height: 150px; padding: 18px; display: grid; align-content: space-between; }
+.num { font-size: clamp(34px, 4.6vw, 60px); line-height: .82; font-weight: 950; letter-spacing: -.08em; }
 .result p { font-size: clamp(10px, .92vw, 13px); }
-.critique-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  opacity: .18;
-  transform: translateY(12px);
-  transition: opacity .35s ease, transform .35s ease;
-}
-.slide[data-step="1"] .critique-grid { opacity: 1; transform: translateY(0); }
-.critique {
-  min-height: 95px;
-  padding: 15px;
-  border-color: rgba(255,209,102,.25);
-}
-.critique b { display: block; color: #fff2c7; margin-bottom: 7px; }
-.final-map {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0,1fr));
-  gap: 12px;
-  align-items: stretch;
-}
-.map-card {
-  min-height: 142px;
-  padding: 18px;
-  display: grid;
-  align-content: center;
-  gap: 10px;
-  text-align: center;
-  position: relative;
-}
-.map-card::after {
-  content: "→";
-  position: absolute;
-  right: -18px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--cyan);
-  font-size: 28px;
-  font-weight: 950;
-  text-shadow: 0 0 18px rgba(103,232,249,.45);
-}
+.zero-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 16px; align-items: center; }
+.frac-bars { display: grid; gap: 16px; }
+.bar-card { padding: 16px; }
+.bar { height: 16px; margin-top: 12px; border-radius: 999px; background: rgba(255,255,255,.08); overflow: hidden; }
+.bar span { display: block; height: 100%; border-radius: 999px; transform-origin: left; }
+.bar .half { width: 50%; background: linear-gradient(90deg,var(--pink),var(--yellow)); }
+.bar .quarter { width: 25%; background: linear-gradient(90deg,var(--cyan),var(--blue)); }
+.zero-layer { display: none; }
+.slide[data-step="2"] .zero-layer { display: grid; }
+.slide[data-step="2"] .numbers-layer, .slide[data-step="2"] .divis-layer { display: none; }
+.divis-layer { display: none; }
+.slide[data-step="1"] .divis-layer { display: grid; }
+.slide[data-step="1"] .numbers-layer { display: none; }
+
+/* Slide 9: takeaway map */
+.final-map { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; align-items: stretch; }
+.map-card { min-height: 120px; padding: 16px; display: grid; align-content: center; gap: 8px; text-align: center; position: relative; }
+.map-card::after { content: "→"; position: absolute; right: -16px; top: 50%; transform: translateY(-50%); color: var(--cyan); font-size: 26px; font-weight: 950; text-shadow: 0 0 18px rgba(103,232,249,.45); }
 .map-card:last-child::after { display: none; }
-.map-icon {
-  font: 950 clamp(24px, 3.2vw, 42px)/1 var(--mono);
-  letter-spacing: -.07em;
-}
-.final-qa {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0,1fr));
-  gap: 12px;
-  opacity: .20;
-  transform: translateY(12px);
-  transition: opacity .35s ease, transform .35s ease;
-}
+.map-icon { font: 950 clamp(20px, 2.8vw, 36px)/1 var(--mono); letter-spacing: -.07em; }
+.final-qa { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; opacity: .2; transform: translateY(12px); transition: opacity .35s ease, transform .35s ease; }
 .slide[data-step="1"] .final-qa { opacity: 1; transform: translateY(0); }
-.qa-card {
-  min-height: 102px;
-  padding: 15px;
-  border-color: rgba(103,232,249,.24);
-}
-.qa-card b { display: block; margin-bottom: 7px; color: #e9fbff; }
+.qa-card { min-height: 86px; padding: 14px; border-color: rgba(103,232,249,.24); }
+.qa-card b { display: block; margin-bottom: 6px; color: #e9fbff; }
 
 @media (max-height: 680px) {
   .content { inset: 58px 44px 36px; gap: 12px; }
   h1 { font-size: clamp(46px, 6.6vw, 78px); }
   h2 { font-size: clamp(31px, 4.5vw, 56px); }
+  .content.world h2 { font-size: clamp(20px, 2.6vw, 34px); }
   p { font-size: clamp(13px, 1.2vw, 16px); }
   .context-box { height: 292px; }
-  .swap-stage { height: 410px; }
-  .swap-side, .all2all-core { height: 362px; }
-  .attention-box { min-height: 350px; }
 }
-#qa-output {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  margin: 0;
-  padding: 20px;
-  color: #fff;
-  background: #000;
-  white-space: pre-wrap;
-  font: 12px/1.4 var(--mono);
-}
+
+/* debug + qa */
+#dbg { position: fixed; top: 0; left: 0; max-width: 64ch; z-index: 9999; margin: 0; padding: 8px 10px; background: rgba(0,0,0,.82); color: #6f6; font: 11px/1.35 var(--mono); white-space: pre-wrap; display: none; }
+body.debug #dbg { display: block; }
+#qa-output { position: fixed; inset: 0; z-index: 9999; margin: 0; padding: 20px; color: #fff; background: #000; white-space: pre-wrap; font: 12px/1.4 var(--mono); }
 </style>
 </head>
 <body>
 <main id="deck" aria-label="DeepSpeed Ulysses presentation">
+<canvas id="world" class="hidden" aria-hidden="true"></canvas>
 
+<!-- 1 -->
 <section class="slide active" data-title="Context wall" data-steps="2" data-step="0">
   <div class="frame">
-    <div class="top"><span>GROUP PAPER PRESENTATION</span><span>DeepSpeed Ulysses · long-sequence training</span></div>
+    <div class="top"><span>GROUP 7 · PAPER PRESENTATION</span><span>DeepSpeed Ulysses · long-sequence training</span></div>
     <div class="content title-stage">
       <div>
         <div class="badge"><span class="badge-dot"></span> The paper in one sentence</div>
         <h1 style="margin-top:18px">Train past the <span class="accent">context wall</span>.</h1>
-        <p style="margin-top:18px">The paper demonstrates up to million-token training by changing how activations are laid out across GPUs.</p>
+        <p style="margin-top:18px">Up to million-token training by changing <i>how activations are laid out</i> across GPUs — not the model, the layout.</p>
       </div>
       <div class="card context-box">
         <div class="gpu-memory">
           <div class="ctx-strip" aria-hidden="true">
-            <span class="token"></span><span class="token g"></span><span class="token y"></span><span class="token p"></span><span class="token"></span><span class="token g"></span><span class="token y"></span><span class="token p"></span><span class="token"></span><span class="token g"></span><span class="token y"></span><span class="token p"></span><span class="token"></span><span class="token g"></span><span class="token y"></span><span class="token p"></span><span class="token"></span><span class="token g"></span><span class="token y"></span><span class="token p"></span><span class="token"></span><span class="token g"></span><span class="token y"></span><span class="token p"></span><span class="token"></span><span class="token g"></span>
+            <span class="token"></span><span class="token g"></span><span class="token v"></span><span class="token p"></span><span class="token"></span><span class="token g"></span><span class="token v"></span><span class="token p"></span><span class="token"></span><span class="token g"></span><span class="token v"></span><span class="token p"></span><span class="token"></span><span class="token g"></span><span class="token v"></span><span class="token p"></span><span class="token"></span><span class="token g"></span><span class="token v"></span><span class="token p"></span><span class="token"></span><span class="token g"></span><span class="token v"></span><span class="token p"></span><span class="token"></span><span class="token g"></span>
           </div>
           <div class="overflow-wall"></div>
         </div>
@@ -751,11 +460,12 @@ p {
   </div>
 </section>
 
+<!-- 2 -->
 <section class="slide" data-title="Missing axis" data-steps="2" data-step="0">
   <div class="frame">
-    <div class="top"><span>01 · BOTTLENECK</span><span>Classic parallelism misses sequence length</span></div>
+    <div class="top"><span>01 · THE BOTTLENECK</span><span>Classic parallelism misses sequence length</span></div>
     <div class="content stack">
-      <div><div class="kicker">Transformer axes</div><h2>Batch, hidden size, and layers are covered. <span class="accent">Sequence length</span> is the hard part.</h2></div>
+      <div><div class="kicker">Transformer axes</div><h2>Batch, hidden size, and layers are covered. <span class="accent">Sequence length</span> is the unsolved one.</h2></div>
       <div class="axis-grid">
         <div class="card axis-card"><div class="axis-letter">B</div><p>Data parallel splits examples.</p></div>
         <div class="card axis-card"><div class="axis-letter">H</div><p>Tensor parallel splits hidden dimensions.</p></div>
@@ -764,7 +474,7 @@ p {
       </div>
       <div class="sequence-ribbon">
         <span class="small" style="margin-right:12px;color:#e8f5ff;font-weight:900">one example:</span>
-        <div class="token-line" aria-hidden="true"><span class="token"></span><span class="token g"></span><span class="token y"></span><span class="token p"></span><span class="token"></span><span class="token g"></span><span class="token y"></span><span class="token p"></span><span class="token"></span><span class="token g"></span><span class="token y"></span><span class="token p"></span><span class="token dimtoken"></span><span class="token dimtoken"></span><span class="token dimtoken"></span></div>
+        <div class="token-line" aria-hidden="true"><span class="token"></span><span class="token g"></span><span class="token v"></span><span class="token p"></span><span class="token"></span><span class="token g"></span><span class="token v"></span><span class="token p"></span><span class="token"></span><span class="token g"></span><span class="token v"></span><span class="token p"></span><span class="token dimtoken"></span><span class="token dimtoken"></span><span class="token dimtoken"></span></div>
         <span class="fade">… too long</span>
       </div>
     </div>
@@ -773,223 +483,673 @@ p {
   </div>
 </section>
 
-<section class="slide" data-title="Sequence-sharded" data-steps="1" data-step="0">
+<!-- 3 -->
+<section class="slide" data-title="Sequence-sharded" data-world="seq" data-steps="2" data-step="0">
   <div class="frame">
-    <div class="top"><span>02 · BEFORE ATTENTION</span><span>Sequence-parallel layout</span></div>
-    <div class="content seq-layout">
-      <div>
-        <div class="kicker">State A</div>
-        <h2>Before attention: split by <span class="accent">tokens</span>.</h2>
-        <p style="margin-top:16px">This is memory-friendly, but attention will soon need global token context.</p>
-        <div class="card long-strip" style="margin-top:20px">
-          <div class="small">full sequence, conceptually one training example</div>
-          <div class="token-line"><span class="token"></span><span class="token"></span><span class="token"></span><span class="token"></span><span class="token g"></span><span class="token g"></span><span class="token g"></span><span class="token g"></span><span class="token y"></span><span class="token y"></span><span class="token y"></span><span class="token y"></span><span class="token p"></span><span class="token p"></span><span class="token p"></span><span class="token p"></span></div>
-        </div>
-        <div class="sequence-note small"><b>Read the right side:</b> each row is one GPU, and each color is the token slice it owns.</div>
+    <div class="top"><span>02 · STATE A</span><span>Split the sequence across GPUs</span></div>
+    <div class="content world">
+      <div class="wtop">
+        <div class="kicker">Sequence-parallel layout</div>
+        <h2>Give each GPU a <span class="accent">slice of the tokens</span> — but all heads.</h2>
+        <p>4 tokens, 2 GPUs. GPU 0 keeps tokens 0–1, GPU 1 keeps tokens 2–3. Watch the colors: each token keeps its color all talk.</p>
       </div>
-      <div class="gpu-stack">
-        <div class="gpu big"><div class="gpu-label"><b>GPU 0</b><span>tokens 0–3</span></div><div class="token-line"><span class="token"></span><span class="token"></span><span class="token"></span><span class="token"></span></div><div class="heads-muted"><span class="head-pill">H0</span><span class="head-pill">H1</span><span class="head-pill">…</span><span class="head-pill">H7</span></div></div>
-        <div class="gpu big"><div class="gpu-label"><b>GPU 1</b><span>tokens 4–7</span></div><div class="token-line"><span class="token g"></span><span class="token g"></span><span class="token g"></span><span class="token g"></span></div><div class="heads-muted"><span class="head-pill">H0</span><span class="head-pill">H1</span><span class="head-pill">…</span><span class="head-pill">H7</span></div></div>
-        <div class="gpu big"><div class="gpu-label"><b>GPU 2</b><span>tokens 8–11</span></div><div class="token-line"><span class="token y"></span><span class="token y"></span><span class="token y"></span><span class="token y"></span></div><div class="heads-muted"><span class="head-pill">H0</span><span class="head-pill">H1</span><span class="head-pill">…</span><span class="head-pill">H7</span></div></div>
-        <div class="gpu big"><div class="gpu-label"><b>GPU 3</b><span>tokens 12–15</span></div><div class="token-line"><span class="token p"></span><span class="token p"></span><span class="token p"></span><span class="token p"></span></div><div class="heads-muted"><span class="head-pill">H0</span><span class="head-pill">H1</span><span class="head-pill">…</span><span class="head-pill">H7</span></div></div>
+      <div class="weq">
+        <div class="eq" data-tex="[\,N/P,\ d\,]=[\,2,\ 2\,]\ \text{per GPU}" data-from="1"></div>
       </div>
     </div>
     <div class="step-indicator">step <span data-step-label></span></div>
-    <div class="hint">colors = token slices</div>
+    <div class="hint">→ shard the sequence</div>
   </div>
 </section>
 
-<section class="slide" data-title="All-to-all swap" data-steps="3" data-step="0">
+<!-- 4 -->
+<section class="slide" data-title="All-to-all #1" data-world="a2a1" data-steps="3" data-step="0">
   <div class="frame">
-    <div class="top"><span>03 · THE KEY MOVE</span><span>All-to-all changes token layout into head layout</span></div>
-    <div class="content stack">
-      <div><div class="kicker">State transition</div><h2>All-to-all is not decoration. It is the layout transform.</h2></div>
-      <div class="swap-stage">
-        <div class="card swap-side before-side">
-          <h3>Before: token shards</h3><p class="small">each GPU has some tokens, all heads</p>
-          <div class="gpu"><div class="gpu-label"><b>GPU 0</b><span>T0–3</span></div><div class="token-line"><span class="token"></span><span class="token"></span><span class="token"></span><span class="token"></span></div></div>
-          <div class="gpu"><div class="gpu-label"><b>GPU 1</b><span>T4–7</span></div><div class="token-line"><span class="token g"></span><span class="token g"></span><span class="token g"></span><span class="token g"></span></div></div>
-          <div class="gpu"><div class="gpu-label"><b>GPU 2</b><span>T8–11</span></div><div class="token-line"><span class="token y"></span><span class="token y"></span><span class="token y"></span><span class="token y"></span></div></div>
-          <div class="gpu"><div class="gpu-label"><b>GPU 3</b><span>T12–15</span></div><div class="token-line"><span class="token p"></span><span class="token p"></span><span class="token p"></span><span class="token p"></span></div></div>
-        </div>
-        <div class="all2all-core">
-          <svg viewBox="0 0 140 390" aria-hidden="true"><path d="M12 58 C128 96 128 260 12 330"/><path d="M128 58 C12 96 12 260 128 330"/><path d="M70 32 C22 136 118 238 70 358"/></svg>
-          <span class="packet p1"></span><span class="packet p2"></span><span class="packet p3"></span><span class="packet p4"></span>
-          <strong>peer<br>all-to-all<br>collective</strong>
-        </div>
-        <div class="card swap-side after-side">
-          <h3>After: head shards</h3><p class="small">all colors = full sequence; labels = assigned heads</p>
-          <div class="head-card"><div class="gpu-label"><b>GPU 0</b><span>H0–1</span></div><div class="token-line"><span class="token"></span><span class="token g"></span><span class="token y"></span><span class="token p"></span></div></div>
-          <div class="head-card"><div class="gpu-label"><b>GPU 1</b><span>H2–3</span></div><div class="token-line"><span class="token"></span><span class="token g"></span><span class="token y"></span><span class="token p"></span></div></div>
-          <div class="head-card"><div class="gpu-label"><b>GPU 2</b><span>H4–5</span></div><div class="token-line"><span class="token"></span><span class="token g"></span><span class="token y"></span><span class="token p"></span></div></div>
-          <div class="head-card"><div class="gpu-label"><b>GPU 3</b><span>H6–7</span></div><div class="token-line"><span class="token"></span><span class="token g"></span><span class="token y"></span><span class="token p"></span></div></div>
-        </div>
+    <div class="top"><span>03 · THE KEY MOVE</span><span>All-to-all: tokens → heads</span></div>
+    <div class="content world">
+      <div class="wtop">
+        <div class="kicker">All-to-all #1</div>
+        <h2>Re-sort the cubes <span class="violet">by head</span>: same data, new owner.</h2>
+        <p>Head-1 cubes leave GPU 0; head-0 cubes arrive. After: each GPU holds <b>every token</b> for <b>one head</b>.</p>
+        <div class="mantra" style="margin-top:10px"><b class="mantra-tok">tokens</b> → heads → attention → tokens</div>
+      </div>
+      <div class="weq">
+        <div class="eq" data-tex="[\tfrac{N}{P},d]\ \xrightarrow{\text{all-to-all}}\ [N,\tfrac{d}{P}]\qquad [2,2]\to[4,1]" data-from="2"></div>
       </div>
     </div>
     <div class="step-indicator">step <span data-step-label></span></div>
-    <div class="hint">→ before · moving · after</div>
+    <div class="hint">→ before · fly · after</div>
   </div>
 </section>
 
-<section class="slide" data-title="Local attention" data-steps="2" data-step="0">
+<!-- 5 -->
+<section class="slide" data-title="Local attention" data-world="attn" data-steps="2" data-step="0">
   <div class="frame">
-    <div class="top"><span>04 · WHY IT WORKS</span><span>Attention is local after the layout swap</span></div>
-    <div class="content attention-stage">
-      <div>
+    <div class="top"><span>04 · WHY IT WORKS</span><span>Now it is ordinary attention</span></div>
+    <div class="content world">
+      <div class="wtop">
         <div class="kicker">State B</div>
-        <h2>Each GPU now has the <span class="green">full sequence</span> for its assigned heads.</h2>
-        <p style="margin-top:16px">That is enough because multi-head attention can be computed independently per head before the output projection.</p>
+        <h2>One GPU now holds the <span class="green">whole sequence</span> for its head.</h2>
+        <p>So it just runs normal attention — score every token against every token, then mix values. The formula never changed.</p>
       </div>
-      <div class="card attention-box">
-        <h3>GPU 0 computes attention for heads 0–1</h3>
-        <p class="small">full sequence is local, but only for this head group</p>
-        <div class="head-columns">
-          <div class="card head-col"><div class="gpu-label"><b>H0</b><span>tokens 0–15</span></div><div class="token-line"><span class="token"></span><span class="token g"></span><span class="token y"></span><span class="token p"></span><span class="token"></span><span class="token g"></span></div></div>
-          <div class="card head-col"><div class="gpu-label"><b>H1</b><span>tokens 0–15</span></div><div class="token-line"><span class="token"></span><span class="token g"></span><span class="token y"></span><span class="token p"></span><span class="token"></span><span class="token g"></span></div></div>
+      <div class="weq">
+        <div class="eq" data-tex="\mathrm{softmax}\!\left(\dfrac{Q_\ell K_\ell^{\top}}{\sqrt{d_{\text{head}}}}\right)V_\ell,\quad Q_\ell,K_\ell,V_\ell\in\mathbb{R}^{N\times d/P}=\mathbb{R}^{4\times1}" data-from="1"></div>
+      </div>
+    </div>
+    <div class="step-indicator">step <span data-step-label></span></div>
+    <div class="hint">→ score grid lights up</div>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="slide" data-title="Block rhythm" data-world="block" data-steps="3" data-step="0">
+  <div class="frame">
+    <div class="top"><span>05 · THE BLOCK RHYTHM</span><span>Two all-to-alls, then carry on</span></div>
+    <div class="content world">
+      <div class="wtop">
+        <div class="kicker">All-to-all #2 = undo #1</div>
+        <h2>Send the cubes <span class="accent">back to tokens</span>, then the MLP runs.</h2>
+        <p>The second all-to-all is literally the first one reversed — proof that nothing was lost: same tokens, different layout.</p>
+        <div class="mantra" style="margin-top:10px">tokens → heads → attention → <b class="mantra-tok">tokens</b></div>
+      </div>
+      <div class="weq">
+        <div class="eq" data-tex="[N,\tfrac{d}{P}]\ \xrightarrow{\text{all-to-all}}\ [\tfrac{N}{P},d]\qquad [4,1]\to[2,2]" data-from="1"></div>
+      </div>
+    </div>
+    <div class="step-indicator">step <span data-step-label></span></div>
+    <div class="hint">→ reverse · MLP</div>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="slide" data-title="Megatron vs Ulysses" data-world="megatron" data-steps="3" data-step="0">
+  <div class="frame">
+    <div class="top"><span>06 · THE CONTRIBUTION</span><span>Why compare against Megatron</span></div>
+    <div class="content world">
+      <div class="wtop">
+        <div class="kicker kicker-dyn">The baseline: Megatron</div>
+        <h2 class="h2-dyn">Megatron splits the <span class="red">work</span> (heads) — not the sequence.</h2>
+        <p class="p-dyn">Every GPU still stores all N tokens, so memory never shrinks, and each block ends in an all-reduce.</p>
+      </div>
+      <div class="weq">
+        <div class="eq" data-tex="\underbrace{3Nh/P}_{\text{QKV}}+\underbrace{Nh/P}_{\text{output}}=\dfrac{4Nh}{P}\quad\text{vs.}\quad\underbrace{4Nh}_{\text{Megatron, any }P}" data-from="2"></div>
+      </div>
+    </div>
+    <div class="step-indicator">step <span data-step-label></span></div>
+    <div class="hint">→ all-reduce · scaling</div>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="slide" data-title="Results + ZeRO" data-world="zero" data-steps="3" data-step="0">
+  <div class="frame">
+    <div class="top"><span>07 · RESULTS · LIMITS · ZeRO</span><span>Numbers, the divisibility trap, and memory</span></div>
+    <div class="content stack">
+      <!-- state 0: numbers -->
+      <div class="numbers-layer">
+        <div><div class="kicker">Reported results</div><h2>Longer sequences, higher throughput, far less communication.</h2></div>
+        <div class="results-grid" style="margin-top:6px">
+          <div class="card result"><div><div class="num accent">1M+</div><h3>tokens</h3></div><p>on a 1.2B GPT-style model.</p></div>
+          <div class="card result"><div><div class="num green">2.5×</div><h3>faster</h3></div><p>training throughput vs. the SOTA baseline.</p></div>
+          <div class="card result"><div><div class="num violet">4×</div><h3>longer</h3></div><p>sequence length than existing systems.</p></div>
+          <div class="card result"><div><div class="num yellow">10×+</div><h3>less comm.</h3></div><p>communication-volume reduction.</p></div>
         </div>
-        <div class="matrix" aria-label="attention matrix">
-          <span class="cell hot"></span><span class="cell"></span><span class="cell"></span><span class="cell hot"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell hot"></span><span class="cell"></span><span class="cell"></span>
-          <span class="cell"></span><span class="cell hot"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell hot"></span><span class="cell"></span><span class="cell"></span><span class="cell hot"></span><span class="cell"></span>
-          <span class="cell"></span><span class="cell"></span><span class="cell hot"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell hot"></span><span class="cell"></span><span class="cell"></span><span class="cell hot"></span>
+      </div>
+      <!-- state 1: divisibility trap (3D shows empty box) -->
+      <div class="divis-layer" style="gap:14px">
+        <div><div class="kicker red">The sharp limit</div><h2><span class="red">P must divide the number of heads.</span></h2></div>
+        <p style="max-width:30ch">Sequence-parallel degree P assigns whole heads to GPUs. If P &gt; h, a GPU gets no head — the method can't run. (An implementation requirement, not a theorem.)</p>
+        <div class="weq"><div class="eq on" data-tex="P\mid h:\quad 96/8=12\ \checkmark\qquad 96/64=1.5\ \times" data-from="0"></div></div>
+      </div>
+      <!-- state 2: ZeRO (Q&A only) -->
+      <div class="zero-layer" style="gap:14px">
+        <div><div class="kicker">Bonus · Q&amp;A — memory partitioning</div><h2>ZeRO: store a slice, borrow the rest, then give it back.</h2></div>
+        <div class="zero-grid">
+          <div>
+            <p class="small" style="max-width:42ch"><b>ZeRO-3</b> shards parameters across the data-parallel group: each GPU keeps <b>1/D</b>, all-gathers a layer just-in-time, computes, then frees it. <b class="accent">shard → gather → compute → free.</b></p>
+            <p class="small" style="margin-top:10px;max-width:42ch">Ulysses spreads model state across <b>all P<sub>s</sub>×P<sub>d</sub></b> devices. On a 2×2 grid each card holds <b class="green">1/4</b> of the weights — vs <b class="pink">1/2</b> for data-parallel ZeRO-3 alone.</p>
+            <div class="weq" style="margin-top:12px"><div class="eq on" data-tex="\dfrac{1}{P_s\,P_d}=\dfrac{1}{2\cdot2}=\dfrac14\ <\ \dfrac{1}{P_d}=\dfrac12\qquad(\text{weights})" data-from="0"></div></div>
+          </div>
+          <div class="frac-bars">
+            <div class="card bar-card"><h3 class="pink">DP-only ZeRO-3 (2 GPUs)</h3><div class="small">weights per card</div><div class="bar"><span class="half"></span></div><div class="small" style="margin-top:6px">= 1/2</div></div>
+            <div class="card bar-card"><h3 class="green">Ulysses + ZeRO-3 (2×2)</h3><div class="small">weights per card</div><div class="bar"><span class="quarter"></span></div><div class="small" style="margin-top:6px">= 1/4 &nbsp;·&nbsp; activations 1/P<sub>s</sub> = 1/2</div></div>
+          </div>
         </div>
       </div>
     </div>
     <div class="step-indicator">step <span data-step-label></span></div>
-    <div class="hint">→ lights up local attention</div>
+    <div class="hint">→ limit · ZeRO (Q&amp;A)</div>
   </div>
 </section>
 
-<section class="slide" data-title="Block recipe" data-steps="2" data-step="0">
+<!-- 9 -->
+<section class="slide" data-title="Takeaway" data-world="takeaway" data-steps="2" data-step="0">
   <div class="frame">
-    <div class="top"><span>05 · TRANSFORMER BLOCK</span><span>Two all-to-alls per block</span></div>
-    <div class="content stack">
-      <div><div class="kicker">Operational rhythm</div><h2>The Transformer math stays the same. Ulysses changes tensor placement twice.</h2></div>
-      <div class="recipe">
-        <div class="card step-card"><div class="step-num">1</div><h3>Q/K/V</h3><p>Project from token-sharded activations.</p></div>
-        <div class="card step-card exchange-step"><div class="step-num">2</div><h3>All-to-all</h3><p>Tokens → heads before attention.</p></div>
-        <div class="card step-card"><div class="step-num">3</div><h3>Attention</h3><p>Each GPU computes assigned heads locally.</p></div>
-        <div class="card step-card exchange-step"><div class="step-num">4</div><h3>All-to-all back</h3><p>Heads → tokens for feed-forward.</p></div>
+    <div class="top"><span>08 · TAKEAWAY</span><span>The slide to remember</span></div>
+    <div class="content world">
+      <div class="wtop">
+        <div class="kicker">One-line answer</div>
+        <h2>Ulysses makes sequence length a <span class="accent">parallel dimension</span>.</h2>
       </div>
-      <p><b class="accent">Memorable version:</b> tokens → heads → attention → tokens.</p>
-    </div>
-    <div class="step-indicator">step <span data-step-label></span></div>
-    <div class="hint">→ highlights communication points</div>
-  </div>
-</section>
-
-<section class="slide" data-title="Scaling" data-steps="2" data-step="0">
-  <div class="frame">
-    <div class="top"><span>06 · SCALING INTUITION</span><span>Why per-GPU cost becomes manageable</span></div>
-    <div class="content stack">
-      <div><div class="kicker">The win</div><h2>Split the sequence across <span class="green">P</span> GPUs, so each GPU carries roughly <span class="green">N/P</span> tokens.</h2></div>
-      <div class="scale-row">
-        <div class="card formula"><span class="small">full sequence</span><span class="big">N = 1M</span></div>
-        <div class="card formula"><span class="small">sequence-parallel GPUs</span><span class="big">P = 64</span></div>
-        <div class="card formula"><span class="small">per-GPU token slice</span><span class="big green">N/P ≈ 16K</span></div>
-      </div>
-      <div class="compare">
-        <div class="card bar-card"><h3>Baseline communication</h3><p class="small"><b class="pink">4Nh</b> per link; not divided by P.</p><div class="bar"><span class="long"></span></div></div>
-        <div class="card bar-card"><h3>Ulysses communication</h3><p class="small"><b class="green">4Nh / P</b> per link; O(N/P) communication.</p><div class="bar"><span class="short"></span></div></div>
-      </div>
-    </div>
-    <div class="step-indicator">step <span data-step-label></span></div>
-    <div class="hint">→ compares bars</div>
-  </div>
-</section>
-
-<section class="slide" data-title="Results and critique" data-steps="2" data-step="0">
-  <div class="frame">
-    <div class="top"><span>07 · CLAIMS + CRITIQUE</span><span>Strong result, real assumptions</span></div>
-    <div class="content stack">
-      <div><div class="kicker">Reported evaluation</div><h2>Paper-reported gains: longer sequences, higher throughput, less communication.</h2></div>
-      <div class="results-grid">
-        <div class="card result"><div><div class="num">1M+</div><h3>tokens</h3></div><p>context on 1.2B GPT-style model.</p></div>
-        <div class="card result"><div><div class="num">2.5×</div><h3>throughput</h3></div><p>up to 2.5× throughput vs. existing SOTA baseline.</p></div>
-        <div class="card result"><div><div class="num">4×</div><h3>longer</h3></div><p>larger sequence length than existing systems.</p></div>
-        <div class="card result"><div><div class="num">10×+</div><h3>less comm.</h3></div><p>over 10× communication reduction.</p></div>
-      </div>
-      <div class="critique-grid">
-        <div class="card critique small"><b>Fast fabric assumed</b>Gains rely on efficient all-to-all interconnect.</div>
-        <div class="card critique small"><b>Head divisibility</b>SP size must divide attention heads.</div>
-        <div class="card critique small"><b>Sparse kernel caveat</b>Paper notes local sparse attention can bottleneck throughput.</div>
-      </div>
-    </div>
-    <div class="step-indicator">step <span data-step-label></span></div>
-    <div class="hint">→ reveals critique</div>
-  </div>
-</section>
-
-<section class="slide" data-title="Takeaway" data-steps="2" data-step="0">
-  <div class="frame">
-    <div class="top"><span>08 · FINAL TAKEAWAY</span><span>The slide to remember</span></div>
-    <div class="content stack">
-      <div><div class="kicker">One-line answer</div><h2>Ulysses makes sequence length a <span class="accent">parallel dimension</span>.</h2></div>
       <div class="final-map">
         <div class="card map-card"><div class="map-icon accent">TOK</div><h3>tokens split</h3><p class="small">sequence shards across GPUs</p></div>
-        <div class="card map-card"><div class="map-icon violet">HEAD</div><h3>heads split</h3><p class="small">all-to-all regroups activations</p></div>
-        <div class="card map-card"><div class="map-icon green">ATTN</div><h3>attention</h3><p class="small">ordinary local attention per head group</p></div>
-        <div class="card map-card"><div class="map-icon accent">TOK</div><h3>tokens back</h3><p class="small">all-to-all returns to sequence layout</p></div>
+        <div class="card map-card"><div class="map-icon violet">HEAD</div><h3>heads split</h3><p class="small">all-to-all regroups</p></div>
+        <div class="card map-card"><div class="map-icon green">ATTN</div><h3>attention</h3><p class="small">ordinary, per head</p></div>
+        <div class="card map-card"><div class="map-icon accent">TOK</div><h3>tokens back</h3><p class="small">all-to-all returns layout</p></div>
       </div>
       <div class="final-qa">
-        <div class="card qa-card small"><b>Best use case?</b>Extremely long sequences where one example is the bottleneck.</div>
-        <div class="card qa-card small"><b>Main cost?</b>Fast all-to-all communication is required.</div>
-        <div class="card qa-card small"><b>Main limit?</b>SP size must divide attention heads.</div>
+        <div class="card qa-card small"><b>Best use case?</b>Extremely long sequences — one example is the bottleneck.</div>
+        <div class="card qa-card small"><b>Main cost?</b>A fast all-to-all interconnect (NVLink / InfiniBand).</div>
+        <div class="card qa-card small"><b>Main limit?</b>P must divide the number of attention heads.</div>
       </div>
     </div>
     <div class="step-indicator">step <span data-step-label></span></div>
-    <div class="hint">→ reveals Q&A prompts</div>
+    <div class="hint">→ reveals Q&amp;A prompts</div>
   </div>
 </section>
 
 </main>
 <div id="progress" class="progress" aria-hidden="true"></div>
-<script>
+<pre id="dbg"></pre>
+
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { gsap } from 'gsap';
+import { MotionPathPlugin } from 'gsap/MotionPathPlugin';
+gsap.registerPlugin(MotionPathPlugin);
+
+const dbg = (msg) => { const e = document.getElementById('dbg'); if (e) e.textContent = (String(msg) + '\n' + e.textContent).slice(0, 600); };
+const DEBUG = new URLSearchParams(location.search).has('debug');
+if (DEBUG) document.body.classList.add('debug');
+
+/* ---------- identity colors ---------- */
+const TOK = [0x67e8f9, 0x7cf7b1, 0xb997ff, 0xff6f91]; // token 0..3
+const HEAD_GLOW = 0xffd166;
+const RED = 0xff456b;
+
+/* cube id = token*2 + head ; value: head0 -> token+1 ; head1 -> token+5 */
+const cubeToken = id => (id >> 1);
+const cubeHead  = id => (id & 1);
+const cubeValue = id => cubeHead(id) === 0 ? cubeToken(id) + 1 : cubeToken(id) + 5;
+
+const GPU0X = -3.2, GPU1X = 3.2;
+
+/* layout: returns THREE-space position for a cube id in a given mode */
+function layoutPos(id, mode) {
+  const t = cubeToken(id), h = cubeHead(id);
+  if (mode === 'sharded') {
+    // GPU0 = tokens 0,1 ; GPU1 = tokens 2,3 ; 2 cols (head) x 2 rows (token)
+    const onG1 = t >= 2;
+    const cx = onG1 ? GPU1X : GPU0X;
+    const row = onG1 ? (t - 2) : t;            // 0 or 1
+    const x = cx + (h - 0.5) * 0.95;
+    const y = (0.5 - row) * 0.95;
+    return new THREE.Vector3(x, y, 0);
+  }
+  // mode === 'heads' : GPU0 = head0 all tokens (column) ; GPU1 = head1 all tokens
+  const cx = h === 0 ? GPU0X : GPU1X;
+  const y = (1.5 - t) * 0.78;
+  return new THREE.Vector3(cx, y, 0);
+}
+
+class World {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.scene = new THREE.Scene();
+    this.camera = new THREE.PerspectiveCamera(42, 16/9, 0.1, 100);
+    this.camera.position.set(0, 1.4, 10.5);
+    this.lookTarget = new THREE.Vector3(0, 0, 0);
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    this.renderer.setClearColor(0x000000, 0);
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.15;
+
+    this.composer = new EffectComposer(this.renderer);
+    this.composer.addPass(new RenderPass(this.scene, this.camera));
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(1280, 720), 1.25, 0.62, 0.12);
+    this.composer.addPass(this.bloom);
+    this.composer.addPass(new OutputPass());
+
+    // lighting
+    this.scene.add(new THREE.AmbientLight(0xa9c4ff, 0.55));
+    const key = new THREE.DirectionalLight(0xffffff, 1.25); key.position.set(4, 8, 10); this.scene.add(key);
+    const rim = new THREE.DirectionalLight(0x88aaff, 0.6); rim.position.set(-6, 2, -4); this.scene.add(rim);
+
+    this.root = new THREE.Group(); this.scene.add(this.root);
+    this.pinLayer = null;            // DOM layer for projected labels (per slide)
+    this.activeWorld = null;
+    this.running = false;
+    this._raf = null;
+    this.still = document.documentElement.classList.contains('still'); // capture mode: snap animations
+
+    this.buildGPUBoxes();
+    this.buildCubes();
+    this.buildMegatron();
+    this.buildAttnGrid();
+    this.setMode('sharded', true); // initial positions
+
+    this._tick = this._tick.bind(this);
+  }
+
+  /* ---- persistent GPU boxes (2 active + 2 ghost behind) ---- */
+  buildGPUBoxes() {
+    this.boxes = new THREE.Group(); this.root.add(this.boxes);
+    const mk = (x, dim) => {
+      const g = new THREE.Group();
+      const geo = new THREE.BoxGeometry(2.6, 3.0, 2.0);
+      const edges = new THREE.LineSegments(
+        new THREE.EdgesGeometry(geo),
+        new THREE.LineBasicMaterial({ color: dim ? 0x33425e : 0x9fd6ff, transparent: true, opacity: dim ? 0.25 : 0.6 })
+      );
+      const fill = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x0c1626, transparent: true, opacity: dim ? 0.12 : 0.20 }));
+      g.add(fill); g.add(edges);
+      g.position.set(x, 0, dim ? -2.4 : 0);
+      g.userData.dim = dim;
+      this.boxes.add(g);
+      return g;
+    };
+    this.gpu0 = mk(GPU0X, false);
+    this.gpu1 = mk(GPU1X, false);
+    this.gpuGhostA = mk(GPU0X, true);
+    this.gpuGhostB = mk(GPU1X, true);
+  }
+
+  /* ---- 8 value cubes ---- */
+  buildCubes() {
+    this.cubes = [];
+    this.cubeGroup = new THREE.Group(); this.root.add(this.cubeGroup);
+    const geo = new THREE.BoxGeometry(0.62, 0.62, 0.62);
+    for (let id = 0; id < 8; id++) {
+      const t = cubeToken(id), h = cubeHead(id);
+      const color = TOK[t];
+      let mesh;
+      if (h === 0) {
+        // head0 = solid filled cube
+        const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.55, roughness: 0.35, metalness: 0.1 });
+        mesh = new THREE.Mesh(geo, mat);
+      } else {
+        // head1 = hollow / edge-glow cube (so heads are distinguishable)
+        mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color, transparent: true, opacity: 0.16, roughness: 0.4 }));
+        const eg = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color, linewidth: 2 }));
+        mesh.add(eg);
+      }
+      mesh.userData = { id, value: cubeValue(id), head: h, token: t };
+      mesh.add(this.makeLabel(String(cubeValue(id)), color, h === 1));
+      this.cubeGroup.add(mesh);
+      this.cubes.push(mesh);
+    }
+  }
+
+  makeLabel(text, colorHex, outline) {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 128;
+    const ctx = cv.getContext('2d');
+    ctx.clearRect(0, 0, 128, 128);
+    ctx.font = 'bold 84px ui-monospace, Menlo, monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const c = '#' + colorHex.toString(16).padStart(6, '0');
+    ctx.fillStyle = '#0a1020'; // dark plate behind for readability
+    // glow
+    ctx.shadowColor = c; ctx.shadowBlur = 22;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(text, 64, 70);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+    spr.scale.set(0.5, 0.5, 0.5);
+    spr.position.set(0, 0, 0.42);
+    return spr;
+  }
+
+  /* ---- Megatron bars + comm pipes + all-reduce beam (slide 7) ---- */
+  buildMegatron() {
+    this.meg = new THREE.Group(); this.meg.visible = false; this.root.add(this.meg);
+    // tall equal-height activation bars on the two boxes (gray = all N tokens)
+    const barGeo = new THREE.BoxGeometry(1.2, 2.6, 1.2);
+    const mkBar = (x, headColor) => {
+      const g = new THREE.Group();
+      const body = new THREE.Mesh(barGeo, new THREE.MeshStandardMaterial({ color: 0x6b7686, emissive: 0x10161f, roughness: 0.6 }));
+      const stripe = new THREE.Mesh(new THREE.BoxGeometry(1.22, 0.34, 1.22),
+        new THREE.MeshStandardMaterial({ color: headColor, emissive: headColor, emissiveIntensity: 0.8 }));
+      stripe.position.y = 1.45;
+      g.add(body); g.add(stripe); g.position.set(x, 0, 0);
+      return g;
+    };
+    this.megBar0 = mkBar(GPU0X, TOK[0]);
+    this.megBar1 = mkBar(GPU1X, TOK[1]);
+    this.meg.add(this.megBar0, this.megBar1);
+    // all-reduce beams converging to a center node
+    this.allreduce = new THREE.Group();
+    const node = new THREE.Mesh(new THREE.SphereGeometry(0.34, 24, 24),
+      new THREE.MeshStandardMaterial({ color: RED, emissive: RED, emissiveIntensity: 1.4 }));
+    node.position.set(0, 0, 0);
+    const beamMat = new THREE.MeshBasicMaterial({ color: RED, transparent: true, opacity: 0.85 });
+    const beamGeo = new THREE.CylinderGeometry(0.05, 0.05, Math.abs(GPU0X), 8);
+    const b0 = new THREE.Mesh(beamGeo, beamMat); b0.rotation.z = Math.PI / 2; b0.position.set(GPU0X / 2, 0, 0);
+    const b1 = new THREE.Mesh(beamGeo, beamMat); b1.rotation.z = Math.PI / 2; b1.position.set(GPU1X / 2, 0, 0);
+    this.allreduce.add(node, b0, b1);
+    this.allreduce.visible = false;
+    this.meg.add(this.allreduce);
+    // Ulysses short shrinking bars (appear in state 2)
+    this.ulyBars = new THREE.Group(); this.ulyBars.visible = false;
+    const mkShort = (x, color) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.9, 1.0),
+        new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.5, roughness: 0.4 }));
+      m.position.set(x, -0.85, 1.6); return m;
+    };
+    this.ulyBar0 = mkShort(GPU0X, TOK[0]); this.ulyBar1 = mkShort(GPU1X, TOK[2]);
+    this.ulyBars.add(this.ulyBar0, this.ulyBar1);
+    this.meg.add(this.ulyBars);
+  }
+
+  /* ---- attention score grid (slide 5) : 4x4 plane of cells ---- */
+  buildAttnGrid() {
+    this.attn = new THREE.Group(); this.attn.visible = false; this.root.add(this.attn);
+    this.attnCells = [];
+    const n = 4, s = 0.5, gap = 0.06;
+    const score = [[1,2,3,4],[2,4,6,8],[3,6,9,12],[4,8,12,16]];
+    let max = 16;
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+      const v = score[i][j] / max;
+      const cell = new THREE.Mesh(new THREE.PlaneGeometry(s, s),
+        new THREE.MeshBasicMaterial({ color: 0x67e8f9, transparent: true, opacity: 0.12 + v * 0.0 }));
+      cell.position.set((j - 1.5) * (s + gap), (1.5 - i) * (s + gap), 0);
+      cell.userData.target = 0.1 + v * 0.9;
+      this.attn.add(cell); this.attnCells.push(cell);
+    }
+    this.attn.position.set(GPU0X, 0, 0.2);
+  }
+
+  /* ---- place cubes per mode ---- */
+  setMode(mode, instant) {
+    this.mode = mode;
+    if (this.still) instant = true;
+    for (const c of this.cubes) {
+      const p = layoutPos(c.userData.id, mode);
+      if (instant) { gsap.killTweensOf(c.position); c.position.copy(p); }
+      else gsap.to(c.position, { x: p.x, y: p.y, z: p.z, duration: 1.1, ease: 'power2.inOut' });
+    }
+    if (DEBUG) this.assertMode(mode);
+  }
+
+  assertMode(mode) {
+    // verify the head layout permutation is correct
+    if (mode !== 'heads') return;
+    const g0 = [], g1 = [];
+    for (const c of this.cubes) {
+      const p = layoutPos(c.userData.id, 'heads');
+      (p.x < 0 ? g0 : g1).push(c.userData.value);
+    }
+    g0.sort((a,b)=>a-b); g1.sort((a,b)=>a-b);
+    const ok = g0.join(',') === '1,2,3,4' && g1.join(',') === '5,6,7,8';
+    dbg(`assert heads: GPU0=[${g0}] GPU1=[${g1}] => ${ok ? 'OK ✓' : 'FAIL ✗'}`);
+  }
+
+  /* ---- camera helpers ---- */
+  flyCamera(px, py, pz, tx, ty, tz, dur = 1.1) {
+    if (this.still) { gsap.killTweensOf([this.camera.position, this.lookTarget]); this.camera.position.set(px, py, pz); this.lookTarget.set(tx, ty, tz); return; }
+    gsap.to(this.camera.position, { x: px, y: py, z: pz, duration: dur, ease: 'power2.inOut' });
+    gsap.to(this.lookTarget, { x: tx, y: ty, z: tz, duration: dur, ease: 'power2.inOut' });
+  }
+  setBloom(s, dur = 0.8) { if (this.still) { this.bloom.strength = s; return; } gsap.to(this.bloom, { strength: s, duration: dur, ease: 'power2.out' }); }
+
+  showGroups({ cubes = false, megatron = false, attn = false, boxes = true } = {}) {
+    this.cubeGroup.visible = cubes;
+    this.meg.visible = megatron;
+    this.attn.visible = attn;
+    this.boxes.visible = boxes;
+  }
+
+  /* ---------- per-slide / per-step state machine ---------- */
+  goto(worldId, step, frameEl) {
+    if (!worldId) { this.detach(); return; }
+    this.attach(frameEl);
+    this.activeWorld = worldId;
+    gsap.killTweensOf([this.camera.position, this.lookTarget, this.bloom]);
+    const fn = this.states[worldId];
+    if (fn) { try { fn.call(this, step); } catch (e) { dbg('goto err: ' + e.stack); } }
+  }
+
+  get states() {
+    return {
+      seq: (step) => {
+        this.showGroups({ cubes: true, boxes: true });
+        this.allreduce.visible = false; this.ulyBars.visible = false;
+        this.flyCamera(0, 1.4, 10.5, 0, 0, 0);
+        this.setBloom(1.2);
+        if (step === 0) {
+          // ribbon hovering above, boxes empty
+          this.cubes.forEach((c, i) => {
+            const id = c.userData.id;
+            // arrange in token order as a ribbon on top
+            gsap.to(c.position, { x: (cubeToken(id) - 1.5) * 1.1, y: 2.6 + cubeHead(id) * 0.0, z: 1.2, duration: 0.9, ease: 'power2.out' });
+          });
+          // stack head1 slightly behind head0 on the ribbon
+          this.cubes.forEach((c) => { if (cubeHead(c.userData.id) === 1) gsap.to(c.position, { z: 1.7, duration: 0.9 }); });
+        } else {
+          this.setMode('sharded');
+        }
+      },
+
+      a2a1: (step) => {
+        this.showGroups({ cubes: true, boxes: true });
+        this.allreduce.visible = false; this.ulyBars.visible = false;
+        if (step === 0) {
+          this.setMode('sharded');
+          this.flyCamera(0, 0.6, 7.2, 0, 0, 0, 1.0); // dive between boxes
+          this.setBloom(1.1);
+        } else if (step === 1) {
+          // the fly: tween to heads layout along arcs
+          this.flyToHeads();
+          this.flyCamera(0, 0.9, 8.5, 0, 0, 0, 1.2);
+          this.setBloom(1.7, 0.6);
+        } else {
+          this.setMode('heads');
+          this.flyCamera(0, 1.1, 9.2, 0, 0, 0, 1.0);
+          this.setBloom(1.3, 0.8);
+        }
+      },
+
+      attn: (step) => {
+        this.showGroups({ cubes: true, boxes: true, attn: step >= 1 });
+        this.setMode('heads', true);
+        this.flyCamera(GPU0X, 0.4, 5.6, GPU0X, 0, 0, 1.0); // into GPU0
+        this.setBloom(1.2);
+        if (step >= 1) this.lightAttnGrid();
+      },
+
+      block: (step) => {
+        this.showGroups({ cubes: true, boxes: true });
+        this.flyCamera(0, 1.2, 10.0, 0, 0, 0, 1.0);
+        this.setBloom(1.2);
+        if (step === 0) { this.setMode('heads', true); }
+        else if (step === 1) { this.setMode('sharded'); this.setBloom(1.6, 0.6); } // reverse all-to-all
+        else { this.setMode('sharded', true); this.pulseMLP(); }
+      },
+
+      megatron: (step) => {
+        this.showGroups({ cubes: false, megatron: true, boxes: true });
+        this.dynText(step);
+        if (step === 0) {
+          this.allreduce.visible = false; this.ulyBars.visible = false;
+          gsap.to(this.megBar0.scale, { y: 1, duration: 0.8 }); gsap.to(this.megBar1.scale, { y: 1, duration: 0.8 });
+          this.flyCamera(-1.0, 0.8, 9.5, -0.5, 0.2, 0, 1.0);
+          this.setBloom(1.2);
+        } else if (step === 1) {
+          this.allreduce.visible = true; this.ulyBars.visible = false;
+          this.setBloom(1.7, 0.6);
+          this.flyCamera(0, 0.6, 8.6, 0, 0, 0, 1.0);
+        } else {
+          this.allreduce.visible = true; this.ulyBars.visible = true;
+          if (this.still) { this.ulyBar0.scale.y = 0.35; this.ulyBar1.scale.y = 0.35; }
+          else {
+            gsap.fromTo(this.ulyBar0.scale, { y: 1 }, { y: 0.35, duration: 1.4, ease: 'power2.inOut' });
+            gsap.fromTo(this.ulyBar1.scale, { y: 1 }, { y: 0.35, duration: 1.4, ease: 'power2.inOut' });
+          }
+          this.flyCamera(0, 1.6, 11, 0, -0.2, 0, 1.1);
+          this.setBloom(1.3);
+        }
+      },
+
+      zero: (step) => {
+        // slide 8 is mostly DOM; keep a calm boxes backdrop, no heavy 3D except divisibility hint
+        this.showGroups({ cubes: step === 1, megatron: false, boxes: true });
+        this.allreduce.visible = false; this.ulyBars.visible = false;
+        this.flyCamera(0, 1.4, 11.5, 0, 0, 0, 1.0);
+        this.setBloom(0.9);
+        if (step === 1) {
+          // divisibility: show cubes but GPU1 "empty" — pull head1 cubes away to dramatize P>h
+          this.setMode('heads', true);
+        }
+      },
+
+      takeaway: (step) => {
+        this.showGroups({ cubes: true, boxes: true });
+        this.flyCamera(0, 1.6, 12, 0, 0, 0, 1.2);
+        this.setBloom(1.0);
+        this.ghostLoop();
+      },
+    };
+  }
+
+  flyToHeads() {
+    if (this.still) { this.setMode('heads', true); return; }
+    // arcs: B (ids 1,3) GPU0->GPU1 ; C (ids 4,6) GPU1->GPU0 ; A(0,2) D(5,7) stay
+    for (const c of this.cubes) {
+      const id = c.userData.id;
+      const target = layoutPos(id, 'heads');
+      const start = c.position.clone();
+      const crosses = (start.x < 0) !== (target.x < 0);
+      if (crosses) {
+        const midY = 2.6, midZ = 2.2;
+        gsap.to(c.position, { duration: 1.25, ease: 'power2.inOut',
+          motionPath: { path: [
+            { x: start.x, y: start.y, z: start.z },
+            { x: (start.x + target.x) / 2, y: midY, z: midZ },
+            { x: target.x, y: target.y, z: target.z }
+          ], curviness: 1.4 } });
+      } else {
+        gsap.to(c.position, { x: target.x, y: target.y, z: target.z, duration: 1.0, ease: 'power2.inOut' });
+        gsap.fromTo(c.scale, { x: 1, y: 1, z: 1 }, { x: 1.12, y: 1.12, z: 1.12, duration: 0.5, yoyo: true, repeat: 1 });
+      }
+    }
+    if (DEBUG) gsap.delayedCall(1.3, () => this.assertMode('heads'));
+    this.mode = 'heads';
+  }
+
+  lightAttnGrid() {
+    this.attnCells.forEach((cell, i) => {
+      if (this.still) { cell.material.opacity = cell.userData.target; return; }
+      gsap.fromTo(cell.material, { opacity: 0.1 }, { opacity: cell.userData.target, duration: 0.5, delay: i * 0.03, ease: 'power1.out' });
+    });
+  }
+
+  pulseMLP() {
+    [this.gpu0, this.gpu1].forEach((g, k) => {
+      gsap.fromTo(g.scale, { x: 1, y: 1, z: 1 }, { x: 1.04, y: 1.06, z: 1.04, duration: 0.5, delay: k * 0.1, yoyo: true, repeat: 1, ease: 'sine.inOut' });
+    });
+  }
+
+  ghostLoop() {
+    if (this.still) { this.setMode('heads', true); return; }
+    if (this._ghost) this._ghost.kill();
+    this._ghost = gsap.timeline({ repeat: -1, yoyo: true });
+    this._ghost.add(() => this.setMode('heads')).to({}, { duration: 2.2 });
+    this._ghost.add(() => this.setMode('sharded')).to({}, { duration: 2.2 });
+  }
+
+  dynText(step) {
+    const slide = document.querySelector('.slide[data-world="megatron"]');
+    if (!slide) return;
+    const k = slide.querySelector('.kicker-dyn'), h = slide.querySelector('.h2-dyn'), p = slide.querySelector('.p-dyn');
+    if (step <= 1) { k.textContent = 'The baseline: Megatron'; h.innerHTML = 'Megatron splits the <span class="red">work</span> (heads) — not the sequence.'; p.textContent = 'Every GPU still stores all N tokens, so memory never shrinks, and each block ends in an all-reduce.'; }
+    else { k.textContent = 'Why Ulysses wins'; h.innerHTML = 'Ulysses splits the <span class="green">sequence</span>: memory and comm shrink with P.'; p.textContent = 'Megatron pipe stays fat (4Nh). Ulysses thins to 4Nh/P as you add GPUs.'; }
+  }
+
+  /* ---- DOM attach / render loop ---- */
+  attach(frameEl) {
+    if (!frameEl) return;
+    if (this.canvas.parentElement !== frameEl) {
+      frameEl.insertBefore(this.canvas, frameEl.firstChild);
+    }
+    this.canvas.classList.remove('hidden');
+    this.resize(frameEl);
+    if (!this.running) { this.running = true; this._raf = requestAnimationFrame(this._tick); }
+  }
+  detach() {
+    this.activeWorld = null;
+    this.canvas.classList.add('hidden');
+    this.running = false;
+    if (this._raf) cancelAnimationFrame(this._raf);
+  }
+  resize(frameEl) {
+    const r = (frameEl || this.canvas.parentElement)?.getBoundingClientRect();
+    if (!r || r.width < 2) return;
+    this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+    this.renderer.setSize(r.width, r.height, false);
+    this.composer.setSize(r.width, r.height);
+    this.bloom.setSize(r.width, r.height);
+    this.camera.aspect = r.width / r.height;
+    this.camera.updateProjectionMatrix();
+  }
+  _tick() {
+    if (!this.running) return;
+    this.camera.lookAt(this.lookTarget);
+    this.composer.render();
+    this._raf = requestAnimationFrame(this._tick);
+  }
+}
+
+/* ---------- equation reveal (KaTeX) ---------- */
+function renderAllMath() {
+  if (!window.katex) return;
+  document.querySelectorAll('.eq[data-tex]').forEach(el => {
+    try { window.katex.render(el.getAttribute('data-tex'), el, { displayMode: true, throwOnError: false }); }
+    catch (e) { el.textContent = el.getAttribute('data-tex'); }
+  });
+}
+function revealEqs(slide, step) {
+  slide.querySelectorAll('.eq[data-from]').forEach(el => {
+    el.classList.toggle('on', step >= Number(el.getAttribute('data-from')));
+  });
+}
+
+/* ---------- Deck (reused state machine + world hook) ---------- */
 class Deck {
-  constructor() {
+  constructor(world) {
+    this.world = world;
     this.slides = [...document.querySelectorAll('.slide')];
-    this.i = 0;
-    this.step = 0;
+    this.i = 0; this.step = 0;
     this.progress = document.getElementById('progress');
     this.bind();
     this.loadInitial();
+    addEventListener('resize', () => { const s = this.slides[this.i]; if (s.dataset.world) this.world.resize(s.querySelector('.frame')); });
   }
-  maxStep(i = this.i) {
-    return Number(this.slides[i].dataset.steps || 1) - 1;
-  }
+  maxStep(i = this.i) { return Number(this.slides[i].dataset.steps || 1) - 1; }
   loadInitial() {
     const params = new URLSearchParams(location.search);
     const hash = location.hash.replace('#', '');
-    if (params.has('slide')) {
-      this.show(Number(params.get('slide')) - 1, Number(params.get('step') || 0), false);
-    } else if (/^\d+(\.\d+)?$/.test(hash)) {
-      const [s, st = '0'] = hash.split('.');
-      this.show(Number(s) - 1, Number(st), false);
-    } else {
-      this.show(0, 0, false);
-    }
+    if (params.has('slide')) this.show(Number(params.get('slide')) - 1, Number(params.get('step') || 0), false);
+    else if (/^\d+(\.\d+)?$/.test(hash)) { const [s, st = '0'] = hash.split('.'); this.show(Number(s) - 1, Number(st), false); }
+    else this.show(0, 0, false);
     if (params.get('qa') === '1') requestAnimationFrame(() => this.emitQA());
   }
   bind() {
-    document.addEventListener('keydown', e => {
+    addEventListener('keydown', e => {
       if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); this.next(); }
       if (['ArrowLeft', 'PageUp', 'Backspace'].includes(e.key)) { e.preventDefault(); this.prev(); }
       if (e.key === 'Home') this.show(0, 0);
       if (e.key === 'End') this.show(this.slides.length - 1, this.maxStep(this.slides.length - 1));
     });
     let locked = false;
-    document.addEventListener('wheel', e => {
+    addEventListener('wheel', e => {
       if (locked || Math.abs(e.deltaY) < 20) return;
-      locked = true;
-      e.deltaY > 0 ? this.next() : this.prev();
-      setTimeout(() => locked = false, 460);
-    }, { passive: true });
-    let x0 = null;
-    document.addEventListener('touchstart', e => x0 = e.touches[0].clientX, { passive: true });
-    document.addEventListener('touchend', e => {
-      if (x0 == null) return;
-      const dx = e.changedTouches[0].clientX - x0;
-      if (Math.abs(dx) > 45) dx < 0 ? this.next() : this.prev();
-      x0 = null;
+      locked = true; e.deltaY > 0 ? this.next() : this.prev();
+      setTimeout(() => locked = false, 480);
     }, { passive: true });
   }
   show(slideIndex, stepIndex = 0, updateHash = true) {
@@ -1004,53 +1164,58 @@ class Deck {
       const label = s.querySelector('[data-step-label]');
       if (label) label.textContent = `${active ? this.step + 1 : 1}/${Number(s.dataset.steps || 1)}`;
     });
+    const slide = this.slides[this.i];
+    // drive the 3D world
+    if (this.world) this.world.goto(slide.dataset.world || null, this.step, slide.querySelector('.frame'));
+    // reveal equations for this step
+    revealEqs(slide, this.step);
+    // mantra highlight
     const absolute = this.slides.slice(0, this.i).reduce((sum, s) => sum + Number(s.dataset.steps || 1), 0) + this.step + 1;
     const total = this.slides.reduce((sum, s) => sum + Number(s.dataset.steps || 1), 0);
     this.progress.style.width = `${(absolute / total) * 100}%`;
     if (updateHash) history.replaceState(null, '', `#${this.i + 1}.${this.step}`);
   }
-  next() {
-    if (this.step < this.maxStep()) this.show(this.i, this.step + 1);
-    else this.show(this.i + 1, 0);
-  }
-  prev() {
-    if (this.step > 0) this.show(this.i, this.step - 1);
-    else this.show(this.i - 1, this.maxStep(this.i - 1));
-  }
+  next() { if (this.step < this.maxStep()) this.show(this.i, this.step + 1); else this.show(this.i + 1, 0); }
+  prev() { if (this.step > 0) this.show(this.i, this.step - 1); else this.show(this.i - 1, this.maxStep(this.i - 1)); }
   emitQA() {
     const slide = this.slides[this.i];
     const frame = slide.querySelector('.frame');
     const fr = frame.getBoundingClientRect();
     const bad = [];
     for (const el of frame.querySelectorAll('*')) {
+      if (el.id === 'world' || el.tagName === 'CANVAS') continue;
+      if (el instanceof SVGElement || el.closest('.katex')) continue; // KaTeX stretchy SVG paths report misleading geometry
       const r = el.getBoundingClientRect();
       const cs = getComputedStyle(el);
       if (r.width < 1 || r.height < 1 || cs.display === 'none' || cs.visibility === 'hidden') continue;
-      if (r.left < fr.left - 1 || r.top < fr.top - 1 || r.right > fr.right + 1 || r.bottom > fr.bottom + 1) {
-        bad.push({
-          tag: el.tagName,
-          cls: String(el.className || ''),
-          text: (el.innerText || el.textContent || '').trim().slice(0, 60),
-          rect: [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)]
-        });
-      }
+      if (r.left < fr.left - 1 || r.top < fr.top - 1 || r.right > fr.right + 1 || r.bottom > fr.bottom + 1)
+        bad.push({ tag: el.tagName, cls: String(el.className || ''), text: (el.innerText || '').trim().slice(0, 60), rect: [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)] });
     }
-    const data = {
-      slide: this.i + 1,
-      step: this.step,
-      title: slide.dataset.title,
-      frame: [Math.round(fr.width), Math.round(fr.height)],
-      viewport: [innerWidth, innerHeight],
-      overflowCount: bad.length,
-      overflow: bad.slice(0, 12)
-    };
-    const pre = document.createElement('pre');
-    pre.id = 'qa-output';
-    pre.textContent = JSON.stringify(data, null, 2);
+    const pre = document.createElement('pre'); pre.id = 'qa-output';
+    pre.textContent = JSON.stringify({ slide: this.i + 1, step: this.step, title: slide.dataset.title, frame: [Math.round(fr.width), Math.round(fr.height)], overflowCount: bad.length, overflow: bad.slice(0, 12) }, null, 2);
     document.body.appendChild(pre);
   }
 }
-window.deck = new Deck();
+
+/* ---------- boot ---------- */
+function boot() {
+  try {
+    renderAllMath();
+    const noWorld = new URLSearchParams(location.search).has('no3d');
+    const canvas = document.getElementById('world');
+    let world = null;
+    if (!noWorld) {
+      const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+      if (gl) { world = new World(canvas); window.world = world; }
+      else dbg('NO WEBGL — running without 3D');
+    }
+    window.deck = new Deck(world);
+    dbg('boot ok');
+  } catch (e) { dbg('BOOT ERROR: ' + (e && e.stack || e)); }
+}
+// KaTeX is deferred; wait for it
+if (document.readyState === 'complete') boot();
+else addEventListener('load', boot);
 </script>
 </body>
 </html>
