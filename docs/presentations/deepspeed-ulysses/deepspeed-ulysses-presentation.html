@@ -785,23 +785,25 @@ class World {
     }
   }
 
-  makeLabel(text, colorHex, outline) {
+  makeLabel(text, colorHex) {
     const cv = document.createElement('canvas'); cv.width = cv.height = 128;
     const ctx = cv.getContext('2d');
     ctx.clearRect(0, 0, 128, 128);
-    ctx.font = 'bold 84px ui-monospace, Menlo, monospace';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const c = '#' + colorHex.toString(16).padStart(6, '0');
-    ctx.fillStyle = '#0a1020'; // dark plate behind for readability
-    // glow
-    ctx.shadowColor = c; ctx.shadowBlur = 22;
+    // dark rounded plate so the number stays legible against bloom
+    ctx.fillStyle = 'rgba(7,11,20,.92)';
+    ctx.beginPath(); ctx.arc(64, 64, 46, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = 6; ctx.strokeStyle = c; ctx.stroke();
+    ctx.font = 'bold 76px ui-monospace, Menlo, monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = '#ffffff';
     ctx.fillText(text, 64, 70);
     const tex = new THREE.CanvasTexture(cv);
     tex.colorSpace = THREE.SRGBColorSpace;
-    const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
-    spr.scale.set(0.5, 0.5, 0.5);
-    spr.position.set(0, 0, 0.42);
+    tex.anisotropy = 4;
+    const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false }));
+    spr.scale.set(0.46, 0.46, 0.46);
+    spr.position.set(0, 0, 0.45);
     return spr;
   }
 
@@ -844,6 +846,15 @@ class World {
     this.ulyBar0 = mkShort(GPU0X, TOK[0]); this.ulyBar1 = mkShort(GPU1X, TOK[2]);
     this.ulyBars.add(this.ulyBar0, this.ulyBar1);
     this.meg.add(this.ulyBars);
+    // comm pipes (state 2): Megatron fat (4Nh, constant) vs Ulysses thin (4Nh/P)
+    this.pipes = new THREE.Group(); this.pipes.visible = false;
+    const pipeGeo = new THREE.CylinderGeometry(0.42, 0.42, 6.4, 20);
+    this.megPipe = new THREE.Mesh(pipeGeo, new THREE.MeshStandardMaterial({ color: 0xff6f91, emissive: 0xff6f91, emissiveIntensity: 0.7, roughness: 0.4 }));
+    this.megPipe.rotation.z = Math.PI / 2; this.megPipe.position.set(0, -1.65, 2.0);
+    this.ulyPipe = new THREE.Mesh(pipeGeo, new THREE.MeshStandardMaterial({ color: 0x67e8f9, emissive: 0x67e8f9, emissiveIntensity: 0.7, roughness: 0.4 }));
+    this.ulyPipe.rotation.z = Math.PI / 2; this.ulyPipe.position.set(0, -2.55, 2.0); this.ulyPipe.scale.set(1, 1, 0.28);
+    this.pipes.add(this.megPipe, this.ulyPipe);
+    this.meg.add(this.pipes);
   }
 
   /* ---- attention score grid (slide 5) : 4x4 plane of cells ---- */
@@ -922,14 +933,13 @@ class World {
         this.flyCamera(0, 1.4, 10.5, 0, 0, 0);
         this.setBloom(1.2);
         if (step === 0) {
-          // ribbon hovering above, boxes empty
-          this.cubes.forEach((c, i) => {
+          // ribbon hovering above, boxes empty: token order left->right, head1 slightly behind
+          this.cubes.forEach((c) => {
             const id = c.userData.id;
-            // arrange in token order as a ribbon on top
-            gsap.to(c.position, { x: (cubeToken(id) - 1.5) * 1.1, y: 2.6 + cubeHead(id) * 0.0, z: 1.2, duration: 0.9, ease: 'power2.out' });
+            const tx = (cubeToken(id) - 1.5) * 1.1, ty = 1.9, tz = 1.2 + cubeHead(id) * 0.55;
+            if (this.still) { gsap.killTweensOf(c.position); c.position.set(tx, ty, tz); }
+            else gsap.to(c.position, { x: tx, y: ty, z: tz, duration: 0.9, ease: 'power2.out' });
           });
-          // stack head1 slightly behind head0 on the ribbon
-          this.cubes.forEach((c) => { if (cubeHead(c.userData.id) === 1) gsap.to(c.position, { z: 1.7, duration: 0.9 }); });
         } else {
           this.setMode('sharded');
         }
@@ -975,23 +985,23 @@ class World {
         this.showGroups({ cubes: false, megatron: true, boxes: true });
         this.dynText(step);
         if (step === 0) {
-          this.allreduce.visible = false; this.ulyBars.visible = false;
-          gsap.to(this.megBar0.scale, { y: 1, duration: 0.8 }); gsap.to(this.megBar1.scale, { y: 1, duration: 0.8 });
+          this.allreduce.visible = false; this.ulyBars.visible = false; this.pipes.visible = false;
+          this.megBar0.scale.y = 1; this.megBar1.scale.y = 1;
           this.flyCamera(-1.0, 0.8, 9.5, -0.5, 0.2, 0, 1.0);
           this.setBloom(1.2);
         } else if (step === 1) {
-          this.allreduce.visible = true; this.ulyBars.visible = false;
+          this.allreduce.visible = true; this.ulyBars.visible = false; this.pipes.visible = false;
           this.setBloom(1.7, 0.6);
           this.flyCamera(0, 0.6, 8.6, 0, 0, 0, 1.0);
         } else {
-          this.allreduce.visible = true; this.ulyBars.visible = true;
+          this.allreduce.visible = true; this.ulyBars.visible = true; this.pipes.visible = true;
           if (this.still) { this.ulyBar0.scale.y = 0.35; this.ulyBar1.scale.y = 0.35; }
           else {
             gsap.fromTo(this.ulyBar0.scale, { y: 1 }, { y: 0.35, duration: 1.4, ease: 'power2.inOut' });
             gsap.fromTo(this.ulyBar1.scale, { y: 1 }, { y: 0.35, duration: 1.4, ease: 'power2.inOut' });
           }
-          this.flyCamera(0, 1.6, 11, 0, -0.2, 0, 1.1);
-          this.setBloom(1.3);
+          this.flyCamera(0, 1.0, 12.5, 0, -1.0, 0, 1.1);
+          this.setBloom(1.25);
         }
       },
 
