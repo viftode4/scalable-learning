@@ -1,0 +1,5 @@
+line,round,client,test_acc,val_acc,test_avg_loss,val_avg_loss,test_total,val_total,log
+20287,1,1,0.506589,0.526718,0.692955,0.692115,2732,524,results/overnight_smoke_monitor_bba_mps.log
+20290,1,2,0.482241,0.498092,0.693716,0.693072,2731,524,results/overnight_smoke_monitor_bba_mps.log
+20298,2,1,0.506589,0.526718,0.692955,0.692115,2732,524,results/overnight_smoke_monitor_bba_mps.log
+20299,2,2,0.482241,0.498092,0.693716,0.693072,2731,524,results/overnight_smoke_monitor_bba_mps.log

@@ -1,0 +1,10 @@
+line,round,client,train_acc,train_loss,train_avg_loss,train_total,log
+1084,0,29,0.467187,451.207489,0.705012,640,results/overnight_proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed0.log
+1088,0,12,0.510938,444.727322,0.694886,640,results/overnight_proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed0.log
+1092,0,11,0.507812,443.774092,0.693397,640,results/overnight_proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed0.log
+1096,0,42,0.5125,446.211052,0.697205,640,results/overnight_proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed0.log
+1100,0,3,0.501563,449.121239,0.701752,640,results/overnight_proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed0.log
+1104,0,28,0.485938,449.126778,0.701761,640,results/overnight_proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed0.log
+1108,0,39,0.498437,448.538179,0.700841,640,results/overnight_proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed0.log
+1112,0,32,0.495312,446.613899,0.697834,640,results/overnight_proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed0.log
+1116,0,23,0.510938,446.965801,0.698384,640,results/overnight_proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed0.log

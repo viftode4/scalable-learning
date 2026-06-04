@@ -1,0 +1,13 @@
+line,log,kind,total_param_count,total_trainable_params,lora_product_norm,lora_A_norm,lora_A_params,lora_A_trainable_params,lora_B_norm,lora_B_params,lora_B_trainable_params,classifier_norm,classifier_params,classifier_trainable_params,round,phase,mode,update_lora_A_norm,update_lora_A_params,update_lora_B_norm,update_lora_B_params,update_classifier_norm,update_classifier_params,client,sample_size
+20260,results/overnight_smoke_monitor_bba_mps.log,fit_start,1331716,1257988,0.0,5.64872089,73728,0,0.0,73728,73728,21.77341507,1184260,1184260,0,B,rolora,,,,,,,,
+20261,results/overnight_smoke_monitor_bba_mps.log,fit_end,1331716,1257988,0.00050685,5.64872089,73728,0,0.00088423,73728,73728,21.77340031,1184260,1184260,0,B,rolora,0.0,0,0.0,0,0.0,0,,
+20263,results/overnight_smoke_monitor_bba_mps.log,global_pre_train,1331716,1257988,0.0,5.64872089,73728,0,0.0,73728,73728,21.77341507,1184260,1184260,0,B,,,,,,,,1,
+20265,results/overnight_smoke_monitor_bba_mps.log,fit_start,1331716,1257988,0.0,5.64872089,73728,0,0.0,73728,73728,21.77341507,1184260,1184260,0,B,rolora,,,,,,,,
+20266,results/overnight_smoke_monitor_bba_mps.log,fit_end,1331716,1257988,0.0010537,5.64872089,73728,0,0.00182567,73728,73728,21.77341864,1184260,1184260,0,B,rolora,0.0,0,0.0,0,0.0,0,,
+20267,results/overnight_smoke_monitor_bba_mps.log,client_post_train,,,,,,,,,,,,,0,,,0.0,0,0.00182567,73728,0.01354556,1184260,1,8
+20272,results/overnight_smoke_monitor_bba_mps.log,global_pre_train,1331716,1257988,0.00062642,5.64872089,73728,0,0.00108727,73728,73728,21.77340554,1184260,1184260,1,B,,,,,,,,1,
+20274,results/overnight_smoke_monitor_bba_mps.log,fit_start,1331716,1257988,0.00062642,5.64872089,73728,0,0.00108727,73728,73728,21.77340554,1184260,1184260,1,B,rolora,,,,,,,,
+20275,results/overnight_smoke_monitor_bba_mps.log,fit_end,1331716,1257988,0.00179048,5.64872089,73728,0,0.00309552,73728,73728,21.77343833,1184260,1184260,1,B,rolora,0.0,0,0.0,0,0.0,0,,
+20276,results/overnight_smoke_monitor_bba_mps.log,client_post_train,,,,,,,,,,,,,1,,,0.0,0,0.00248527,73728,0.01610044,1184260,1,8
+20279,results/overnight_smoke_monitor_bba_mps.log,fit_start,1331716,1257988,0.00062642,5.64872089,73728,0,0.00108727,73728,73728,21.77340554,1184260,1184260,1,B,rolora,,,,,,,,
+20280,results/overnight_smoke_monitor_bba_mps.log,fit_end,1331716,1257988,0.00175294,5.64872089,73728,0,0.00303355,73728,73728,21.77332382,1184260,1184260,1,B,rolora,0.0,0,0.0,0,0.0,0,,

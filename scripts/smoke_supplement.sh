@@ -63,12 +63,28 @@ for mode in "${modes[@]}"; do
         echo "# git_sha: $(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo unknown)"
         echo "# config: $CONFIG"
         echo "# mode: $mode"
+        echo "# sls_lora_init: ${SLS_LORA_INIT:-default}"
+        echo "# sls_lora_gauge: ${SLS_LORA_GAUGE:-${SLS_LORA_GAUGE_FIX:-${SLS_GAUGE_FIX:-default}}}"
+        echo "# sls_lora_lr_a: ${SLS_LORA_LR_A:-default}"
+        echo "# sls_lora_lr_b: ${SLS_LORA_LR_B:-default}"
+        echo "# sls_phase_policy: ${SLS_PHASE_POLICY:-default}"
+        echo "# sls_phase_pattern: ${SLS_PHASE_PATTERN:-default}"
+        echo "# sls_b_warmup_rounds: ${SLS_B_WARMUP_ROUNDS:-default}"
+        echo "# sls_adaptive_min_b_rounds: ${SLS_ADAPTIVE_MIN_B_ROUNDS:-default}"
+        echo "# sls_adaptive_max_b_rounds: ${SLS_ADAPTIVE_MAX_B_ROUNDS:-default}"
+        echo "# sls_adaptive_val_gain_epsilon: ${SLS_ADAPTIVE_VAL_GAIN_EPSILON:-default}"
+        echo "# sls_device: ${SLS_DEVICE:-auto}"
+        echo "# sls_monitor: ${SLS_MONITOR:-0}"
         echo "# seed: ${SEED:-default}"
         echo "# started_at_utc: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
         cd "$REPO"
-        NO_COLOR=1 SLS_ALTERNATION_MODE="$mode" \
+        # Smoke/tests must not create or sync W&B runs even if the parent
+        # shell has WANDB_* variables set. Real experiment runs use
+        # scripts/run_supplement_arm.sh instead.
+        NO_COLOR=1 WANDB_MODE=disabled WANDB_PROJECT= \
+            SLS_ALTERNATION_MODE="$mode" \
             "$VENV/bin/python" scripts/run_supplement.py \
-            --cfg "$CONFIG" "${seed_override[@]}"
+            --cfg "$CONFIG" ${seed_override[@]+"${seed_override[@]}"}
     } >"$log" 2>&1; then
         marker="$(grep -F "[sls-rolora]" "$log" | tail -1 | perl -pe 's/\e\[[0-9;]*m//g' || true)"
         final="$(grep -E "Results_raw|Results_avg|Results_weighted_avg" "$log" | tail -1 | perl -pe 's/\e\[[0-9;]*m//g' || true)"

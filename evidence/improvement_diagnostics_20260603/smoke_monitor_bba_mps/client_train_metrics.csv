@@ -1,0 +1,5 @@
+line,round,client,train_acc,train_loss,train_avg_loss,train_total,log
+20262,0,2,0.375,5.554529,0.694316,8,results/overnight_smoke_monitor_bba_mps.log
+20268,0,1,0.625,5.255331,0.656916,8,results/overnight_smoke_monitor_bba_mps.log
+20277,1,1,0.75,5.011846,0.626481,8,results/overnight_smoke_monitor_bba_mps.log
+20281,1,2,0.25,6.22973,0.778716,8,results/overnight_smoke_monitor_bba_mps.log

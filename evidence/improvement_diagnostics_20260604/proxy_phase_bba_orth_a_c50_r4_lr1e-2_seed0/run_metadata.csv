@@ -1,0 +1,15 @@
+line,key,value,log
+1,repo,/Users/vliftode/personal/scalable-learning,results/overnight_proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed0.log
+2,git_sha,f14db84,results/overnight_proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed0.log
+3,config,experiments/configs/proxy_qnli_roberta_base_c50_r4_lr1e-2.yaml,results/overnight_proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed0.log
+4,mode,rolora,results/overnight_proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed0.log
+5,tag,proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed0,results/overnight_proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed0.log
+6,sls_lora_init,orthogonal_a,results/overnight_proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed0.log
+7,sls_lora_lr_a,default,results/overnight_proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed0.log
+8,sls_lora_lr_b,default,results/overnight_proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed0.log
+9,sls_phase_pattern,BBA,results/overnight_proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed0.log
+10,sls_b_warmup_rounds,default,results/overnight_proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed0.log
+11,sls_device,mps,results/overnight_proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed0.log
+12,sls_monitor,1,results/overnight_proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed0.log
+13,overrides,seed 0,results/overnight_proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed0.log
+14,started_at_utc,2026-06-03T19:52:03Z,results/overnight_proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed0.log

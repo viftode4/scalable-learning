@@ -35,6 +35,14 @@ def test_supplement_runner_stamps_manifest_header() -> None:
     assert "# mode:" in script
 
 
+def test_supplement_runners_stamp_lora_gauge() -> None:
+    smoke = Path("scripts/smoke_supplement.sh").read_text()
+    arm = Path("scripts/run_supplement_arm.sh").read_text()
+
+    assert "# sls_lora_gauge:" in smoke
+    assert "# sls_lora_gauge:" in arm
+
+
 def test_makefile_has_feasibility_and_diagnostics_targets() -> None:
     makefile = Path("Makefile").read_text()
 

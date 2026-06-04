@@ -1,6 +1,50 @@
+import os
 import torch
 import torch.nn as nn
 from collections import OrderedDict
+
+
+def _normalise_sls_lora_init(value):
+    if value is None:
+        return 'default'
+    value = str(value).strip().lower().replace('-', '_')
+    if value in ('', 'default', 'none', 'vanilla'):
+        return 'default'
+    if value in ('orthogonal', 'orthogonal_a', 'orthogonal_lora_a'):
+        return 'orthogonal_a'
+    raise ValueError(f"unknown SLS_LORA_INIT / sls_lora_init: {value!r}")
+
+
+def _apply_sls_lora_init(model, init_variant):
+    """Apply project-specific LoRA init after PEFT creates adapter weights.
+
+    PEFT 0.3.0 does not support PiSSA/OLoRA config switches. For the first
+    proposal-compatible improvement we keep the pretrained model behavior
+    unchanged at step 0 by orthogonalising only LoRA-A and forcing LoRA-B to
+    zero.
+    """
+    init_variant = _normalise_sls_lora_init(init_variant)
+    if init_variant == 'default':
+        return model
+
+    if init_variant != 'orthogonal_a':
+        raise ValueError(f"unsupported SLS LoRA init: {init_variant!r}")
+
+    count_a = 0
+    count_b = 0
+    with torch.no_grad():
+        for name, param in model.named_parameters():
+            if 'lora_A' in name and name.endswith('weight'):
+                torch.nn.init.orthogonal_(param)
+                count_a += 1
+            elif 'lora_B' in name and name.endswith('weight'):
+                torch.nn.init.zeros_(param)
+                count_b += 1
+
+    print("[sls-rolora] SLS_LORA_INIT=orthogonal_a: "
+          f"orthogonalised {count_a} LoRA-A matrices; "
+          f"zeroed {count_b} LoRA-B matrices.")
+    return model
 
 
 def enable_adapter(model, package, adapter, **kwargs):
@@ -35,6 +79,9 @@ def enable_adapter(model, package, adapter, **kwargs):
         """
         from peft import get_peft_model, TaskType
         if adapter == 'lora':
+            sls_lora_init = kwargs.pop(
+                'sls_lora_init',
+                os.environ.get('SLS_LORA_INIT', 'default'))
             # for name, param in model.named_parameters():
             #     print(name)
             from peft import LoraConfig
@@ -51,10 +98,11 @@ def enable_adapter(model, package, adapter, **kwargs):
             # print("######################################################################")
             # peft_config = LoraConfig(task_type=TaskType.SEQ_CLS, target_modules=["layer.19.attention.self.value","layer.19.attention.self.query","layer.20.attention.self.value","layer.20.attention.self.query","layer.21.attention.self.value","layer.21.attention.self.query","layer.22.attention.self.value","layer.22.attention.self.query","layer.23.attention.self.value","layer.23.attention.self.query"],  **kwargs)
             peft_config = LoraConfig(task_type=TaskType.SEQ_CLS, **kwargs) # target_modules=target_modu,  **kwargs)
-            
+
             # peft_config = LoraConfig(task_type=TaskType.SEQ_CLS, target_modules=["value"], **kwargs)
-            
+
             model = get_peft_model(model, peft_config)
+            model = _apply_sls_lora_init(model, sls_lora_init)
             # for name, param in model.named_parameters():
             #     print(name)
         elif adapter == 'prefix':

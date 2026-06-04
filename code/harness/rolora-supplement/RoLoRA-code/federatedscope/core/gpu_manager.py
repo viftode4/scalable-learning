@@ -68,10 +68,29 @@ class GPUManager():
         """
         To allocate a device
         """
+        requested_device = os.environ.get('SLS_DEVICE')
+        if requested_device:
+            requested_device = requested_device.lower()
+            if requested_device == 'mps':
+                if not _mps_available():
+                    raise RuntimeError("SLS_DEVICE=mps requested but Apple "
+                                       "MPS is not available")
+                print("[sls-rolora] SLS_DEVICE=mps: using Apple MPS")
+                return 'mps'
+            if requested_device == 'cpu':
+                print("[sls-rolora] SLS_DEVICE=cpu: using CPU")
+                return 'cpu'
+            if requested_device.startswith('cuda'):
+                print(f"[sls-rolora] SLS_DEVICE={requested_device}: "
+                      "using requested CUDA device")
+                return requested_device
+            raise RuntimeError(f"Unsupported SLS_DEVICE={requested_device!r}; "
+                               "use mps, cpu, or cuda[:idx]")
         if self.gpus is None:
             # sls-rolora: prefer Apple MPS when CUDA is unavailable so the
             # supplement smoke can run on macOS hosts.
             if _mps_available():
+                print("[sls-rolora] CUDA unavailable; using Apple MPS")
                 return 'mps'
             return 'cpu'
         elif self.specified_device >= 0:

@@ -17,6 +17,14 @@ from federatedscope.core.auxiliaries.utils import merge_dict_of_results, \
 from federatedscope.core.auxiliaries.trainer_builder import get_trainer
 from federatedscope.core.secret_sharing import AdditiveSecretSharing
 from federatedscope.core.workers.base_server import BaseServer
+try:
+    from federatedscope.llm.trainer.sls_phase_schedule import (
+        phase_for_round_from_env as sls_phase_for_round_from_env,
+        update_adaptive_state_after_server_eval as sls_update_phase_state,
+    )
+except Exception:
+    sls_phase_for_round_from_env = None
+    sls_update_phase_state = None
 
 logger = logging.getLogger(__name__)
 if get_ds_rank() == 0:
@@ -479,6 +487,7 @@ class Server(BaseServer):
                 'client_feedback': msg_list,
                 'recover_fun': self.recover_fun,
                 'staleness': staleness,
+                'round': self.state,
             }
             # logger.info(f'The staleness is {staleness}')
             result = aggregator.aggregate(agg_info)
@@ -631,11 +640,39 @@ class Server(BaseServer):
                                 if isinstance(v, (int, float))
                             }
                             sls_payload['server/round'] = round
-                            wandb.log(sls_payload, step=int(round))
+                            try:
+                                wandb.define_metric('server/round')
+                                wandb.define_metric(
+                                    'server/*',
+                                    step_metric='server/round')
+                            except Exception:
+                                pass
+                            # Do not pass W&B's global `step=` here. The
+                            # upstream monitor also logs without a step, so
+                            # explicit round steps can become "less than the
+                            # current step" and get silently dropped. Use
+                            # server/round as the custom x-axis instead.
+                            wandb.log(sls_payload)
                 except Exception as _sls_wandb_err:
                     logger.warning(
                         f"[sls-rolora] server wandb.log failed: "
                         f"{_sls_wandb_err}")
+                if sls_update_phase_state is not None and \
+                        sls_phase_for_round_from_env is not None:
+                    try:
+                        wavg = formatted_logs.get('Results_weighted_avg', {})
+                        if isinstance(wavg, dict) and wavg:
+                            phase = sls_phase_for_round_from_env(int(round))
+                            state = sls_update_phase_state(
+                                int(round), phase, wavg)
+                            if state:
+                                logger.info(
+                                    f"[sls-rolora] adaptive phase state: "
+                                    f"{state}")
+                    except Exception as _sls_phase_state_err:
+                        logger.warning(
+                            f"[sls-rolora] adaptive phase state failed: "
+                            f"{_sls_phase_state_err}")
                 formatted_logs_all_set.update(formatted_logs)
                 self._monitor.update_best_result(
                     self.best_results,

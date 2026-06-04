@@ -1,0 +1,11 @@
+line,key,value,log
+1,repo,/Users/vliftode/personal/scalable-learning,results/overnight_proxy_orth_a_c50_r4_lr1e-2_seed0.log
+2,git_sha,f14db84,results/overnight_proxy_orth_a_c50_r4_lr1e-2_seed0.log
+3,config,experiments/configs/proxy_qnli_roberta_base_c50_r4_lr1e-2.yaml,results/overnight_proxy_orth_a_c50_r4_lr1e-2_seed0.log
+4,mode,rolora,results/overnight_proxy_orth_a_c50_r4_lr1e-2_seed0.log
+5,tag,proxy_orth_a_c50_r4_lr1e-2_seed0,results/overnight_proxy_orth_a_c50_r4_lr1e-2_seed0.log
+6,sls_lora_init,orthogonal_a,results/overnight_proxy_orth_a_c50_r4_lr1e-2_seed0.log
+7,sls_lora_lr_a,default,results/overnight_proxy_orth_a_c50_r4_lr1e-2_seed0.log
+8,sls_lora_lr_b,default,results/overnight_proxy_orth_a_c50_r4_lr1e-2_seed0.log
+9,overrides,seed 0,results/overnight_proxy_orth_a_c50_r4_lr1e-2_seed0.log
+10,started_at_utc,2026-06-03T19:12:42Z,results/overnight_proxy_orth_a_c50_r4_lr1e-2_seed0.log

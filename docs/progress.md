@@ -6,18 +6,21 @@ evidence path.
 
 ## Current thesis
 
-We reproduce RoLoRA's core client-scaling claim, then characterize and improve
-phase-specific `A`/`B` dynamics using minimal changes that preserve exact
-alternating aggregation.
+We deliver a compute-constrained reproduction and proxy-scale improvement study
+of RoLoRA: audit the released supplement, verify the patched harness locally,
+show RoLoRA's robustness on heterogeneous toy/proxy settings, and test
+proposal-compatible `A`/`B` interventions under the hardware budget we actually
+have.
 
 ## Strategy lock
 
-- **Primary path:** reproduction-first, diagnostics-backed.
-- **Fallback path:** diagnostic-first smaller-scale story if paper-scale compute
-  is blocked.
-- **Primary dataset:** MNLI.
-- **Fallback dataset:** QNLI, because the supplement pipeline is already wired
-  and locally verified there.
+- **Primary path for the 2026-06-11 draft:** compute-constrained,
+  diagnostic-first QNLI story with explicit proxy labels.
+- **Paper-scale path:** one or a few RoBERTa-Large attempts only when they do
+  not displace draft-critical evidence.
+- **Primary dataset for this draft:** QNLI, because the supplement pipeline and
+  W&B runs are already wired and locally verified there.
+- **Stretch dataset:** MNLI only after the QNLI/proxy story is ledgered.
 - **Forbidden pivots:** unrelated prior-project framing, a different paper-presentation paper,
   more account/fairshare churn before the confirmed DelftBlue share is tried, or Llama-2-7B as a baseline path.
 
@@ -57,6 +60,8 @@ when any trigger below fires:
 | 2026-05-27 | Matrix runner bug fixes. (a) `scripts/run_supplement_arm.sh` line 67: `${OVERRIDES[@]}` is unbound under `set -u` when no overrides are passed — replaced with the `${OVERRIDES[@]+"${OVERRIDES[@]}"}` idiom, so arms with no overrides (the 3 SGD baselines) no longer crash before training. (b) FederatedScope auto-generates `exp/<auto_name>/sub_exp_<UTC-seconds>` directories at 1-second resolution; two arms launched simultaneously by the matrix collided on the same dir and the second died with FileExistsError — added an explicit `outdir exp/<TAG>_<PID>_<nanosec>` override per arm. Added `scripts/rerun_failed_matrix_arms.sh` to recover the four arms lost the first time. | Without these fixes the overnight matrix only produced 2 of 6 arms on its first dispatch (lost all 3 SGD arms to the unbound variable and `lora_adamw` to the outdir collision). | `scripts/run_supplement_arm.sh`, `scripts/rerun_failed_matrix_arms.sh` |
 | 2026-05-27 | Trainer correctness fix + AdamW vs SGD diagnosis. (a) Moved alternation block + `step_count++` inside the `cur_mode in [TRAIN, FINETUNE]` guard and before optimizer construction — upstream code re-fired the block in val/test, drifting `step_count` 3× per round and re-flipping `requires_grad` on a counter that didn't track training rounds. (b) Gated the wandb mech probe to client #1 so `share_local_model=True` doesn't overwrite the start-of-round probe with mid-round client mutations. (c) Added opt-in `SLS_DEBUG_PROBE` / `SLS_DEBUG_GRAD` stdout probes for future diagnostics. (d) Ran a 40-round `rolora` arm with AdamW lr=5e-4 locally on RoBERTa-base QNLI → test_acc 0.8766 by round 39 (started at 0.5054). | Cluster's stuck-at-chance was an **SGD-undertraining problem**, not the classifier-unfreeze fix being wrong. RoLoRA alternation is exact (DBG grad probe: A.grad=None in B-rounds, B.grad=None in A-rounds). Cluster sbatch scripts inherit the authors' SGD lr=0.005 and need to be re-launched with AdamW (or the SGD lr lifted ~10×) before any C2 evidence is meaningful. | `code/harness/rolora-supplement/RoLoRA-code/federatedscope/llm/trainer/trainer.py`, `code/harness/.../federatedscope/core/workers/client.py`, `results/overnight_adamw_40.log`, `results/overnight_smoke_final.log` |
 | 2026-06-01 | Recorded the confirmed DelftBlue access share: portal display `Education-EEMCS-MSc-DSAIT`, Slurm account directive `education-eemcs-msc-dsait`, with possible one-working-day Slurm accounting lag. | Removes the last account/share ambiguity before the first real C2 submission; prevents future agents from changing the working lower-case `#SBATCH --account` value just because the portal email is capitalized. | DHPC completion email; `docs/setup/delftblue.md`, `slurm/README.md`, `slurm/repro_qnli_c20_r4_*.sbatch`, `AGENTS.md` |
+| 2026-06-03 | Reframed the June-11 draft target as compute-constrained reproduction + proxy-scale improvement, then generated report-ready W&B proxy and toy heterogeneity figures. | Gives the draft concrete figures/tables now without pretending the current W&B runs are RoBERTa-Large Table-1 reproduction. | `scripts/plot_wandb_proxy.py`, `scripts/plot_toy_heterogeneity.py`, `evidence/wandb_qnli_c50_r4_20260603/figures/`, `evidence/toy_heterogeneity_20260603/figures/`, `.omx/plans/course-deliverables-results-plan-20260603.md` |
+| 2026-06-03 | Added opt-in orthogonal-A initialization, env-gated A/B LoRA learning-rate param groups, and a FedOpt proxy config. | Makes all three proposal improvement axes executable now while preserving default baselines. The real supplement smoke `smoke_improve_orth_ab` verifies orthogonal-A and A/B LR hooks together. | `code/harness/rolora-supplement/RoLoRA-code/federatedscope/llm/model/adapter_builder.py`, `code/harness/rolora-supplement/RoLoRA-code/federatedscope/llm/trainer/{trainer.py,sls_lora_lr.py}`, `tests/test_sls_{orthogonal_lora_init,lora_lr_groups}.py`, `experiments/configs/proxy_qnli_roberta_base_c50_r4_lr1e-2*.yaml`, `results/overnight_smoke_improve_orth_ab.log` |
 
 ## Workstreams
 
@@ -68,8 +73,8 @@ usable now without pretending ownership is decided.
 | Infrastructure & baselines | Setup lane | Local env, supplement install path, tests, smoke runs, and pilot summaries exist. RoBERTa-Large feasibility verified locally on Apple MPS. | Run `make table1-medium-all` if local runtime is acceptable; otherwise jump straight to cluster R3/R4/R5/R6. | `experiments/ledger/README.md`, `results/{table1_,roberta_large_feasibility_}*.log` | None blocking. |
 | Harness escalation | Setup lane | C2 cluster pipeline staged end-to-end: configs, sbatch (3 modes, partition-compliant), warm-cache login-node script, wandb live logging (`server/*` + `client_NN/*`), runbook. Verified local wandb run lands under `scalable-learning-7/sls-rolora-repro`. | Submit C2 jobs on DelftBlue (one mode × seed 0 first; if green, fan to all 3 × 3). | `slurm/repro_qnli_c20_r4_*.sbatch`, `scripts/warm_caches.sh`, `docs/setup/delftblue.md`, `https://wandb.ai/scalable-learning-7/sls-rolora-repro` | Real cluster wall-time and convergence behaviour still unobserved. |
 | Algorithm & ablations | Algorithm lane | RoLoRA/LoRA/FFA-LoRA modes run through the patched supplement; invariant tests exist for local helper code. | Add/verify active-factor update norms and frozen-factor markers before serious runs. | `code/harness/rolora-supplement.patch`, `tests/` | Supplement code is gitignored; patch discipline matters. |
-| Improvement & analysis | Analysis lane | Three proposal directions are selected; unified phase-specific thesis recorded in ADR 0005. | Run only the smallest phase-dynamics grid after diagnostics are present. | `docs/research/literature-snapshot-2026-05-20.md`, `docs/experiment-matrix.md` | A/B LR novelty is weak unless paper ablations are acknowledged. |
-| Report & presentation | Analysis lane | Paper presentation outline exists; report now has a claim-led skeleton. | Fill the claim ledger as each run completes or fails. | `report/README.md`, `docs/templates/paper-presentation-outline.md` | Writing too late will make results look like an experiment dump. |
+| Improvement & analysis | Analysis lane | Orthogonal-A has 5-seed toy signal (+3.30 pp); orthogonal-A proxy seed 0 is running; A/B LR and FedOpt are code/config-ready. | Monitor `results/overnight_proxy_orth_a_c50_r4_lr1e-2_seed0.log`; if competitive, run seeds 1/2, otherwise try A/B LR seed 0. | `report/draft_results_brief_20260603.md`, `evidence/toy_heterogeneity_20260603/figures/`, `experiments/configs/proxy_qnli_roberta_base_c50_r4_lr1e-2*.yaml` | GLUE/proxy improvement result still pending; toy improvement must be labelled toy-only. |
+| Report & presentation | Analysis lane | Paper presentation outline exists; report has a claim-led skeleton and a June-11 draft results brief. | Draft prose from existing W&B proxy + toy improvement evidence while the orthogonal-A proxy run finishes. | `report/README.md`, `report/draft_results_brief_20260603.md`, `docs/templates/paper-presentation-outline.md` | Writing too late will make results look like an experiment dump. |
 | Cluster / access | Setup lane | DelftBlue full access granted 2026-06-01 under portal share `Education-EEMCS-MSc-DSAIT`; templates use Slurm account `education-eemcs-msc-dsait`. Daniel's first cluster attempts are now evidence that the old shipped SGD/30-round recipe was under-tuned, not evidence against RoLoRA. `main` now carries the corrected AdamW/75-round C2 recipe plus trainer fixes. | Sync `main`, verify Slurm sees the confirmed account, relaunch corrected `repro_qnli_c20_r4_rolora.sbatch` seed 0, and ledger the result. | `docs/setup/delftblue.md`, `slurm/README.md`, `slurm/repro_qnli_c20_r4_*.sbatch`, `scripts/{sync_to_delftblue,warm_caches}.sh`, `docs/decisions/0006-supplement-reproducibility-gap.md` | Slurm accounting may lag the 2026-06-01 grant by up to one working day. Risk: 10 GB MIG VRAM/4h wall time may truncate the 75-round run; partial ≥30-round AdamW trajectory is still useful, full completion may need `gpu-a100`. |
 
 ## Claim ledger
@@ -85,6 +90,11 @@ not in prose.
 | C3 | RoBERTa-Large feasibility is known before cluster spend. | supported-local | One tiny feasibility run or actionable failure. | `make roberta-large-feasibility MODE=rolora` (CUDA / Apple MPS / CPU) | 0 | `results/roberta_large_feasibility_rolora.log` | Setup lane | TBD | Verified on Apple MPS; cluster feasibility-equivalent re-verification will fall out of the first C2 submission. |
 | C4 | RoLoRA degrades less than LoRA/FFA-LoRA as clients increase. | planned | 3/20/50-client (r=4) and 50-client (r=8) RoBERTa-Large table and Figure-3-style 50-client curve, all on QNLI. | R3-R6 matrix rows; configs `experiments/configs/repro_qnli_c{3,20,50}_r{4,8}.yaml`; C2 sbatch scripts ready under `slurm/repro_qnli_c20_r4_*.sbatch`; wandb dashboard `sls-rolora-repro` is the live evidence channel. | 0,1,2 per cell | TBD (wandb + `results/*.log` + `exp/*/sub_exp_*/eval_results.log`) | Algorithm lane | TBD | FlexLoRA omitted (not in supplement). |
 | C5 | Phase-specific diagnostics explain at least one improvement or null result. | planned | Per-round phase, update norm, metric, and wall-time traces. | I1-I5 matrix rows | 0 first, replicate winner | TBD | Analysis lane | TBD | Requires supplement instrumentation beyond current final metrics. |
+| C6 | At RoBERTa-base proxy scale, the current 50-client QNLI W&B bundle gives a usable RoLoRA control and LR choice for improvement transfer. | supported-proxy | W&B-exported server curves and summary table; 28 runs / 560 server-history rows. | `uv run python scripts/plot_wandb_proxy.py` | RoLoRA `1e-2`: 0,1,2; other LR/methods as exported | `evidence/wandb_qnli_c50_r4_20260603/figures/proxy_plot_summary.md`, `proxy_a_*`, `proxy_b_*`, `proxy_c_*`, `proxy_d_*`, `proxy_e_*` | Analysis lane | TBD | RoBERTa-base proxy only; not Table 1; all W&B states are `crashed` after completed rounds 0-19; run metadata lacks full config provenance. |
+| C7 | In the extreme toy heterogeneity setting, RoLoRA beats LoRA/FFA-LoRA and orthogonal-A initialization improves RoLoRA. | supported-toy | Daniel branch JSON results copied into evidence and replotted with 5-seed CI95. | `uv run python scripts/plot_toy_heterogeneity.py` | 0,1,2,3,4 | `evidence/toy_heterogeneity_20260603/figures/toy_plot_summary.md`, `toy_g_*`, `toy_h_*` | Analysis lane | TBD | Toy MNIST model; improvement still needs GLUE/proxy transfer before final strong claim. |
+| C8 | Orthogonal-A initialization is implemented as an opt-in PEFT-LoRA initializer without changing the default baseline. | running-proxy | Unit test on dummy LoRA-A/LoRA-B parameters; py_compile of adapter builder; real supplement smoke; matched proxy seed-0 run in progress. | `SLS_LORA_INIT=orthogonal_a`; `experiments/configs/proxy_qnli_roberta_base_c50_r4_lr1e-2.yaml` | smoke; proxy seed 0 running | `tests/test_sls_orthogonal_lora_init.py`, `results/overnight_smoke_improve_orth_ab.log`, `results/overnight_proxy_orth_a_c50_r4_lr1e-2_seed0.log` | Algorithm lane | TBD | Toy improvement supported; GLUE/proxy result pending until current run completes. |
+| C9 | Separate LoRA-A / LoRA-B learning rates are implemented as an opt-in improvement axis without changing default baselines. | supported-code | Unit test for default-noop and env-gated param groups; real supplement smoke confirms phase-specific groups. | `SLS_LORA_LR_A=0.005 SLS_LORA_LR_B=0.01` | n/a | `tests/test_sls_lora_lr_groups.py`, `results/overnight_smoke_improve_orth_ab.log` | Algorithm lane | TBD | No result claim yet; run after orthogonal-A seed 0 if needed. |
+| C10 | Adaptive server-side optimization is available via FederatedScope FedOpt for the same proxy cell. | supported-config | Config syntax check; FederatedScope `FedOptAggregator` is wired by `fedopt.use True`. | `experiments/configs/proxy_qnli_roberta_base_c50_r4_lr1e-2_fedopt_adam.yaml` | n/a | config parse validation; `fedopt.optimizer.type=Adam`, `fedopt.optimizer.lr=0.1` | Algorithm lane | TBD | No result claim yet; first run should be seed 0 only. |
 
 ## This-week checklist
 
@@ -97,10 +107,13 @@ not in prose.
 - [x] Stand up `scripts/sync_to_delftblue.sh` (laptop → cluster rsync) and `scripts/warm_caches.sh` (login-node model+dataset download).
 - [x] Refactor wandb logging: per-client traces using FederatedScope's `self.ID` plus server-aggregated weighted-avg trace.
 - [x] Write the dum-dum DelftBlue runbook with login-node policy banner.
-- [ ] Submit `repro_qnli_c20_r4_rolora.sbatch` (seed 0) on DelftBlue and confirm a real training job completes with metrics streaming to wandb. **← next action.**
-- [ ] If C2 / mode=rolora / seed=0 passes: fan to the other two modes and seeds 1, 2 (9 jobs total for C2).
-- [ ] Copy the C2 sbatch template into C1 / C3 / C4 variants (9 more files) once C2 is fully ledgered.
-- [ ] Author `scripts/aggregate_seeds.py` (mean ± std grid) and `scripts/plot_convergence_curves.py` (Figure-3-style panel from `eval_results.log`).
+- [x] Generate W&B proxy figures from the 28-run QNLI/C50/r4/RoBERTa-base bundle for the June-11 draft.
+- [x] Copy and replot Daniel's 5-seed toy heterogeneity + orthogonal-A results.
+- [x] Implement the opt-in orthogonal-A GLUE proxy transfer switch and proxy config.
+- [x] Add A/B LoRA LR groups and FedOpt proxy config so all proposal axes are command-ready.
+- [ ] Monitor the running orthogonal-A GLUE proxy transfer against the RoLoRA `lr=1e-2` control (`results/overnight_proxy_orth_a_c50_r4_lr1e-2_seed0.log`). **← draft-critical next action.**
+- [ ] Submit one RoBERTa-Large attempt only after the proxy/improvement draft figures are wired, or ledger a clean hardware/runtime blocker.
+- [ ] Keep full R3-R6 Table-1 reproduction as final/stretch work, not as a June-11 blocker.
 - [ ] Run `make table1-medium-all` (now optional — paper-scale is unblocked on cluster, local pilot is supplementary).
 - [ ] Record every experiment attempt, including failures, in `experiments/ledger/README.md`.
 - [ ] Map human names to setup / algorithm / analysis lanes.
@@ -111,3 +124,47 @@ not in prose.
 - Local RoBERTa-base pilot metrics are pipeline evidence only; do not compare them directly to paper Table 1.
 - Failed runs are evidence. Keep the log and record the blocker.
 - No improvement claim is report-ready unless it has a baseline, a curve, and a phase-dynamics explanation.
+
+## 2026-06-03 — local M4/MPS improvement execution update
+
+- Confirmed local PyTorch MPS availability in both the project `uv` env and the RoLoRA supplement venv.
+- The active orthogonal-A QNLI proxy run is still running locally:
+  - log: `results/overnight_proxy_orth_a_c50_r4_lr1e-2_seed0.log`
+  - W&B group: `qnli_c50_r4_improvements`
+  - current diagnostic extraction: `evidence/improvement_diagnostics_20260603/proxy_orth_a_seed0_partial/`
+- Early server diagnostics now show phase sensitivity:
+  - round 0 B: `test_acc=0.509793`
+  - round 1 A: `test_acc=0.509061`
+  - round 2 B: `test_acc=0.563793`
+  - round 3 A: `test_acc=0.506864`
+  - round 4 B is pending server aggregation but client mean is already ~`0.722724`.
+- Added and queued the next real experiment after the active run exits:
+  - `SLS_LORA_INIT=orthogonal_a SLS_PHASE_PATTERN=BBA SLS_DEVICE=mps`
+  - tag/log: `proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed0`, `results/overnight_proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed0.log`
+  - queue log: `results/queue_proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed0.log`
+- Verification after device/controller/diagnostic changes:
+  - `uv run pytest -q tests/test_sls_phase_schedule.py tests/test_sls_orthogonal_lora_init.py tests/test_sls_lora_lr_groups.py` → 11 passed.
+  - `uv run ruff check ...` → passed.
+  - `bash -n scripts/run_supplement_arm.sh scripts/smoke_supplement.sh results/run_queued_proxy_phase_bba_orth_a_seed0.sh` → passed.
+  - `py_compile` for modified supplement modules → passed.
+  - `git diff --check` → passed.
+
+## 2026-06-03 — monitor/plot instrumentation update
+
+- Added live internal monitors for improvement runs and verified them on the M4/MPS supplement path:
+  - trainer start/end factor norms: `||A||`, `||B||`, `||BA||`, classifier norm;
+  - local update norms: `ΔA`, `ΔB`, `Δclassifier`;
+  - aggregation drift/update norms when a round reaches server aggregation.
+- Active monitored run:
+  - command shape: `SLS_LORA_INIT=orthogonal_a SLS_PHASE_PATTERN=BBA SLS_DEVICE=mps SLS_MONITOR=1 MODE=rolora`
+  - log: `results/overnight_proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed0.log`
+  - W&B run: `https://wandb.ai/scalable-learning-7/sls-rolora-repro/runs/8a2yoamg`
+  - current evidence: `evidence/improvement_diagnostics_20260603/proxy_phase_bba_orth_a_seed0_partial/`
+- New plots are generated by `scripts/plot_supplement_diagnostics.py`:
+  - `figures/supplement_diagnostics_curve.{png,pdf}` for accuracy/client-spread/phase bands;
+  - `figures/supplement_internal_monitors.{png,pdf}` for factor norms and update norms.
+- Current BBA monitor extract has round-0 local rows before server aggregation: `internal monitor rows=61`, `train_n=30`, mean `||BA||=0.017690`, mean `ΔA=0.000000`, mean `ΔB=0.017690`, mean `Δclassifier=0.030826`.
+- Important limitation: the earlier orthogonal-A run was launched before `SLS_MONITOR=1`, so it has outcome-level diagnostics only. It cannot retroactively gain internal monitor rows; compare its accuracy curve against the monitored BBA run once BBA reaches server evals.
+- Verification after extractor/plot changes:
+  - `uv run pytest -q tests/test_sls_phase_schedule.py tests/test_sls_orthogonal_lora_init.py tests/test_sls_lora_lr_groups.py` → 11 passed.
+  - `uv run ruff check scripts/extract_supplement_metrics.py scripts/plot_supplement_diagnostics.py scripts/plot_wandb_proxy.py scripts/plot_toy_heterogeneity.py tests/test_sls_phase_schedule.py tests/test_sls_orthogonal_lora_init.py tests/test_sls_lora_lr_groups.py` → passed.

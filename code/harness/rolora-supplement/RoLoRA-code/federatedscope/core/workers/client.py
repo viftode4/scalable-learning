@@ -11,6 +11,14 @@ from federatedscope.core.auxiliaries.trainer_builder import get_trainer
 from federatedscope.core.secret_sharing import AdditiveSecretSharing
 from federatedscope.core.auxiliaries.utils import merge_dict_of_results, \
     calculate_time_cost, add_prefix_to_path, get_ds_rank
+from federatedscope.core.sls_monitor import (
+    diff_state_stats,
+    emit as emit_sls_monitor,
+    model_stats as sls_model_stats,
+    monitor_enabled as sls_monitor_enabled,
+    state_from_mapping,
+    wandb_log as sls_wandb_log,
+)
 from federatedscope.core.workers.base_client import BaseClient
 
 logger = logging.getLogger(__name__)
@@ -356,29 +364,53 @@ class Client(BaseClient):
                 # round value with a later client's mid-round value (under
                 # share_local_model successive clients see the shared model
                 # being mutated in-place by earlier clients in the same round).
+                _sls_pre_state = None
                 if self.ID == 1:
                     try:
-                        import wandb
-                        if wandb.run is not None:
-                            _sq = {'lora_A': 0.0,
-                                   'lora_B': 0.0,
-                                   'classifier': 0.0}
-                            for _n, _p in \
-                                    self.trainer.ctx.model.named_parameters():
-                                for _k in _sq:
-                                    if _k in _n:
-                                        _sq[_k] += float(
-                                            _p.detach().float().norm().item()
-                                        ) ** 2
-                            _probe = {f'mech/{_k}_norm': _v ** 0.5
-                                      for _k, _v in _sq.items()}
-                            _probe['mech/round'] = self.state
-                            wandb.log(_probe, step=int(self.state))
+                        _sls_pre_state = state_from_mapping(
+                            self.trainer.ctx.model.state_dict())
+                        _probe = sls_model_stats(
+                            self.trainer.ctx.model.named_parameters())
+                        try:
+                            from federatedscope.llm.trainer.sls_phase_schedule \
+                                import phase_for_round_from_env
+                            _phase = phase_for_round_from_env(int(self.state))
+                        except Exception:
+                            _phase = ''
+                        _probe.update({
+                            'round': self.state,
+                            'client': self.ID,
+                            'phase': _phase,
+                        })
+                        emit_sls_monitor('global_pre_train', _probe)
+                        sls_wandb_log(_probe, step=int(self.state),
+                                      namespace='monitor/global_pre_train')
                     except Exception as _sls_mech_err:
                         logger.warning(
                             f"[sls-rolora] mech probe failed: "
                             f"{_sls_mech_err}")
                 sample_size, model_para_all, results = self.trainer.train()
+                if self.ID == 1 and sls_monitor_enabled() and \
+                        _sls_pre_state is not None:
+                    try:
+                        _state_after_train = model_para_all[0] if isinstance(
+                            model_para_all, list) else model_para_all
+                        _post = state_from_mapping(_state_after_train)
+                        _post_probe = {}
+                        _post_probe.update(diff_state_stats(
+                            _sls_pre_state, _post))
+                        _post_probe.update({
+                            'round': self.state,
+                            'client': self.ID,
+                            'sample_size': sample_size,
+                        })
+                        emit_sls_monitor('client_post_train', _post_probe)
+                        sls_wandb_log(_post_probe, step=int(self.state),
+                                      namespace='monitor/client_post_train')
+                    except Exception as _sls_post_err:
+                        logger.warning(
+                            f"[sls-rolora] post-train monitor failed: "
+                            f"{_sls_post_err}")
                 if self._cfg.federate.share_local_model and not \
                         self._cfg.federate.online_aggr:
                     model_para_all = copy.deepcopy(model_para_all)

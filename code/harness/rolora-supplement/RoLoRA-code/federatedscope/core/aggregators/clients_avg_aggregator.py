@@ -2,6 +2,27 @@ import os
 import torch
 from federatedscope.core.aggregators import Aggregator
 from federatedscope.core.auxiliaries.utils import param2tensor
+from federatedscope.core.sls_lora_gauge import (
+    apply_lora_gauge_from_env,
+    iter_lora_ab_pairs,
+    lora_gauge_from_env,
+)
+from federatedscope.core.sls_monitor import (
+    client_drift_stats,
+    diff_state_stats,
+    emit as emit_sls_monitor,
+    monitor_enabled as sls_monitor_enabled,
+    state_from_mapping,
+    state_norm_stats,
+    wandb_log as sls_wandb_log,
+)
+
+
+def _sls_full_model_state(model):
+    try:
+        return model.state_dict(return_trainable=False)
+    except TypeError:
+        return model.state_dict()
 
 
 class ClientsAvgAggregator(Aggregator):
@@ -32,7 +53,86 @@ class ClientsAvgAggregator(Aggregator):
         models = agg_info["client_feedback"]
         recover_fun = agg_info['recover_fun'] if (
             'recover_fun' in agg_info and self.cfg.federate.use_ss) else None
+        if sls_monitor_enabled() and self.model is not None:
+            try:
+                global_before = state_from_mapping(self.model.state_dict())
+                drift = client_drift_stats(global_before, models)
+                drift.update({
+                    'round': agg_info.get('round', -1),
+                    'aggregator': type(self).__name__,
+                })
+                emit_sls_monitor('aggregate_client_drift', drift,
+                                 prefix='sls-agg')
+                sls_wandb_log(drift, step=int(agg_info.get('round', 0)),
+                              namespace='monitor/aggregate_client_drift')
+            except Exception as err:
+                print(f"[sls-agg] monitor_failed: {err}", flush=True)
         avg_model = self._para_weighted_avg(models, recover_fun=recover_fun)
+        gauge_state = avg_model
+        if lora_gauge_from_env() is not None and self.model is not None:
+            # RoLoRA normally uploads only the active trainable factor
+            # (B-rounds omit A, A-rounds omit B). A product-preserving gauge
+            # needs both factors, so combine the partial aggregate with the
+            # current synchronized server factors, then write the reparameterized
+            # A/B pair back into the aggregate result loaded by the server.
+            gauge_state = state_from_mapping(_sls_full_model_state(self.model))
+            gauge_state.update(avg_model)
+        gauge_stats = apply_lora_gauge_from_env(gauge_state)
+        if gauge_state is not avg_model and \
+                gauge_stats.get('gauge_pair_count', 0):
+            for a_key, b_key in iter_lora_ab_pairs(gauge_state):
+                avg_model[a_key] = gauge_state[a_key]
+                avg_model[b_key] = gauge_state[b_key]
+        if gauge_stats:
+            gauge_stats.update({
+                'round': agg_info.get('round', -1),
+                'aggregator': type(self).__name__,
+            })
+            if lora_gauge_from_env() is not None and \
+                    not gauge_stats.get('gauge_pair_count', 0):
+                avg_lora_keys = [k for k in avg_model if 'lora' in k][:8]
+                model_lora_keys = []
+                model_type = None
+                try:
+                    model_type = type(self.model).__name__ \
+                        if self.model is not None else None
+                    if self.model is not None:
+                        model_lora_keys = [
+                            k for k in _sls_full_model_state(self.model)
+                            if 'lora' in k
+                        ][:8]
+                except Exception as err:
+                    model_lora_keys = [f"<failed: {err}>"]
+                print("[sls-gauge-debug] "
+                      f"model_type={model_type} "
+                      f"avg_lora_keys={avg_lora_keys} "
+                      f"model_lora_keys={model_lora_keys}",
+                      flush=True)
+            print(f"[sls-gauge] {gauge_stats}", flush=True)
+            if sls_monitor_enabled():
+                emit_sls_monitor('lora_gauge_fix', gauge_stats,
+                                 prefix='sls-gauge')
+                sls_wandb_log(gauge_stats,
+                              step=int(agg_info.get('round', 0)),
+                              namespace='monitor/lora_gauge_fix')
+        if sls_monitor_enabled() and self.model is not None:
+            try:
+                global_before = state_from_mapping(self.model.state_dict())
+                aggregate_update = diff_state_stats(global_before, avg_model,
+                                                    prefix='aggregate_update_')
+                aggregate_update.update(state_norm_stats(
+                    avg_model, prefix='aggregate_'))
+                aggregate_update.update({
+                    'round': agg_info.get('round', -1),
+                    'aggregator': type(self).__name__,
+                })
+                emit_sls_monitor('aggregate_result', aggregate_update,
+                                 prefix='sls-agg')
+                sls_wandb_log(aggregate_update,
+                              step=int(agg_info.get('round', 0)),
+                              namespace='monitor/aggregate_result')
+            except Exception as err:
+                print(f"[sls-agg] monitor_failed: {err}", flush=True)
 
         return avg_model
 
@@ -68,12 +168,12 @@ class ClientsAvgAggregator(Aggregator):
                 except ValueError:
                     return None
         return None
-        
+
     def multiply_corresponding_params(self,params):
         result = {}
         keys = sorted(params.keys())
         for i in range(0, len(keys), 2):
-            
+
             key_a = keys[i]
             key_b = keys[i + 1]
             # print(key_a)
@@ -146,7 +246,7 @@ class ClientsAvgAggregator(Aggregator):
             for key in avg_model:
                 for i in range(len(models)):
                     local_sample_size, local_model = models[i]
-                    
+
 
                     if self.cfg.federate.ignore_weight:
                         weight = 1.0 / len(models)

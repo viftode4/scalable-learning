@@ -13,9 +13,21 @@ from federatedscope.core.trainers import GeneralTorchTrainer
 from federatedscope.core.trainers.context import CtxVar
 from federatedscope.core.trainers.enums import MODE, LIFECYCLE
 from federatedscope.core.monitors.monitor import Monitor
+from federatedscope.core.sls_monitor import (
+    diff_state_stats,
+    emit as emit_sls_monitor,
+    model_stats as sls_model_stats,
+    monitor_enabled as sls_monitor_enabled,
+    state_from_mapping,
+)
 from federatedscope.core.auxiliaries.optimizer_builder import get_optimizer
 from federatedscope.core.auxiliaries.scheduler_builder import get_scheduler
 from federatedscope.llm.model.adapter_builder import AdapterModel
+from federatedscope.llm.trainer.sls_lora_lr import lora_lr_optimizer_target
+from federatedscope.llm.trainer.sls_phase_schedule import (
+    describe_phase_controller,
+    phase_for_round_from_env,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -66,12 +78,33 @@ class LLMTrainer(GeneralTorchTrainer):
                 return node
             run_cfg = {
                 'alternation_mode': self.alternation_mode,
+                'init_variant': os.environ.get('SLS_LORA_INIT', 'default'),
+                'lora_gauge': os.environ.get(
+                    'SLS_LORA_GAUGE',
+                    os.environ.get(
+                        'SLS_LORA_GAUGE_FIX',
+                        os.environ.get('SLS_GAUGE_FIX', 'default'))),
+                'lora_lr_a': os.environ.get('SLS_LORA_LR_A'),
+                'lora_lr_b': os.environ.get('SLS_LORA_LR_B'),
+                'phase_controller': describe_phase_controller(),
+                'phase_policy': os.environ.get('SLS_PHASE_POLICY'),
+                'phase_pattern': os.environ.get('SLS_PHASE_PATTERN'),
+                'b_warmup_rounds': os.environ.get('SLS_B_WARMUP_ROUNDS'),
+                'adaptive_min_b_rounds': os.environ.get(
+                    'SLS_ADAPTIVE_MIN_B_ROUNDS'),
+                'adaptive_max_b_rounds': os.environ.get(
+                    'SLS_ADAPTIVE_MAX_B_ROUNDS'),
+                'adaptive_val_gain_epsilon': os.environ.get(
+                    'SLS_ADAPTIVE_VAL_GAIN_EPSILON'),
                 'seed': _cfgget('seed'),
                 'client_num': _cfgget('federate.client_num'),
                 'total_round_num': _cfgget('federate.total_round_num'),
                 'lr': _cfgget('train.optimizer.lr'),
                 'optimizer': _cfgget('train.optimizer.type'),
                 'weight_decay': _cfgget('train.optimizer.weight_decay'),
+                'fedopt_use': _cfgget('fedopt.use'),
+                'fedopt_optimizer': _cfgget('fedopt.optimizer.type'),
+                'fedopt_lr': _cfgget('fedopt.optimizer.lr'),
                 'local_update_steps': _cfgget('train.local_update_steps'),
                 'batch_size': _cfgget('dataloader.batch_size'),
                 'model': _cfgget('model.type'),
@@ -180,21 +213,25 @@ class LLMTrainer(GeneralTorchTrainer):
                           f"A={_sq['lora_A']**0.5:.6f} "
                           f"B={_sq['lora_B']**0.5:.6f}")
                 if self.alternation_mode == 'rolora':
-                    train_b = (self.step_count % 2) == 0
+                    phase = phase_for_round_from_env(self.step_count)
+                    train_b = phase == 'B'
                     print(f"[sls-rolora] RoLoRA round {self.step_count}: "
-                          f"train {'B' if train_b else 'A'}")
+                          f"train {phase} "
+                          f"({describe_phase_controller()})")
                     for name, param in ctx.model.named_parameters():
                         if 'lora_A' in name:
                             param.requires_grad = not train_b
                         elif 'lora_B' in name:
                             param.requires_grad = train_b
                 elif self.alternation_mode == 'lora':
+                    phase = 'AB'
                     print(f"[sls-rolora] LoRA round {self.step_count}: "
                           f"train both")
                     for name, param in ctx.model.named_parameters():
                         if 'lora_A' in name or 'lora_B' in name:
                             param.requires_grad = True
                 elif self.alternation_mode == 'ffa_lora':
+                    phase = 'B'
                     print(f"[sls-rolora] FFA-LoRA round {self.step_count}: "
                           f"A frozen, train B")
                     for name, param in ctx.model.named_parameters():
@@ -220,18 +257,36 @@ class LLMTrainer(GeneralTorchTrainer):
                     for name, param in ctx.model.named_parameters():
                         if 'classifier' in name:
                             param.requires_grad = True
+                if sls_monitor_enabled():
+                    self._sls_monitor_round = int(self.step_count)
+                    self._sls_monitor_phase = phase if 'phase' in locals() \
+                        else self.alternation_mode
+                    self._sls_monitor_before_state = state_from_mapping(
+                        ctx.model.state_dict())
+                    start_stats = sls_model_stats(ctx.model.named_parameters())
+                    start_stats.update({
+                        'round': self._sls_monitor_round,
+                        'phase': self._sls_monitor_phase,
+                        'mode': self.alternation_mode,
+                    })
+                    emit_sls_monitor('fit_start', start_stats)
                 self.step_count += 1
 
                 # Build the optimizer AFTER the alternation block so its
                 # param_groups reflect the current phase (in case a future
                 # refactor adds a requires_grad filter to get_optimizer).
+                optimizer_target, lr_summary = lora_lr_optimizer_target(
+                    ctx.model, ctx.cfg[ctx.cur_mode].optimizer.lr)
+                if lr_summary is not None:
+                    print("[sls-rolora] SLS_LORA_LR param groups: "
+                          f"{lr_summary}")
                 ctx.optimizer = get_optimizer(
-                    ctx.model, **ctx.cfg[ctx.cur_mode].optimizer)
+                    optimizer_target, **ctx.cfg[ctx.cur_mode].optimizer)
                 ctx.scheduler = get_scheduler(
                     ctx.optimizer, **ctx.cfg[ctx.cur_mode].scheduler)
         # if ctx.cfg.llm.deepspeed.use:
 
-        
+
 
         # prepare statistics
         ctx.loss_batch_total = CtxVar(0., LIFECYCLE.ROUTINE)
@@ -389,6 +444,20 @@ class LLMTrainer(GeneralTorchTrainer):
         # because LLMTrainer is per-client and has no stable client id.
 
         # TODO: make this as a hook function
+        if ctx.cur_mode in [MODE.TRAIN, MODE.FINETUNE] and \
+                sls_monitor_enabled() and \
+                hasattr(self, '_sls_monitor_before_state'):
+            after_state = ctx.model.state_dict()
+            end_stats = sls_model_stats(ctx.model.named_parameters())
+            end_stats.update(diff_state_stats(
+                self._sls_monitor_before_state, after_state))
+            end_stats.update({
+                'round': getattr(self, '_sls_monitor_round', self.step_count - 1),
+                'phase': getattr(self, '_sls_monitor_phase', self.alternation_mode),
+                'mode': self.alternation_mode,
+            })
+            emit_sls_monitor('fit_end', end_stats)
+
         # Move trainable part to `cpu`, which can save memory but cost time
         if ctx.cfg.llm.adapter.mv_to_cpu:
             for p in ctx.model.parameters():

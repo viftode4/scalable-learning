@@ -58,12 +58,15 @@ active-factor server-optimization choices.
 5. **Local sanity evidence**
    - MNIST Figure-2-style sanity.
    - Supplement smoke and Table-1-shaped local pilot.
+   - Extreme heterogeneity toy results from Daniel's branch, replotted in the
+     evidence tree.
    - Clear warning that local RoBERTa-base/QNLI is pipeline evidence only.
 
 6. **Paper-scale reproduction**
    - RoBERTa-Large feasibility.
-   - Selected Table 1 cells.
-   - Figure-3-style 50-client convergence if compute permits.
+   - Selected Table 1 cells or cleanly ledgered blockers.
+   - Figure-3-style 50-client convergence if compute permits; otherwise use
+     RoBERTa-base proxy curves under an explicit limitation.
 
 7. **Phase diagnostics**
    - A/B phase markers.
@@ -94,24 +97,44 @@ active-factor server-optimization choices.
 |---|---|---|---|
 | Figure 1: RoLoRA alternating mechanism diagram | C0 | drawn from paper explanation | planned |
 | Figure 2: MNIST sanity plot | C1 | `make mnist-paper` | supported-local |
+| Figure 3: toy heterogeneity baselines | C7 | `uv run python scripts/plot_toy_heterogeneity.py`; `evidence/toy_heterogeneity_20260603/figures/toy_g_heterogeneous_baselines_curves.png` | supported-toy |
+| Figure 4: orthogonal-A toy paired delta | C7 | `uv run python scripts/plot_toy_heterogeneity.py`; `evidence/toy_heterogeneity_20260603/figures/toy_h_orthogonal_a_paired_delta.png` | supported-toy |
+| Figure 5: RoBERTa-base 50-client proxy convergence | C6 | `uv run python scripts/plot_wandb_proxy.py`; `evidence/wandb_qnli_c50_r4_20260603/figures/proxy_a_server_accuracy_convergence.png` | supported-proxy |
+| Figure 6: RoLoRA proxy LR sweep / seed variability | C6 | `proxy_c_rolora_lr_sweep.png`, `proxy_d_rolora_per_seed_trajectories.png` | supported-proxy |
 | Table 1: local harness summary | C0/C2 | `make table1-pilot-summary`, `make table1-medium-summary` | partial |
-| Table 2: RoBERTa-Large feasibility result | C3 | `make roberta-large-feasibility MODE=rolora` | planned |
-| Table 3: selected Table-1 reproduction cells | C4 | R3-R5 matrix rows | planned |
-| Figure 3: 50-client convergence curves | C4 | R5/R6 logs | planned |
-| Figure 4: phase-dynamics diagnostics | C5 | `make diagnostics-summary PREFIX=<run>` | planned |
-| Table 4: improvement ablations | C5 | I1-I5 matrix rows | planned |
-| Table 5: limitations and failed runs | all | `experiments/ledger/README.md` | ongoing |
+| Table 2: W&B proxy baseline summary | C6 | `evidence/wandb_qnli_c50_r4_20260603/figures/proxy_plot_summary.md` | supported-proxy |
+| Table 3: toy heterogeneity + orthogonal-A summary | C7 | `evidence/toy_heterogeneity_20260603/figures/toy_plot_summary.md` | supported-toy |
+| Table 4: RoBERTa-Large feasibility / paper-scale attempt | C3/C4 | `make roberta-large-feasibility MODE=rolora` or one ledgered cluster attempt | planned/partial |
+| Figure 7: phase-dynamics diagnostics | C5 | `make diagnostics-summary PREFIX=<run>` | planned |
+| Table 5: improvement ablations beyond toy | C5/C8/C9/C10 | `SLS_LORA_INIT=orthogonal_a`; `SLS_LORA_LR_A/B`; `experiments/configs/proxy_qnli_roberta_base_c50_r4_lr1e-2*.yaml`; running orthogonal-A proxy seed 0 | running/code-ready |
+| Table 6: limitations and failed runs | all | `experiments/ledger/README.md` | ongoing |
 
-## Current tracking status — 2026-05-20
+## Current tracking status — 2026-06-03
 
 | Area | Status | Next action |
 |---|---|---|
-| Local sanity | Supported locally | Keep `make check` green before large runs. |
-| Local Table-1-shaped rung | Partial | Run `make table1-medium-all`; update C2. |
-| Diagnostics | Parser scaffold ready | Instrument update norms, frozen-factor equality, wall time, and memory. |
-| RoBERTa-Large feasibility | Config ready, run pending | Run `make roberta-large-feasibility MODE=rolora` on GPU. |
-| Improvements | Planned | Start only after diagnostics can explain positive/negative outcomes. |
-| Writing | Skeleton ready | Fill sections as claim-led evidence arrives. |
+| Local sanity | Supported locally | Keep `make check` green before any new code/run. |
+| Toy heterogeneity | Supported-toy with 5-seed CI plots | Use as mechanism/improvement motivation, not as GLUE evidence. |
+| RoBERTa-base QNLI/C50 proxy | Supported-proxy with W&B plots | Use as the GLUE-scale control for orthogonal-A transfer. |
+| RoBERTa-Large reproduction | Partial/planned | Make one clean attempt or ledger blocker; do not block the June-11 draft on full Table 1. |
+| Improvements | Toy orthogonal-A supported; orthogonal-A proxy seed 0 running; A/B LR and FedOpt command-ready | Monitor `results/overnight_proxy_orth_a_c50_r4_lr1e-2_seed0.log`; run seeds 1/2 if competitive, otherwise A/B LR seed 0. |
+| Writing | Ready for June-11 compute-constrained draft | Fill prose from `report/draft_results_brief_20260603.md` while proxy improvement run finishes. |
+
+## June-11 draft positioning
+
+The draft should not claim full paper reproduction. The honest draft thesis is:
+
+> We perform a compute-constrained reproduction and proxy-scale improvement
+> study of RoLoRA. We audit reproducibility issues in the supplement, validate
+> the patched harness locally, show RoLoRA's robustness under extreme toy
+> heterogeneity and RoBERTa-base 50-client QNLI proxy runs, and motivate
+> orthogonal-A initialization as the first proposal-compatible improvement.
+
+The current W&B figures are useful draft evidence only under this caption
+constraint: **QNLI / RoBERTa-base / 50 clients / rank 4 / 20 rounds; not
+RoBERTa-Large Table-1 reproduction.** The improvement section should use the
+toy orthogonal-A result as supported evidence now, and add the running
+orthogonal-A proxy result only after `results/overnight_proxy_orth_a_c50_r4_lr1e-2_seed0.log` contains final/server metrics.
 
 ## Done criteria before W8 draft
 

@@ -1,0 +1,89 @@
+# Proxy improvement cell — QNLI, RoBERTa-base, 50 clients, LoRA rank 4, lr=1e-2.
+#
+# Purpose:
+# - Matches the best current W&B proxy control (`rolora_lr1e-2_seed{0,1,2}`).
+# - Use this for the first orthogonal-A transfer test before spending paper-scale
+#   RoBERTa-Large compute.
+#
+# Example runs:
+#   # Vanilla control / reproduction of existing proxy cell
+#   MODE=rolora TAG=proxy_c50_r4_lr1e-2_seed0 SEED=0 \
+#     bash scripts/run_supplement_arm.sh experiments/configs/proxy_qnli_roberta_base_c50_r4_lr1e-2.yaml seed 0
+#
+#   # Orthogonal-A transfer
+#   SLS_LORA_INIT=orthogonal_a SLS_DEVICE=mps MODE=rolora TAG=proxy_orth_a_c50_r4_lr1e-2_seed0 SEED=0 \
+#     bash scripts/run_supplement_arm.sh experiments/configs/proxy_qnli_roberta_base_c50_r4_lr1e-2.yaml seed 0
+#
+#   # Phase-controller layer over RoLoRA: B/B/A repeating schedule
+#   SLS_LORA_INIT=orthogonal_a SLS_PHASE_PATTERN=BBA SLS_DEVICE=mps SLS_MONITOR=1 MODE=rolora \
+#     TAG=proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed0 SEED=0 \
+#     bash scripts/run_supplement_arm.sh experiments/configs/proxy_qnli_roberta_base_c50_r4_lr1e-2.yaml seed 0
+#
+#   # Simpler phase-controller variant: B-only warmup for two rounds, then A/B
+#   SLS_LORA_INIT=orthogonal_a SLS_B_WARMUP_ROUNDS=2 SLS_DEVICE=mps MODE=rolora \
+#     TAG=proxy_bwarm2_orth_a_c50_r4_lr1e-2_seed0 SEED=0 \
+#     bash scripts/run_supplement_arm.sh experiments/configs/proxy_qnli_roberta_base_c50_r4_lr1e-2.yaml seed 0
+#
+#   # A/B learning-rate transfer (proposal axis 2; default baseline unchanged)
+#   SLS_LORA_LR_A=0.005 SLS_LORA_LR_B=0.01 MODE=rolora TAG=proxy_ab_lr_A5e-3_B1e-2_seed0 SEED=0 \
+#     bash scripts/run_supplement_arm.sh experiments/configs/proxy_qnli_roberta_base_c50_r4_lr1e-2.yaml seed 0
+#
+#   # Adaptive server optimizer transfer (proposal axis 3)
+#   MODE=rolora TAG=proxy_fedopt_adam1e-1_seed0 SEED=0 \
+#     bash scripts/run_supplement_arm.sh experiments/configs/proxy_qnli_roberta_base_c50_r4_lr1e-2_fedopt_adam.yaml seed 0
+#
+# Scope caveat: this is RoBERTa-base proxy evidence, not RoBERTa-Large Table-1
+# reproduction.
+
+use_gpu: True
+device: 0
+seed: 0
+early_stop:
+  patience: 0
+
+federate:
+  mode: standalone
+  total_round_num: 20
+  save_to: "proxy-qnli-roberta-base-c50-r4-lr1e-2.ckpt"
+  client_num: 50
+  share_local_model: True
+
+data:
+  root: code/harness/rolora-supplement/RoLoRA-code/sst2/
+  type: 'qnli.json@llm'
+  splits: [0.89, 0.1, 0.01]
+  splitter: 'iid'
+
+llm:
+  tok_len: 128
+  chat:
+    max_len: 1000
+    max_history_len: 10
+  adapter:
+    use: True
+    args: [ { 'adapter_package': 'peft', 'adapter_method': 'lora', 'r': 4, 'lora_alpha': 32, 'lora_dropout': 0.1 } ]
+
+dataloader:
+  batch_size: 32
+
+model:
+  type: 'roberta-base@huggingface_llm'
+
+train:
+  local_update_steps: 20
+  batch_or_epoch: batch
+  optimizer:
+    lr: 0.01
+    weight_decay: 0.0002
+  is_enable_half: False
+
+trainer:
+  type: llmtrainer
+criterion:
+  type: CrossEntropyLoss
+
+eval:
+  freq: 1
+  metrics: ['loss', 'acc']
+  best_res_update_round_wise_key: val_loss
+  count_flops: False
