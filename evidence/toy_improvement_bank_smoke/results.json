@@ -1,0 +1,132 @@
+{
+  "config": {
+    "clients": 4,
+    "rounds": 4,
+    "local_steps": 2,
+    "rank": 2,
+    "lr": 0.02,
+    "grad_clip": 1.0,
+    "batch_size": 64,
+    "subset": 512,
+    "test_subset": 256,
+    "seeds": [
+      0
+    ],
+    "device": "cpu"
+  },
+  "summary": [
+    {
+      "name": "rolora",
+      "final_acc_mean": 0.10546875,
+      "final_acc_std": 0.0,
+      "best_acc_mean": 0.10546875,
+      "best_acc_std": 0.0,
+      "note": "vanilla RoLoRA B/A alternation"
+    },
+    {
+      "name": "orth_bba",
+      "final_acc_mean": 0.09375,
+      "final_acc_std": 0.0,
+      "best_acc_mean": 0.09375,
+      "best_acc_std": 0.0,
+      "note": "orthogonal-A plus BBA phase pattern; tests init x schedule interaction"
+    },
+    {
+      "name": "partial_stale_transport",
+      "final_acc_mean": 0.09375,
+      "final_acc_std": 0.0,
+      "best_acc_mean": 0.09375,
+      "best_acc_std": 0.0,
+      "note": "basis transport under the stale-factor stress test"
+    }
+  ],
+  "runs": [
+    {
+      "variant": {
+        "name": "rolora",
+        "method": "rolora",
+        "init": "default",
+        "phase_pattern": null,
+        "participation_rate": 1.0,
+        "sync_policy": "full",
+        "transport": false,
+        "gauge": false,
+        "note": "vanilla RoLoRA B/A alternation"
+      },
+      "seed": 0,
+      "final_loss": 2.2756059169769287,
+      "final_acc": 0.10546875,
+      "best_acc": 0.10546875,
+      "losses": [
+        2.293820858001709,
+        2.2938127517700195,
+        2.275639295578003,
+        2.2756059169769287
+      ],
+      "accs": [
+        0.0859375,
+        0.0859375,
+        0.10546875,
+        0.10546875
+      ]
+    },
+    {
+      "variant": {
+        "name": "orth_bba",
+        "method": "rolora",
+        "init": "orthogonal_a",
+        "phase_pattern": "BBA",
+        "participation_rate": 1.0,
+        "sync_policy": "full",
+        "transport": false,
+        "gauge": false,
+        "note": "orthogonal-A plus BBA phase pattern; tests init x schedule interaction"
+      },
+      "seed": 0,
+      "final_loss": 2.311707019805908,
+      "final_acc": 0.09375,
+      "best_acc": 0.09375,
+      "losses": [
+        2.312145709991455,
+        2.31192684173584,
+        2.3119261264801025,
+        2.311707019805908
+      ],
+      "accs": [
+        0.09375,
+        0.09375,
+        0.09375,
+        0.09375
+      ]
+    },
+    {
+      "variant": {
+        "name": "partial_stale_transport",
+        "method": "rolora",
+        "init": "orthogonal_a",
+        "phase_pattern": null,
+        "participation_rate": 0.5,
+        "sync_policy": "active_only",
+        "transport": true,
+        "gauge": false,
+        "note": "basis transport under the stale-factor stress test"
+      },
+      "seed": 0,
+      "final_loss": 2.3119468688964844,
+      "final_acc": 0.09375,
+      "best_acc": 0.09375,
+      "losses": [
+        2.3121562004089355,
+        2.3121562004089355,
+        2.3119468688964844,
+        2.3119468688964844
+      ],
+      "accs": [
+        0.09375,
+        0.09375,
+        0.09375,
+        0.09375
+      ]
+    }
+  ]
+}

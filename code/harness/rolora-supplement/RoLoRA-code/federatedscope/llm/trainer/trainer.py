@@ -125,6 +125,7 @@ class LLMTrainer(GeneralTorchTrainer):
             tags = [t for t in tags_env.split(',') if t] or None
             self._wandb_run = wandb.init(
                 project=project,
+                entity=os.environ.get('WANDB_ENTITY'),
                 group=os.environ.get('WANDB_RUN_GROUP'),
                 name=os.environ.get('WANDB_NAME'),
                 tags=tags,

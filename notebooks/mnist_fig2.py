@@ -32,6 +32,9 @@ from torch.utils.data import DataLoader, Subset
 from torchvision import datasets, transforms
 
 METHODS = ("lora", "ffa_lora", "rolora")
+INIT_VARIANTS = ("default", "orthogonal_a", "svd_compensated")
+SYNC_POLICIES = ("full", "active_only")
+DATA_SPLITS = ("iid", "label_shard")
 
 
 class LoRALinear(nn.Module):
@@ -52,6 +55,14 @@ class LoRALinear(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.base(x) + x @ self.A @ self.B
+
+    def lora_product(self) -> torch.Tensor:
+        """Return the input-to-output LoRA matrix used by ``x @ A @ B``."""
+        return self.A @ self.B
+
+    def effective_weight(self) -> torch.Tensor:
+        """Return the full input-to-output matrix seen by the forward pass."""
+        return self.base.weight.T + self.lora_product()
 
 
 class MLP(nn.Module):
@@ -76,6 +87,120 @@ class MLP(nn.Module):
 def set_factor_trainable(model: MLP, factor: str, *, trainable: bool) -> None:
     for p in model.adapter_params(factor):
         p.requires_grad = trainable
+
+
+def phase_for_round(round_id: int, pattern: str | None = None) -> str:
+    """Return the toy RoLoRA phase for ``round_id``.
+
+    Default matches the paper-style B/A alternation. A compact pattern such as
+    ``BBA`` repeats exactly and lets the toy mirror the supplement
+    ``SLS_PHASE_PATTERN`` switch.
+    """
+    if round_id < 0:
+        raise ValueError("round_id must be non-negative")
+    if pattern is None or pattern.strip() == "":
+        return "B" if round_id % 2 == 0 else "A"
+    compact = pattern.replace(",", " ").replace(";", " ").split()
+    compact = ("".join(compact) if compact else pattern).upper()
+    if not compact or set(compact) - {"A", "B"}:
+        raise ValueError(f"phase pattern must contain only A/B phases: {pattern!r}")
+    return compact[round_id % len(compact)]
+
+
+def _normalise_init_variant(init_variant: str) -> str:
+    value = init_variant.strip().lower().replace("-", "_")
+    if value in {"", "default", "none", "off"}:
+        return "default"
+    if value in {"orthogonal", "orthogonal_a", "orthogonal_lora_a"}:
+        return "orthogonal_a"
+    if value in {"svd", "svd_compensated", "pissa", "pissa_compensated"}:
+        return "svd_compensated"
+    raise ValueError(f"unknown toy LoRA init variant: {init_variant!r}")
+
+
+def apply_lora_initialization_to_layer(layer: LoRALinear, init_variant: str) -> None:
+    """Apply a toy analogue of the GLUE LoRA initialization switches."""
+    variant = _normalise_init_variant(init_variant)
+    if variant == "default":
+        return
+    if variant == "orthogonal_a":
+        target_fro = layer.A.detach().float().norm().clamp_min(1e-12)
+        q, _ = torch.linalg.qr(torch.randn_like(layer.A), mode="reduced")
+        scale = target_fro / (layer.A.shape[1] ** 0.5)
+        layer.A.data.copy_((q * scale).to(layer.A))
+        layer.B.data.zero_()
+        return
+
+    # ``svd_compensated`` starts from an identical function but moves the
+    # top-r principal component into the trainable adapter. The toy LoRA uses
+    # input-to-output matrices: effective W = base.weight.T + A @ B.
+    before = layer.effective_weight().detach().float()
+    u, s, vh = torch.linalg.svd(before.cpu(), full_matrices=False)
+    rank = min(layer.A.shape[1], s.shape[0])
+    sqrt_s = torch.sqrt(s[:rank])
+    a_new = u[:, :rank] * sqrt_s.unsqueeze(0)
+    b_new = sqrt_s.unsqueeze(1) * vh[:rank, :]
+    layer.A.data.zero_()
+    layer.B.data.zero_()
+    layer.A.data[:, :rank].copy_(a_new.to(layer.A))
+    layer.B.data[:rank, :].copy_(b_new.to(layer.B))
+    layer.base.weight.data.copy_((before - layer.lora_product().detach().float()).T.to(layer.base.weight))
+
+
+def apply_lora_initialization(model: MLP, init_variant: str) -> None:
+    for layer in (model.fc1, model.fc2):
+        apply_lora_initialization_to_layer(layer, init_variant)
+
+
+def transport_layer_coefficients(layer: LoRALinear, old_a: torch.Tensor) -> dict[str, float | bool]:
+    """Re-express ``B`` so ``A_new @ B_new`` preserves ``A_old @ B``."""
+    a_old = old_a.detach().float().cpu()
+    a_new = layer.A.detach().float().cpu()
+    if torch.equal(a_old, a_new):
+        return {"transported": False, "fallback": False, "rel_error": 0.0}
+    if int(torch.linalg.matrix_rank(a_new).item()) < a_new.shape[1]:
+        return {"transported": False, "fallback": True, "rel_error": 0.0}
+    try:
+        transform = torch.linalg.lstsq(a_new, a_old).solution
+    except RuntimeError:
+        return {"transported": False, "fallback": True, "rel_error": 0.0}
+    b_old = layer.B.detach().float().cpu()
+    product_before = a_old @ b_old
+    b_new = transform @ b_old
+    product_after = a_new @ b_new
+    denom = product_before.norm().clamp_min(1e-12)
+    rel_error = float((product_after - product_before).norm().item() / denom.item())
+    layer.B.data.copy_(b_new.to(layer.B))
+    return {"transported": True, "fallback": False, "rel_error": rel_error}
+
+
+def transport_coefficients(server: MLP, old_a_params: list[torch.Tensor]) -> dict[str, float | int]:
+    transported = 0
+    fallback = 0
+    max_rel_error = 0.0
+    for layer, old_a in zip((server.fc1, server.fc2), old_a_params, strict=True):
+        stats = transport_layer_coefficients(layer, old_a)
+        transported += int(bool(stats["transported"]))
+        fallback += int(bool(stats["fallback"]))
+        max_rel_error = max(max_rel_error, float(stats["rel_error"]))
+    return {
+        "transported_layers": transported,
+        "fallback_layers": fallback,
+        "max_rel_error": max_rel_error,
+    }
+
+
+def orthogonal_gauge_layer(layer: LoRALinear) -> None:
+    """QR-gauge the toy LoRA basis while preserving ``A @ B``."""
+    q, r = torch.linalg.qr(layer.A.detach().float().cpu(), mode="reduced")
+    b_new = r @ layer.B.detach().float().cpu()
+    layer.A.data.copy_(q.to(layer.A))
+    layer.B.data.copy_(b_new.to(layer.B))
+
+
+def orthogonal_gauge(model: MLP) -> None:
+    for layer in (model.fc1, model.fc2):
+        orthogonal_gauge_layer(layer)
 
 
 def broadcast(server: MLP, clients: list[MLP], factor: str) -> None:
@@ -111,6 +236,92 @@ def iid_split(dataset, num_clients: int, rng: np.random.Generator) -> list[Subse
     idx = rng.permutation(n)
     chunks = np.array_split(idx, num_clients)
     return [Subset(dataset, c.tolist()) for c in chunks]
+
+
+def dataset_label_at(dataset, index: int) -> int:
+    """Return an integer class label from a Dataset or nested Subset."""
+    if isinstance(dataset, Subset):
+        return dataset_label_at(dataset.dataset, int(dataset.indices[index]))
+    labels = getattr(dataset, "targets", None)
+    if labels is None:
+        labels = getattr(dataset, "labels", None)
+    value = labels[index] if labels is not None else dataset[index][1]
+    if isinstance(value, torch.Tensor):
+        value = value.item()
+    return int(value)
+
+
+def label_shard_split(
+    dataset,
+    num_clients: int,
+    rng: np.random.Generator,
+    labels_per_client: int = 1,
+) -> list[Subset]:
+    """Non-IID toy split: each client receives examples from a few labels only."""
+    if num_clients <= 0:
+        raise ValueError("num_clients must be positive")
+    if labels_per_client <= 0:
+        raise ValueError("labels_per_client must be positive")
+
+    by_label: dict[int, list[int]] = {}
+    for index in range(len(dataset)):
+        by_label.setdefault(dataset_label_at(dataset, index), []).append(index)
+
+    labels = sorted(by_label)
+    if num_clients * labels_per_client < len(labels):
+        raise ValueError(
+            "label_shard split needs num_clients * labels_per_client >= number of labels"
+        )
+
+    label_order = rng.permutation(labels).tolist()
+    client_to_labels: list[list[int]] = [[] for _ in range(num_clients)]
+    label_to_clients: dict[int, list[int]] = {label: [] for label in labels}
+    for client_idx in range(num_clients):
+        for offset in range(labels_per_client):
+            label = int(label_order[(client_idx * labels_per_client + offset) % len(labels)])
+            client_to_labels[client_idx].append(label)
+            label_to_clients[label].append(client_idx)
+
+    client_indices: list[list[int]] = [[] for _ in range(num_clients)]
+    for label, indices in by_label.items():
+        owners = label_to_clients[label]
+        shuffled = rng.permutation(indices)
+        chunks = np.array_split(shuffled, len(owners))
+        for owner, chunk in zip(owners, chunks, strict=True):
+            client_indices[owner].extend(chunk.tolist())
+
+    for indices in client_indices:
+        rng.shuffle(indices)
+    return [Subset(dataset, indices) for indices in client_indices]
+
+
+def split_clients(
+    dataset,
+    num_clients: int,
+    rng: np.random.Generator,
+    split: str = "iid",
+    labels_per_client: int = 1,
+) -> list[Subset]:
+    split = split.strip().lower().replace("-", "_")
+    if split == "iid":
+        return iid_split(dataset, num_clients, rng)
+    if split in {"label_shard", "label_skew", "one_label"}:
+        return label_shard_split(dataset, num_clients, rng, labels_per_client)
+    raise ValueError(f"unknown split {split!r}; expected one of {DATA_SPLITS}")
+
+
+def sample_participants(
+    clients: list[MLP],
+    participation_rate: float,
+    rng: np.random.Generator,
+) -> list[MLP]:
+    if not 0 < participation_rate <= 1:
+        raise ValueError("participation_rate must be in (0, 1]")
+    if participation_rate >= 1:
+        return clients
+    count = max(1, int(participation_rate * len(clients)))
+    indices = sorted(rng.choice(len(clients), size=count, replace=False).tolist())
+    return [clients[i] for i in indices]
 
 
 def local_train(
@@ -165,48 +376,81 @@ def run_method(
     seed: int,
     device: torch.device,
     grad_clip: float = 1.0,
+    init_variant: str = "default",
+    phase_pattern: str | None = None,
+    participation_rate: float = 1.0,
+    sync_policy: str = "full",
+    transport: bool = False,
+    gauge: bool = False,
 ) -> tuple[list[float], list[float]]:
     assert method in METHODS
+    init_variant = _normalise_init_variant(init_variant)
+    if sync_policy not in SYNC_POLICIES:
+        raise ValueError(f"sync_policy must be one of {SYNC_POLICIES}")
     torch.manual_seed(seed)
     server = MLP(rank).to(device)
+    apply_lora_initialization(server, init_variant)
     # Sanity: FFA-LoRA convention is B=0 (zero adapter at init).
-    for b_param in server.adapter_params("B"):
-        assert torch.equal(b_param, torch.zeros_like(b_param))
+    if init_variant != "svd_compensated":
+        for b_param in server.adapter_params("B"):
+            assert torch.equal(b_param, torch.zeros_like(b_param))
 
     clients: list[MLP] = [copy.deepcopy(server) for _ in train_sets]
     client_loaders = [
         DataLoader(s, batch_size=batch_size, shuffle=True, drop_last=False) for s in train_sets
     ]
+    client_to_loader = {id(client): loader for client, loader in zip(clients, client_loaders, strict=True)}
+    participant_rng = np.random.default_rng(seed + 104729)
 
     losses: list[float] = []
     accs: list[float] = []
     for r in range(rounds):
+        participating_clients = sample_participants(clients, participation_rate, participant_rng)
         if method == "lora":
-            for client in clients:
+            for client in participating_clients:
                 set_factor_trainable(client, "A", trainable=True)
                 set_factor_trainable(client, "B", trainable=True)
             active_factors = ("A", "B")
         elif method == "ffa_lora":
-            for client in clients:
+            for client in participating_clients:
                 set_factor_trainable(client, "A", trainable=False)
                 set_factor_trainable(client, "B", trainable=True)
-            assert_factor_identical(server, clients, "A")
             active_factors = ("B",)
         else:  # rolora
-            train_b = r % 2 == 0  # even rounds train B, odd rounds train A
-            for client in clients:
+            phase = phase_for_round(r, phase_pattern)
+            train_b = phase == "B"
+            for client in participating_clients:
                 set_factor_trainable(client, "A", trainable=not train_b)
                 set_factor_trainable(client, "B", trainable=train_b)
             frozen = "A" if train_b else "B"
-            assert_factor_identical(server, clients, frozen)
             active_factors = ("B",) if train_b else ("A",)
 
-        for client, loader in zip(clients, client_loaders, strict=True):
+        if sync_policy == "full":
+            for factor in ("A", "B"):
+                broadcast(server, participating_clients, factor)
+        else:
+            for factor in active_factors:
+                broadcast(server, participating_clients, factor)
+        if method == "ffa_lora" and sync_policy == "full":
+            assert_factor_identical(server, participating_clients, "A")
+        if method == "rolora" and sync_policy == "full":
+            assert_factor_identical(server, participating_clients, frozen)
+
+        old_a_params = [p.detach().clone() for p in server.adapter_params("A")]
+        for client in participating_clients:
+            loader = client_to_loader[id(client)]
             local_train(client, loader, steps=local_steps, lr=lr, device=device, grad_clip=grad_clip)
 
         for f in active_factors:
-            average_factor(server, clients, f)
-            broadcast(server, clients, f)
+            average_factor(server, participating_clients, f)
+        if method == "rolora" and "A" in active_factors and transport:
+            transport_coefficients(server, old_a_params)
+        if gauge and "A" in active_factors:
+            orthogonal_gauge(server)
+        for f in active_factors:
+            broadcast(server, participating_clients, f)
+        if method == "rolora" and "A" in active_factors and (transport or gauge):
+            broadcast(server, participating_clients, "B")
 
         loss, acc = evaluate(server, test_loader, device)
         losses.append(loss)
@@ -230,6 +474,14 @@ def main() -> None:
     p.add_argument("--data-dir", type=Path, default=Path("data"))
     p.add_argument("--out", type=Path, default=Path("results/mnist_fig2.png"))
     p.add_argument("--subset", type=int, default=0, help="if >0, use first N train examples")
+    p.add_argument("--split", choices=DATA_SPLITS, default="iid")
+    p.add_argument("--labels-per-client", type=int, default=1)
+    p.add_argument("--init", choices=INIT_VARIANTS, default="default")
+    p.add_argument("--phase-pattern", default=None, help="optional RoLoRA phase pattern, e.g. BBA")
+    p.add_argument("--participation-rate", type=float, default=1.0)
+    p.add_argument("--sync-policy", choices=SYNC_POLICIES, default="full")
+    p.add_argument("--transport", action="store_true", help="transport B after RoLoRA A-rounds")
+    p.add_argument("--gauge", action="store_true", help="QR-gauge A after A-rounds")
     args = p.parse_args()
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
@@ -245,11 +497,24 @@ def main() -> None:
         train_ds = Subset(train_ds, list(range(args.subset)))
 
     rng = np.random.default_rng(args.seed)
-    train_sets = iid_split(train_ds, args.clients, rng)
+    train_sets = split_clients(
+        train_ds,
+        args.clients,
+        rng,
+        split=args.split,
+        labels_per_client=args.labels_per_client,
+    )
     test_loader = DataLoader(test_ds, batch_size=256)
 
     curves: dict[str, tuple[list[float], list[float]]] = {}
     for method in METHODS:
+        if method != "rolora" and (
+            args.init != "default"
+            or args.phase_pattern
+            or args.transport
+            or args.gauge
+        ):
+            continue
         print(f"-- {method} --")
         curves[method] = run_method(
             method,
@@ -263,6 +528,12 @@ def main() -> None:
             seed=args.seed,
             device=device,
             grad_clip=args.grad_clip,
+            init_variant=args.init,
+            phase_pattern=args.phase_pattern,
+            participation_rate=args.participation_rate,
+            sync_policy=args.sync_policy,
+            transport=args.transport,
+            gauge=args.gauge,
         )
 
     fig, (ax_loss, ax_acc) = plt.subplots(1, 2, figsize=(10, 4))

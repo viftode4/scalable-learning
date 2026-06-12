@@ -35,6 +35,8 @@ not committed.
 | 2026-06-03 | `SLS_LORA_INIT=orthogonal_a SLS_LORA_LR_A=0.005 SLS_LORA_LR_B=0.01 MODE=rolora TAG=smoke_improve_orth_ab ... smoke_supplement.yaml` | Real supplement smoke, RoBERTa-base QNLI, 2 clients, 2 rounds | `results/overnight_smoke_improve_orth_ab.log` | Harness proof for proposal axes 1 and 2: orthogonal-A initialized 24 LoRA-A matrices / zeroed 24 LoRA-B matrices; B-round optimizer groups used LoRA-B lr 0.01, A-round groups used LoRA-A lr 0.005. Not a result claim. |
 | 2026-06-03 | `SLS_LORA_INIT=orthogonal_a MODE=rolora TAG=proxy_orth_a_c50_r4_lr1e-2_seed0 ... proxy_qnli_roberta_base_c50_r4_lr1e-2.yaml seed 0` | QNLI, RoBERTa-base, 50 clients, rank 4, 20 rounds | `results/overnight_proxy_orth_a_c50_r4_lr1e-2_seed0.log`; `evidence/improvement_diagnostics_20260603/proxy_orth_a_seed0_partial/`; W&B run `wpzz95ms` | Matched orthogonal-A proxy transfer reached server test/val **0.829398 / 0.823473** at r19. It beats the earlier vanilla seed-0 control (`~0.8214`) but is currently weaker than BBA+orthogonal. |
 | 2026-06-03 | `SLS_LORA_INIT=orthogonal_a SLS_PHASE_PATTERN=BBA SLS_MONITOR=1 MODE=rolora TAG=proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed0 ... proxy_qnli_roberta_base_c50_r4_lr1e-2.yaml seed 0` | Running: QNLI, RoBERTa-base, 50 clients, rank 4, 20 target rounds | `results/overnight_proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed0.log`; `evidence/improvement_diagnostics_20260603/proxy_phase_bba_orth_a_seed0_partial/`; W&B run `8a2yoamg` | Best live improvement candidate: final server test/val **0.885411 / 0.889313** at r19. Internal monitor confirms intended phase freezing (`ΔA=0` on B rounds, `ΔB=0` on A rounds). |
+| 2026-06-13 | `uv run python scripts/run_toy_improvement_bank.py --split label_shard ...` | MNIST toy direct script, 10 clients, one label/client, rank 16, 60 rounds, 5 matched seeds for promoted arms | `scripts/run_toy_improvement_bank.py`; `evidence/toy_improvement_bank_20260613_002709_label_shard/`; `evidence/toy_improvement_bank_20260613_003519_label_shard_confirm/`; `evidence/toy_improvement_bank_label_shard_combined.md`; `.plans/toy-improvement-bank-20260613.md` | Fast improvement bank now runnable directly. SVD-compensated init is the strongest toy candidate (**64.20 ± 1.99%** vs vanilla RoLoRA **56.08 ± 4.41%**); orthogonal-A is a safer positive (**58.40 ± 1.44%**). Stale-factor transport recovers the intended stress case (**43.61 ± 6.08%** vs stale baseline **38.96 ± 6.83%**) but is not yet a normal partial-participation claim. |
+| 2026-06-13 | Actual-model improvement handoff | QNLI, RoBERTa-base, 50 clients, rank 4, 20 rounds | `docs/improvement-handoff-2026-06-13.md`; `results/overnight_proxy_svd_compensated_c50_r4_lr1e-2_seed{0,1,2}.log`; `evidence/improvement_diagnostics_20260604/proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed{0,1}/server_metrics.csv`; `evidence/improvement_diagnostics_20260604/proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed{0,1,2}/server_metrics.csv` | Corrects the toy-only reading: SVD-compensated was already run on actual QNLI proxy and is only a small/neutral gain (**85.70 ± 0.59%**) over vanilla RoLoRA (**85.10 ± 2.97%**). Stronger actual-model candidates remain orthogonal-A+BBA (**88.32 ± 0.22%**, 2 seeds) and adaptive refresh+orthogonal-A (**86.67 ± 0.31%**, 3 seeds). |
 
 ## Historical local run audit
 
@@ -83,6 +85,57 @@ RoLoRA proxy config `experiments/configs/proxy_qnli_roberta_base_c50_r4_lr1e-2.y
 | BBA phase controller + orthogonal-A, seed 1 | running; launched 2026-06-04 00:04 CEST in persistent tool session `73142` | `results/overnight_proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed1.log`; PID file `results/proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed1.pid` | pending | pending | `SLS_MONITOR=1` | Replication run for seed-0 improvement claim; parse after first server aggregate lands. |
 | BBA phase controller + orthogonal-A, seed 0 | complete; 20 server rounds parsed | `results/overnight_proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed0.log`; `evidence/improvement_diagnostics_20260603/proxy_phase_bba_orth_a_seed0_partial/`; W&B run `8a2yoamg` | `0.885411 / 0.889313` at r19 | `0.885411 / 0.889313` | `SLS_MONITOR=1`: B rounds show `ΔA=0, ΔB>0`; A rounds show `ΔA>0, ΔB=0` | Best current draft-critical improvement candidate: it changes only the phase schedule (`BBA`) plus committed orthogonal-A init, and already beats orthogonal default before completion. |
 | BBA monitor smoke | complete smoke | `results/overnight_smoke_monitor_bba_mps.log`; `evidence/improvement_diagnostics_20260603/smoke_monitor_bba_mps/` | smoke only | smoke only | client/aggregation/internal monitor CSVs produced | Harness proof that `SLS_PHASE_PATTERN=BBA`, MPS selection, and internal/aggregation logging work before long runs. |
+
+## Queued improvement experiments — 2026-06-11
+
+Context: paper Section 5.3 / Figure 6 already ablates B-prioritized schedules
+(B,B,B,A) and unequal A/B learning rates **under default init** and finds they
+degrade accuracy. Our proxy shows the opposite for BBA **under orthogonal-A**
+(0.885/0.881 vs vanilla-AB 0.851 ± 0.030). The claimable finding is therefore the
+init × schedule **interaction**, which the paper never tests (it theorizes about
+A's init quality — §4, FFA-LoRA variance discussion — but never intervenes on it).
+Cell: QNLI / RoBERTa-base / C50 / r4 / 20 rounds unless noted.
+
+1. **Default-init + BBA, seed 0 — decisive cell.** If it lands ≤ vanilla-AB
+   (~0.851), Figure 6 replicates and the interaction claim is clean; if it lands
+   ~0.88, the interaction claim dies and we report Figure-6 non-replication
+   instead. Either outcome is reportable.
+   ```bash
+   SLS_PHASE_PATTERN=BBA SLS_DEVICE=mps SLS_MONITOR=1 MODE=rolora \
+     TAG=proxy_phase_bba_default_c50_r4_lr1e-2_seed0 SEED=0 \
+     bash scripts/run_supplement_arm.sh experiments/configs/proxy_qnli_roberta_base_c50_r4_lr1e-2.yaml seed 0
+   ```
+2. **Default-init + BBA, seed 1** (same command, seed 1) — replication of the
+   decisive cell.
+3. **Orthogonal-A + AB, seed 1** — the orth-A/AB cell currently has one seed;
+   the 2×2 needs ≥2 per cell.
+   ```bash
+   SLS_LORA_INIT=orthogonal_a SLS_DEVICE=mps SLS_MONITOR=1 MODE=rolora \
+     TAG=proxy_orth_a_c50_r4_lr1e-2_seed1 SEED=1 \
+     bash scripts/run_supplement_arm.sh experiments/configs/proxy_qnli_roberta_base_c50_r4_lr1e-2.yaml seed 1
+   ```
+4. **Orthogonal-A + BBA, seed 2 rerun** — original attempt died after 5 s
+   (flagged bad in `evidence/share_csv_for_chat_20260608/README.txt`); the
+   headline claim needs its third seed.
+5. **SVD-compensated init at lower LR (Daniel, 2026-06-11):** hypothesis — SVD
+   init starts both factors in principal directions, so the tuned-for-random-init
+   lr=1e-2 thrashes the good starting subspace during the early "settling" rounds
+   (consistent with the SVD+BBA seed-1 collapse to ~0.66). Probe lr=5e-3 first;
+   if still unstable, lr=2e-3. Compare against the existing svd_compensated
+   lr=1e-2 seeds and vanilla lr=5e-3 control (0.849 best) — the claim requires
+   beating *both*, otherwise it is just the LR sweep again.
+   ```bash
+   SLS_LORA_INIT=svd_compensated SLS_DEVICE=mps SLS_MONITOR=1 MODE=rolora \
+     TAG=proxy_svd_compensated_c50_r4_lr5e-3_seed0 SEED=0 \
+     bash scripts/run_supplement_arm.sh experiments/configs/proxy_qnli_roberta_base_c50_r4_lr1e-2.yaml seed 0 train.optimizer.lr 0.005
+   ```
+   If lr=5e-3 stabilizes SVD init, retest SVD+BBA at that LR before declaring the
+   SVD×BBA combination dead.
+6. **Basis-transport prediction runs (P1–P3):** `bash results/run_transport_queue.sh`.
+   Implemented 2026-06-11 (`SLS_LORA_TRANSPORT=ls`, server-side function-preserving
+   coefficient transport after A-rounds; see `.plans/lora-basis-transport.md` for
+   mechanism, predictions, novelty check, and kill criteria). Tests:
+   `tests/test_sls_lora_transport.py`; smoke: `results/smoke_transport_rolora.log`.
 
 ## Next runs (in order)
 

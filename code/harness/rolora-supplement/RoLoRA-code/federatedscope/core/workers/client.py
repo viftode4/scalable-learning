@@ -18,6 +18,7 @@ from federatedscope.core.sls_monitor import (
     monitor_enabled as sls_monitor_enabled,
     state_from_mapping,
     wandb_log as sls_wandb_log,
+    wandb_log_round as sls_wandb_log_round,
 )
 from federatedscope.core.workers.base_client import BaseClient
 
@@ -425,16 +426,12 @@ class Client(BaseClient):
                 # curve is the first signal that local optimisation is working,
                 # independent of whether it generalises to the eval splits.
                 try:
-                    import wandb
-                    if wandb.run is not None:
-                        _traw = train_log_res.get('Results_raw', {})
-                        if isinstance(_traw, dict) and _traw:
-                            _tp = {
-                                f'client_{self.ID:02d}/{_k}': _v
-                                for _k, _v in _traw.items()
-                                if isinstance(_v, (int, float))
-                            }
-                            wandb.log(_tp, step=int(self.state))
+                    _traw = train_log_res.get('Results_raw', {})
+                    if isinstance(_traw, dict) and _traw:
+                        sls_wandb_log_round(
+                            _traw,
+                            round_num=int(self.state),
+                            namespace=f'client_{self.ID:02d}')
                 except Exception as _sls_tr_err:
                     logger.warning(
                         f"[sls-rolora] client train wandb.log failed: "
@@ -638,20 +635,16 @@ class Client(BaseClient):
             logger.info(formatted_eval_res)
             # sls-rolora: stream per-client eval-of-aggregated-adapter to wandb.
             # self.ID is FederatedScope's stable client id (not instantiation
-            # order). step=self.state aligns all clients' logs for the same FL
-            # round onto the same x-axis position.
+            # order). Use client_NN/round as a custom x-axis; W&B's global
+            # step is an event counter because we emit multiple records per
+            # FL round.
             try:
-                import wandb
-                if wandb.run is not None:
-                    raw = formatted_eval_res.get('Results_raw', {})
-                    if isinstance(raw, dict) and raw:
-                        payload = {
-                            f'client_{self.ID:02d}/{k}': v
-                            for k, v in raw.items()
-                            if isinstance(v, (int, float))
-                        }
-                        payload[f'client_{self.ID:02d}/round'] = self.state
-                        wandb.log(payload, step=int(self.state))
+                raw = formatted_eval_res.get('Results_raw', {})
+                if isinstance(raw, dict) and raw:
+                    sls_wandb_log_round(
+                        raw,
+                        round_num=int(self.state),
+                        namespace=f'client_{self.ID:02d}')
             except Exception as _sls_wandb_err:
                 logger.warning(
                     f"[sls-rolora] client wandb.log failed: {_sls_wandb_err}")

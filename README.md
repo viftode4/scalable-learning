@@ -96,6 +96,7 @@ See [`docs/setup/environment.md`](docs/setup/environment.md) for the full setup,
 
 Use these docs to keep the final project execution visible to humans and agents:
 
+- [`docs/improvement-handoff-2026-06-13.md`](docs/improvement-handoff-2026-06-13.md) — latest improvement handoff; read before launching more improvement runs.
 - [`docs/progress.md`](docs/progress.md) — live owner/status/next-action board.
 - [`docs/experiment-matrix.md`](docs/experiment-matrix.md) — reproduction and improvement run matrix.
 - [`docs/plans/12-10-paper-track-rolora.md`](docs/plans/12-10-paper-track-rolora.md) — 12/10 + paper-track execution plan and critique.

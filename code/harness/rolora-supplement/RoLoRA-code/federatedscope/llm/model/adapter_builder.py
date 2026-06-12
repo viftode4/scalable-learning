@@ -12,20 +12,171 @@ def _normalise_sls_lora_init(value):
         return 'default'
     if value in ('orthogonal', 'orthogonal_a', 'orthogonal_lora_a'):
         return 'orthogonal_a'
+    if value in ('svd', 'svd_compensated', 'pissa', 'pissa_compensated'):
+        return 'svd_compensated'
     raise ValueError(f"unknown SLS_LORA_INIT / sls_lora_init: {value!r}")
+
+
+def _iter_lora_linear_layers(model):
+    for module in model.modules():
+        if (hasattr(module, 'lora_A') and hasattr(module, 'lora_B')
+                and (hasattr(module, 'base_layer')
+                     or callable(getattr(module, 'get_base_layer', None))
+                     or hasattr(module, 'weight'))):
+            yield module
+
+
+def _get_lora_base_layer(module):
+    get_base_layer = getattr(module, 'get_base_layer', None)
+    if callable(get_base_layer):
+        return get_base_layer()
+    if hasattr(module, 'base_layer'):
+        return module.base_layer
+    return module
+
+
+def _get_lora_adapters(module):
+    adapters = getattr(module, 'active_adapters', None)
+    if adapters:
+        return list(adapters)
+    adapter = getattr(module, 'active_adapter', None)
+    if adapter:
+        return [adapter]
+    return list(module.lora_A.keys())
+
+
+def _get_lora_scaling(module, adapter):
+    scaling = getattr(module, 'scaling', 1.0)
+    if isinstance(scaling, dict):
+        scaling = scaling[adapter]
+    return float(scaling)
+
+
+def _get_lora_rank(module, adapter):
+    rank = getattr(module, 'r', None)
+    if isinstance(rank, dict):
+        return int(rank[adapter])
+    if rank is not None:
+        return int(rank)
+    return int(module.lora_A[adapter].weight.shape[0])
+
+
+def _get_delta_weight(module, adapter):
+    get_delta_weight = getattr(module, 'get_delta_weight', None)
+    if callable(get_delta_weight):
+        return get_delta_weight(adapter)
+    return module.lora_B[adapter].weight @ module.lora_A[adapter].weight * \
+        _get_lora_scaling(module, adapter)
+
+
+def _apply_svd_compensated_lora_init(model):
+    """Initialise PEFT LoRA factors from top-SVD and compensate base weights.
+
+    For each supported LoRA linear layer we set A/B so PEFT's *scaled* LoRA
+    delta equals the rank-r principal reconstruction of the original frozen
+    weight W, then subtract that same delta from W. The effective model at
+    step 0 is therefore unchanged: (W - delta) + delta == W.
+    """
+    if getattr(model, '_sls_svd_compensated_lora_init_applied', False):
+        raise RuntimeError(
+            'SLS_LORA_INIT=svd_compensated already applied to this model')
+
+    count = 0
+    max_reconstruction_error = 0.0
+    max_delta_norm = 0.0
+
+    with torch.no_grad():
+        for module in _iter_lora_linear_layers(model):
+            if getattr(module, 'fan_in_fan_out', False):
+                raise ValueError(
+                    'SLS_LORA_INIT=svd_compensated does not support '
+                    'fan_in_fan_out=True LoRA layers yet')
+
+            base_layer = _get_lora_base_layer(module)
+            if not hasattr(base_layer, 'weight') or base_layer.weight.ndim != 2:
+                raise ValueError(
+                    'SLS_LORA_INIT=svd_compensated expects a 2-D base weight')
+
+            for adapter in _get_lora_adapters(module):
+                if adapter not in module.lora_A or adapter not in module.lora_B:
+                    continue
+
+                base_weight = base_layer.weight
+                original = base_weight.detach().clone()
+                original_float = original.float().cpu()
+                rank = _get_lora_rank(module, adapter)
+                max_rank = min(original_float.shape)
+                if rank > max_rank:
+                    raise ValueError(
+                        'SLS_LORA_INIT=svd_compensated rank '
+                        f'{rank} exceeds base weight max rank {max_rank}')
+
+                scale = _get_lora_scaling(module, adapter)
+                if scale <= 0.0:
+                    raise ValueError(
+                        'SLS_LORA_INIT=svd_compensated requires positive '
+                        f'LoRA scaling, got {scale}')
+
+                u, s, vh = torch.linalg.svd(
+                    original_float, full_matrices=False)
+                sqrt_s_over_scale = torch.sqrt(s[:rank] / scale)
+                b_init = u[:, :rank] * sqrt_s_over_scale.unsqueeze(0)
+                a_init = sqrt_s_over_scale.unsqueeze(1) * vh[:rank, :]
+
+                lora_a = module.lora_A[adapter].weight
+                lora_b = module.lora_B[adapter].weight
+                if tuple(lora_a.shape) != tuple(a_init.shape) or \
+                        tuple(lora_b.shape) != tuple(b_init.shape):
+                    raise ValueError(
+                        'SLS_LORA_INIT=svd_compensated found incompatible '
+                        f'LoRA shapes A={tuple(lora_a.shape)}, '
+                        f'B={tuple(lora_b.shape)} for base '
+                        f'{tuple(base_weight.shape)} and rank {rank}')
+
+                lora_a.copy_(a_init.to(device=lora_a.device,
+                                       dtype=lora_a.dtype))
+                lora_b.copy_(b_init.to(device=lora_b.device,
+                                       dtype=lora_b.dtype))
+
+                delta = _get_delta_weight(module, adapter).detach().to(
+                    device=base_weight.device, dtype=base_weight.dtype)
+                base_weight.sub_(delta)
+                delta_after = _get_delta_weight(module, adapter).detach().to(
+                    device=base_weight.device, dtype=base_weight.dtype)
+                effective = base_weight.detach().float() + \
+                    delta_after.float()
+                reconstruction_error = float(
+                    (effective - original.float()).abs().max().item())
+                max_reconstruction_error = max(max_reconstruction_error,
+                                               reconstruction_error)
+                max_delta_norm = max(
+                    max_delta_norm,
+                    float(delta_after.float().norm().item()))
+                count += 1
+
+    if count == 0:
+        raise RuntimeError(
+            'SLS_LORA_INIT=svd_compensated found no PEFT LoRA linear layers')
+
+    model._sls_svd_compensated_lora_init_applied = True
+    print("[sls-rolora] SLS_LORA_INIT=svd_compensated: "
+          f"initialised {count} LoRA layers; "
+          f"max reconstruction error {max_reconstruction_error:.3e}; "
+          f"max delta norm {max_delta_norm:.3e}.")
+    return model
 
 
 def _apply_sls_lora_init(model, init_variant):
     """Apply project-specific LoRA init after PEFT creates adapter weights.
 
-    PEFT 0.3.0 does not support PiSSA/OLoRA config switches. For the first
-    proposal-compatible improvement we keep the pretrained model behavior
-    unchanged at step 0 by orthogonalising only LoRA-A and forcing LoRA-B to
-    zero.
+    PEFT 0.10.0 does not support PiSSA config switches. Project variants
+    therefore run after PEFT has created LoRA layers.
     """
     init_variant = _normalise_sls_lora_init(init_variant)
     if init_variant == 'default':
         return model
+    if init_variant == 'svd_compensated':
+        return _apply_svd_compensated_lora_init(model)
 
     if init_variant != 'orthogonal_a':
         raise ValueError(f"unsupported SLS LoRA init: {init_variant!r}")

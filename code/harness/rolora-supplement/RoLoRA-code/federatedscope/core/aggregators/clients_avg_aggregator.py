@@ -7,6 +7,10 @@ from federatedscope.core.sls_lora_gauge import (
     iter_lora_ab_pairs,
     lora_gauge_from_env,
 )
+from federatedscope.core.sls_lora_transport import (
+    apply_lora_transport_from_env,
+    lora_transport_from_env,
+)
 from federatedscope.core.sls_monitor import (
     client_drift_stats,
     diff_state_stats,
@@ -68,6 +72,32 @@ class ClientsAvgAggregator(Aggregator):
             except Exception as err:
                 print(f"[sls-agg] monitor_failed: {err}", flush=True)
         avg_model = self._para_weighted_avg(models, recover_fun=recover_fun)
+        if lora_transport_from_env() is not None and self.model is not None:
+            # The transport needs the pre-aggregation global factors (A_old,
+            # frozen B) next to the aggregated payload (A_new on A-rounds).
+            # On B-rounds A is unchanged, so the transport is a no-op.
+            old_state = state_from_mapping(_sls_full_model_state(self.model))
+            transport_state = dict(old_state)
+            transport_state.update(avg_model)
+            transport_stats = apply_lora_transport_from_env(
+                old_state, transport_state)
+            applied_keys = transport_stats.pop('transport_applied_keys', [])
+            for a_key, b_key in applied_keys:
+                avg_model[a_key] = transport_state[a_key]
+                avg_model[b_key] = transport_state[b_key]
+            if transport_stats.get('transport_pair_count', 0) or \
+                    transport_stats.get('transport_fallback_count', 0):
+                transport_stats.update({
+                    'round': agg_info.get('round', -1),
+                    'aggregator': type(self).__name__,
+                })
+                print(f"[sls-transport] {transport_stats}", flush=True)
+                if sls_monitor_enabled():
+                    emit_sls_monitor('lora_basis_transport', transport_stats,
+                                     prefix='sls-transport')
+                    sls_wandb_log(transport_stats,
+                                  step=int(agg_info.get('round', 0)),
+                                  namespace='monitor/lora_basis_transport')
         gauge_state = avg_model
         if lora_gauge_from_env() is not None and self.model is not None:
             # RoLoRA normally uploads only the active trainable factor

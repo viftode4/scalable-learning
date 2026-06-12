@@ -213,27 +213,45 @@ def emit(kind: str, payload: Mapping[str, Any], prefix: str = "sls-monitor") -> 
     print(f"[{prefix}] {clean}", flush=True)
 
 
-def wandb_log(payload: Mapping[str, Any], *, step: int, namespace: str) -> None:
-    if not monitor_enabled():
-        return
+def wandb_log_round(
+    payload: Mapping[str, Any],
+    *,
+    round_num: int,
+    namespace: str,
+) -> None:
+    """Log round-indexed metrics to W&B without using W&B's global step.
+
+    FederatedScope and our diagnostics emit several W&B records per FL round
+    (client train, client eval, aggregation probes, server eval). Passing
+    ``step=round`` to each call makes later records in the same round advance
+    W&B's global step, then future round-indexed records are silently dropped as
+    "less than the current step". Instead, every namespace carries its own
+    ``<namespace>/round`` metric and charts should use that custom x-axis.
+    """
     try:
         import wandb
         if wandb.run is None:
             return
+        round_key = f"{namespace}/round"
         clean = {
             f"{namespace}/{key}": value
             for key, value in payload.items()
-            if isinstance(value, (int, float, bool))
+            if key != "round" and isinstance(value, (int, float, bool))
         }
-        clean[f"{namespace}/round"] = payload.get("round", step)
+        clean[round_key] = int(payload.get("round", round_num))
         if clean:
             try:
-                wandb.define_metric(f"{namespace}/round")
-                wandb.define_metric(f"{namespace}/*",
-                                    step_metric=f"{namespace}/round")
+                wandb.define_metric(round_key)
+                wandb.define_metric(f"{namespace}/*", step_metric=round_key)
             except Exception:
                 pass
             wandb.log(clean)
     except Exception:
         # Monitoring must never affect training.
         return
+
+
+def wandb_log(payload: Mapping[str, Any], *, step: int, namespace: str) -> None:
+    if not monitor_enabled():
+        return
+    wandb_log_round(payload, round_num=step, namespace=namespace)

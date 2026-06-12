@@ -16,6 +16,8 @@ from federatedscope.core.auxiliaries.utils import merge_dict_of_results, \
     Timeout, merge_param_dict, add_prefix_to_path, get_ds_rank
 from federatedscope.core.auxiliaries.trainer_builder import get_trainer
 from federatedscope.core.secret_sharing import AdditiveSecretSharing
+from federatedscope.core.sls_monitor import \
+    wandb_log_round as sls_wandb_log_round
 from federatedscope.core.workers.base_server import BaseServer
 try:
     from federatedscope.llm.trainer.sls_phase_schedule import (
@@ -627,32 +629,16 @@ class Server(BaseServer):
                 # Results_weighted_avg is the paper-comparable number (per-client
                 # metrics weighted by per-client sample counts; with IID splits
                 # this reconstructs accuracy on the full global test set).
-                # step=round aligns the server trace with the per-client traces
-                # logged from Client.callback_funcs_for_evaluate at the same round.
+                # Use server/round as a custom x-axis. The W&B global step is
+                # just an event counter because client/monitor/server logs all
+                # emit separate records inside each FL round.
                 try:
-                    import wandb
-                    if wandb.run is not None:
-                        wavg = formatted_logs.get('Results_weighted_avg', {})
-                        if isinstance(wavg, dict) and wavg:
-                            sls_payload = {
-                                f'server/{k}': v
-                                for k, v in wavg.items()
-                                if isinstance(v, (int, float))
-                            }
-                            sls_payload['server/round'] = round
-                            try:
-                                wandb.define_metric('server/round')
-                                wandb.define_metric(
-                                    'server/*',
-                                    step_metric='server/round')
-                            except Exception:
-                                pass
-                            # Do not pass W&B's global `step=` here. The
-                            # upstream monitor also logs without a step, so
-                            # explicit round steps can become "less than the
-                            # current step" and get silently dropped. Use
-                            # server/round as the custom x-axis instead.
-                            wandb.log(sls_payload)
+                    wavg = formatted_logs.get('Results_weighted_avg', {})
+                    if isinstance(wavg, dict) and wavg:
+                        sls_wandb_log_round(
+                            wavg,
+                            round_num=int(round),
+                            namespace='server')
                 except Exception as _sls_wandb_err:
                     logger.warning(
                         f"[sls-rolora] server wandb.log failed: "
