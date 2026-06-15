@@ -1,0 +1,99 @@
+# Partial-participation + heterogeneity proxy cell — QNLI, RoBERTa-base,
+# 50 clients, LoRA rank 4, lr=1e-2.
+#
+# Differs from proxy_qnli_roberta_base_c50_r4_lr1e-2.yaml in exactly two knobs,
+# the two robustness axes the RoLoRA paper holds fixed (§5 assumes full
+# participation; Table 1's main cells are IID):
+#   - federate.sample_client_rate: fraction of clients sampled each round.
+#   - data.splitter: 'lda' (Dirichlet) with alpha controlling heterogeneity.
+# Smaller alpha = more skew; lower rate = more partial participation.
+#
+# The A/B phase MUST track the global round here (SLS_PHASE_ROUND_SOURCE=global),
+# otherwise sampled clients desynchronize on phase and the server averages a
+# mix of A- and B-updates (see .plans/partial-participation-rolora.md).
+#
+# Arms (see plan):
+#   # A1 faithful RoLoRA (honest method baseline)
+#   SLS_PHASE_ROUND_SOURCE=global SLS_DEVICE=mps SLS_MONITOR=1 MODE=rolora \
+#     TAG=pp_a1_faithful_p0.3_a0.5_seed0 SEED=0 \
+#     bash scripts/run_supplement_arm.sh \
+#       experiments/configs/proxy_qnli_roberta_base_c50_r4_lr1e-2_pp.yaml seed 0
+#
+#   # A2 faithful RoLoRA + basis transport (the fix under test)
+#   SLS_PHASE_ROUND_SOURCE=global SLS_LORA_TRANSPORT=ls SLS_DEVICE=mps \
+#     SLS_MONITOR=1 MODE=rolora TAG=pp_a2_transport_p0.3_a0.5_seed0 SEED=0 \
+#     bash scripts/run_supplement_arm.sh \
+#       experiments/configs/proxy_qnli_roberta_base_c50_r4_lr1e-2_pp.yaml seed 0
+#
+#   # A0 naive RoLoRA (step_count phase) — quantifies naive-deployment failure.
+#   # Omit SLS_PHASE_ROUND_SOURCE to use the default local-counter phase.
+#
+# Override the two knobs per grid cell on the CLI, e.g. participation 0.5:
+#   ... pp.yaml seed 0 federate.sample_client_rate 0.5
+#
+# Scope caveat: RoBERTa-base proxy evidence, not RoBERTa-Large Table-1.
+
+use_gpu: True
+device: 0
+seed: 0
+early_stop:
+  patience: 0
+
+federate:
+  mode: standalone
+  total_round_num: 20
+  save_to: "proxy-qnli-roberta-base-c50-r4-lr1e-2-pp.ckpt"
+  client_num: 50
+  sample_client_rate: 0.3
+  share_local_model: True
+  # Evaluate the global model on the full (representative) test set, NOT the
+  # per-client heterogeneous shards. Under lda_label the test split is also
+  # label-skewed, so per-client test_acc is degenerate (std~0.3, min 0, max 1,
+  # aggregate flip-flops near chance) even while the model trains fine
+  # (train_acc ~0.75). Global eval is also what the paper reports. The server's
+  # key-0 client holds the full unsplit test set (base_translator.py:155).
+  make_global_eval: True
+
+data:
+  root: code/harness/rolora-supplement/RoLoRA-code/sst2/
+  type: 'qnli.json@llm'
+  splits: [0.89, 0.1, 0.01]
+  # lda_label skews over the QNLI answer label (0/1), NOT the generic 'lda'
+  # which skews over the per-paragraph 'categories' code (~105k classes -> a
+  # multi-hour dirichlet hang). See contrib/splitter/lda_label_splitter.py.
+  splitter: 'lda_label'
+  splitter_args: [{ 'alpha': 0.5 }]
+
+llm:
+  tok_len: 128
+  chat:
+    max_len: 1000
+    max_history_len: 10
+  adapter:
+    use: True
+    args: [ { 'adapter_package': 'peft', 'adapter_method': 'lora', 'r': 4, 'lora_alpha': 32, 'lora_dropout': 0.1 } ]
+
+dataloader:
+  batch_size: 32
+
+model:
+  type: 'roberta-base@huggingface_llm'
+
+train:
+  local_update_steps: 20
+  batch_or_epoch: batch
+  optimizer:
+    lr: 0.01
+    weight_decay: 0.0002
+  is_enable_half: False
+
+trainer:
+  type: llmtrainer
+criterion:
+  type: CrossEntropyLoss
+
+eval:
+  freq: 1
+  metrics: ['loss', 'acc']
+  best_res_update_round_wise_key: val_loss
+  count_flops: False

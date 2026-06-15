@@ -1,0 +1,64 @@
+# Partial-participation smoke: tiny everything, but enough clients/rounds that
+# a sampled client's local step_count diverges from the global round (so the
+# SLS_PHASE_ROUND_SOURCE=global fix is actually exercised).
+# 6 clients, sample 0.5 (3/round), 6 rounds, lda alpha 0.5, CPU. NOT a result.
+#
+# Faithful (A1) — cohort must agree on phase each round:
+#   SLS_PHASE_ROUND_SOURCE=global SLS_MONITOR=1 MODE=rolora \
+#     TAG=smoke_pp_a1 bash scripts/run_supplement_arm.sh \
+#     experiments/configs/smoke_supplement_pp.yaml
+# Naive (A0) — omit SLS_PHASE_ROUND_SOURCE; cohort may disagree on phase.
+
+use_gpu: False
+device: -1
+early_stop:
+  patience: 0
+
+federate:
+  mode: standalone
+  total_round_num: 6
+  save_to: "smoke_pp.ckpt"
+  client_num: 6
+  sample_client_rate: 0.5
+  share_local_model: True
+  make_global_eval: True  # eval global model on full test set, not skewed shards
+
+data:
+  root: code/harness/rolora-supplement/RoLoRA-code/sst2/
+  type: 'qnli.json@llm'
+  splits: [0.89, 0.1, 0.01]
+  splitter: 'lda_label'
+  splitter_args: [{ 'alpha': 0.5 }]
+
+llm:
+  tok_len: 64
+  chat:
+    max_len: 256
+    max_history_len: 4
+  adapter:
+    use: True
+    args: [ { 'adapter_package': 'peft', 'adapter_method': 'lora', 'r': 4, 'lora_alpha': 16, 'lora_dropout': 0.1 } ]
+
+dataloader:
+  batch_size: 4
+
+model:
+  type: 'roberta-base@huggingface_llm'
+
+train:
+  local_update_steps: 2
+  batch_or_epoch: batch
+  optimizer:
+    lr: 0.005
+    weight_decay: 0.0002
+  is_enable_half: False
+
+trainer:
+  type: llmtrainer
+criterion:
+  type: CrossEntropyLoss
+
+eval:
+  freq: 2
+  metrics: ['loss', 'acc']
+  best_res_update_round_wise_key: val_loss
