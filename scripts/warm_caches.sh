@@ -37,23 +37,23 @@ mkdir -p "$HF_HOME"
 echo "HF_HOME = $HF_HOME"
 
 # ---------------------------------------------------------------------------
-# [1/2] Pre-download roberta-large weights + tokenizer.
+# [1/2] Pre-download roberta-{large,base} weights + tokenizer.
 #
 # snapshot_download writes files to $HF_HOME/hub/ but never instantiates the
 # model — so RAM footprint is dominated by the Python interpreter, NOT the
 # model weights. This keeps it light enough for the login node.
 # ---------------------------------------------------------------------------
-echo "[1/2] Pre-downloading roberta-large into $HF_HOME ..."
+echo "[1/2] Pre-downloading roberta-large + roberta-base into $HF_HOME ..."
 "$SUPP_PY" - <<'PY'
 import os
 from huggingface_hub import snapshot_download
-path = snapshot_download(repo_id='roberta-large')
-print('roberta-large snapshot path:', path)
-# Cheap presence check — make sure we have what from_pretrained will need.
-for fname in ['config.json', 'pytorch_model.bin']:
-    fpath = os.path.join(path, fname)
-    assert os.path.exists(fpath), f'snapshot missing {fpath}'
-print('roberta-large cache ready.')
+for repo_id in ('roberta-large', 'roberta-base'):
+    path = snapshot_download(repo_id=repo_id)
+    print(f'{repo_id} snapshot path:', path)
+    for fname in ['config.json', 'pytorch_model.bin']:
+        fpath = os.path.join(path, fname)
+        assert os.path.exists(fpath), f'snapshot missing {fpath}'
+    print(f'{repo_id} cache ready.')
 PY
 
 # ---------------------------------------------------------------------------
@@ -74,4 +74,5 @@ fi
 echo
 echo "Warm caches complete."
 ls -lh "$HF_HOME/hub/models--roberta-large/" 2>/dev/null || true
+ls -lh "$HF_HOME/hub/models--roberta-base/" 2>/dev/null || true
 ls -lh "$QNLI_JSON" 2>/dev/null || true

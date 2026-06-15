@@ -40,7 +40,7 @@ dataloader:
   batch_size: 32
 
 model:
-  type: 'roberta-large@huggingface_llm'
+  type: 'roberta-base@huggingface_llm'
 
 train:
   local_update_steps: 20

@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# QNLI reproduction — cell C2 (20 clients, RoBERTa-Large, LoRA rank 4) — RoLoRA mode.
-# Config: experiments/configs/repro_qnli_c20_r4.yaml
+# QNLI lr sweep — 50 clients, RoBERTa-base, LoRA rank 4, 20 rounds — RoLoRA mode.
+# Config: experiments/configs/repro_qnli_c50_r4_lr*.yaml
 #
 # Submit (seed 0 default):
 #   sbatch slurm/repro_qnli_c20_r4_rolora.sbatch
@@ -18,12 +18,8 @@
 #     PyTorch overhead ~2 GB + FederatedScope state — tight but adequate.
 #     If we OOM on host RAM, fallback is gpu-a100 (full A100, 24h cap) where
 #     mem-per-cpu and cpus-per-task aren't as constrained.
-#   - --time=03:59:59 maximises the 4h MIG slice. The C2 config now requests
-#     75 rounds (paper Table 6 scaling for 20 clients) with AdamW lr 5e-4 and
-#     eval.freq=5. Local AdamW evidence (`results/overnight_*_adamw.log`)
-#     shows convergence by ~r15-20, so a truncated 4 h run that completes
-#     ~30 rounds is already paper-comparable on the convergence curve. See
-#     ADR 0006 for the recipe rationale.
+#   - --time=03:59:59 maximises the 4h MIG slice; estimated job duration is
+#     ~30 min (30 rounds × 20 local steps × 20 clients × bs=32).
 #
 # Prerequisites (one-time on the DelftBlue login node) — see docs/setup/delftblue.md:
 #   1) mkdir -p slurm_logs
@@ -31,9 +27,9 @@
 #   3) uv installed and on PATH
 #   4) uv sync   (creates project .venv)
 #   5) bash scripts/install_supplement.sh   (creates supplement .venv-supplement)
-#   6) bash scripts/warm_caches.sh   (downloads model + qnli.json to scratch)
+#   6) sbatch slurm/warm_caches.sbatch   (downloads model + qnli.json to scratch)
 #
-#SBATCH --job-name=sls-c20-r4-rolora
+#SBATCH --job-name=sls-c50-r4-rolora-lr2e-2
 #SBATCH --partition=gpu-a100-small
 # Portal share display: Education-EEMCS-MSc-DSAIT. Slurm account is lowercase.
 #SBATCH --account=education-eemcs-msc-dsait
@@ -82,15 +78,15 @@ set -a; [ -f .env ] && source .env; set +a
 
 # --- Pinned per-file -------------------------------------------------------
 export SLS_ALTERNATION_MODE=rolora
-CONFIG_PATH="experiments/configs/repro_qnli_c20_r4.yaml"
-SEED="${SEED:-0}"
+CONFIG_PATH="experiments/configs/repro_qnli_c50_r4_lr2e-2.yaml"
+SEED="${SEED:-2}"
 
 # --- Wandb identity --------------------------------------------------------
 export WANDB_ENTITY="scalable-learning-7"
 export WANDB_PROJECT="sls-rolora-repro"
-export WANDB_RUN_GROUP="qnli_c20_r4"
-export WANDB_NAME="${SLS_ALTERNATION_MODE}_seed${SEED}"
-export WANDB_TAGS="qnli,c20,r4,${SLS_ALTERNATION_MODE},seed${SEED}"
+export WANDB_RUN_GROUP="qnli_c50_r4"
+export WANDB_NAME="${SLS_ALTERNATION_MODE}_lr2e-2_seed${SEED}"
+export WANDB_TAGS="qnli,c50,r4,${SLS_ALTERNATION_MODE},lr2e-2,seed${SEED}"
 
 # --- Sanity checks ---------------------------------------------------------
 echo "Node:           $(hostname)"
