@@ -39,12 +39,25 @@ Interpretation:
   such as lr `5e-3`, but it is lower priority than finishing the strongest
   actual-model cells.
 
-## Toy bank added on 2026-06-13
+## Toy bank added on 2026-06-13 (superseded 2026-06-15)
 
-New direct CPU runner:
+> **Superseded:** `scripts/run_toy_improvement_bank.py` was removed in the
+> fix-rolora merge in favour of the modular `notebooks/toy/` package. The
+> canonical toy comparison tools are now:
+>
+> ```bash
+> uv run python notebooks/mnist_fig2_compare.py --clients 10 --labels-per-client 1
+> uv run python -m toy.sweep --seeds 0,1,2   # multi-seed grid -> results/*.csv
+> ```
+>
+> Variants live in `notebooks/toy/config.py` (`PRESETS`). See
+> `docs/results-scoreboard.md` for the verdicts. The original runner text is
+> kept below for historical context.
+
+Original direct CPU runner (removed):
 
 ```bash
-uv run python scripts/run_toy_improvement_bank.py --help
+# uv run python scripts/run_toy_improvement_bank.py --help   # removed; see above
 ```
 
 Main evidence:
@@ -89,9 +102,10 @@ Interpretation:
 Fresh local checks after the toy-bank changes:
 
 ```bash
-uv run ruff check notebooks/mnist_fig2.py scripts/run_toy_improvement_bank.py tests/test_mnist_fig2.py
-uv run pytest tests/test_mnist_fig2.py tests/test_sls_svd_lora_init.py tests/test_sls_lora_transport.py -q
-uv run python -m py_compile notebooks/mnist_fig2.py scripts/run_toy_improvement_bank.py
+# Original 2026-06-13 checks referenced scripts/run_toy_improvement_bank.py,
+# removed in the fix-rolora merge. Current equivalent:
+uv run ruff check notebooks/mnist_fig2.py notebooks/toy tests/test_mnist_fig2.py
+uv run pytest tests/test_mnist_fig2.py tests/test_toy_components.py tests/test_sls_svd_lora_init.py tests/test_sls_lora_transport.py -q
 ```
 
-Result: ruff passed, `23 passed`, and Python compilation succeeded.
+Result (2026-06-13, original run): ruff passed, `23 passed`, compilation OK.

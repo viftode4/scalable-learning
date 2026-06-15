@@ -50,7 +50,11 @@ Local copy: [`docs/research/paper-rolora.pdf`](docs/research/paper-rolora.pdf) �
 2. **Separate learning rates for A and B** — LoRA+-style asymmetric LRs, enabled by RoLoRA's per-round factor isolation.
 3. **Adaptive server-side optimization** — lightweight federated optimizer in place of plain averaging.
 
-All three preserve RoLoRA's alternating structure.
+All three preserve RoLoRA's alternating structure. **Current status** (see the
+[scoreboard](docs/results-scoreboard.md) for evidence): orthogonal-A init is our
+one positive signal (+3.3 pp on the heterogeneity toy); the others are flat on
+the IID proxy or already closed by the paper's Fig 6, and the standout cross-cut
+finding is the init×schedule interaction the paper never tests.
 
 ## Source documents
 - [`docs/research/paper-rolora.pdf`](docs/research/paper-rolora.pdf) — the paper.
@@ -63,7 +67,7 @@ All three preserve RoLoRA's alternating structure.
 docs/        Source documents, kickoff agenda, decision log, setup guides, templates
 code/        Our code + harness checkouts (FedSA-LoRA submodule, RoLoRA supplement)
 experiments/ YAML configs that map to runs
-notebooks/   MNIST Figure-2 sanity check and exploration
+notebooks/   Toy MNIST harness: toy/ package + mnist_fig2_compare.py + toy/sweep.py
 scripts/     Setup and run utilities (dataset prep, supplement extraction/smoke/summary)
 slurm/       DelftBlue / DAIC job templates
 results/     Output artifacts (gitignored)
@@ -96,7 +100,8 @@ See [`docs/setup/environment.md`](docs/setup/environment.md) for the full setup,
 
 Use these docs to keep the final project execution visible to humans and agents:
 
-- [`docs/improvement-handoff-2026-06-13.md`](docs/improvement-handoff-2026-06-13.md) — latest improvement handoff; read before launching more improvement runs.
+- **[`docs/results-scoreboard.md`](docs/results-scoreboard.md) — start here.** The honest "what we tried / verdict / evidence" synthesis across reproduction and every improvement experiment (including the dead-ends).
+- [`docs/improvement-handoff-2026-06-13.md`](docs/improvement-handoff-2026-06-13.md) — improvement handoff; read before launching more improvement runs.
 - [`docs/progress.md`](docs/progress.md) — live owner/status/next-action board.
 - [`docs/experiment-matrix.md`](docs/experiment-matrix.md) — reproduction and improvement run matrix.
 - [`docs/plans/12-10-paper-track-rolora.md`](docs/plans/12-10-paper-track-rolora.md) — 12/10 + paper-track execution plan and critique.

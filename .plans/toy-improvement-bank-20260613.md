@@ -1,5 +1,14 @@
 # Toy-first RoLoRA improvement bank — 2026-06-13
 
+> **Superseded 2026-06-15 by the fix-rolora merge.** The `scripts/
+> run_toy_improvement_bank.py` runner this document describes was removed in
+> favour of the modular `notebooks/toy/` package. Variants are now `MethodConfig`
+> entries in `notebooks/toy/config.py` (`PRESETS`) — including `rolora_prox`
+> (the FedProx drift correction explored below) and `rolora_mom` (server
+> momentum); run them via `mnist_fig2_compare.py` / `toy/sweep.py`. The
+> reasoning and results below are kept as the historical record; for current
+> verdicts see `docs/results-scoreboard.md`.
+
 ## Purpose
 
 Use the MNIST Figure-2 toy as the fast filter before spending RoBERTa compute.

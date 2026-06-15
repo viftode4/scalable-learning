@@ -4,6 +4,12 @@ This is the live control surface for the RoLoRA final project. Keep it short,
 current, and evidence-backed. Every row needs a concrete next action and an
 evidence path.
 
+> **Latest — 2026-06-15.** `main` now absorbs the `fix-rolora` toy work (modular
+> `notebooks/toy/` package + `results_extra/` heterogeneity evidence) and this
+> session's harness work. The synthesised status of every reproduction and
+> improvement experiment — what helped, what was flat, what was ruled out — now
+> lives in **[`results-scoreboard.md`](results-scoreboard.md)**; read it first.
+
 ## Current thesis
 
 We deliver a compute-constrained reproduction and proxy-scale improvement study

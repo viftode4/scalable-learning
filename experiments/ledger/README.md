@@ -150,17 +150,21 @@ signal lives (orth-A toy +3.3 pp). Partial participation was dropped as useless:
 the paper's own exactness argument (Eqs 3-4) survives client sampling, so it
 predicts RoLoRA is robust there.
 
-Toy-first validation (cheap filter before RoBERTa compute), in
-`notebooks/mnist_fig2.py` (`drift_mu`) + `scripts/run_toy_improvement_bank.py`
-(variants `rolora_fedprox_lo`/`rolora_fedprox`/`rolora_fedprox_hi`/`orth_fedprox`):
+1. **Factor-wise drift correction (toy, NEGATIVE).** FedProx-style proximal
+   anchor on the single alternating factor each round (zero extra
+   communication). On the `label_shard` heterogeneity toy (5 seeds) it is flat:
+   `56.07` vs vanilla `56.08`, inside the ±4.4 noise; `orth_fedprox` does not
+   beat `orth`. Evidence: `evidence/toy_drift_correction_20260615_195304_label_shard/`.
+   FedProx is the *weak* corrector; SCAFFOLD-style control variates are the
+   untried stronger version.
 
-1. **Factor-wise drift correction.** FedProx-style proximal anchor on the single
-   alternating factor each round (zero extra communication). Validating on the
-   `label_shard` heterogeneity toy vs vanilla RoLoRA / orth / svd, 5 seeds.
-   Early 8-round signal: prox is wired (mu=50 collapses learning) but neutral-to-
-   slightly-harmful at small mu; full 60-round result pending. FedProx is the
-   *weak* corrector — if flat, escalate to SCAFFOLD-style control variates.
-   See `.plans/toy-improvement-bank-20260613.md`.
+   Note (post fix-rolora merge): this idea converged independently with the
+   teammate's modular toy package, where it is the canonical `rolora_prox`
+   preset (`notebooks/toy/config.py`); server momentum is `rolora_mom`. Run via
+   `mnist_fig2_compare.py` / `toy/sweep.py`. The standalone
+   `scripts/run_toy_improvement_bank.py` that produced the evidence above was
+   removed as superseded (commit "Reconcile toy harness to the merged modular
+   package"). See `docs/results-scoreboard.md`.
 
 ## Next runs (in order)
 
