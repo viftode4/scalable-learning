@@ -52,16 +52,16 @@ def test_does_not_hang_and_skews(splitter_mod):
     signal.signal(signal.SIGALRM, _timeout)
     signal.alarm(20)
     try:
-        N = 4000
+        n = 4000
         rng = np.random.RandomState(0)
-        y = rng.randint(0, 2, size=N)
+        y = rng.randint(0, 2, size=n)
         # categories UNIQUE per item -> the exact shape that hangs `lda`.
-        data = [{"labels": int(y[i]), "categories": i} for i in range(N)]
+        data = [{"labels": int(y[i]), "categories": i} for i in range(n)]
 
         shards = m.LDALabelSplitter(client_num=6, alpha=0.1)(data)
         sizes = [len(s) for s in shards]
         assert len(shards) == 6
-        assert sum(sizes) == N
+        assert sum(sizes) == n
         assert all(sz > 0 for sz in sizes), sizes
 
         fracs = [float(np.mean([d["labels"] for d in s])) for s in shards]

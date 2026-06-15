@@ -14,7 +14,6 @@ import datetime as dt
 import os
 import shutil
 import subprocess
-import sys
 import zipfile
 from pathlib import Path
 from xml.sax.saxutils import escape
@@ -110,7 +109,7 @@ def render_frames(chrome: str, clean: bool = True) -> list[Path]:
             f"--screenshot={out}",
             url,
         ]
-        subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        subprocess.run(cmd, check=True, capture_output=True)
         if not out.exists() or out.stat().st_size < 10_000:
             raise SystemExit(f"Render failed or produced tiny file: {out}")
         outputs.append(out)
@@ -304,10 +303,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", type=Path, default=OUT, help="output .pptx path")
     args = parser.parse_args(argv)
 
-    if args.skip_render:
-        pngs = existing_frames()
-    else:
-        pngs = render_frames(find_chrome(args.chrome))
+    pngs = existing_frames() if args.skip_render else render_frames(find_chrome(args.chrome))
     if not args.render_only:
         assemble_pptx(pngs, args.out)
     return 0
