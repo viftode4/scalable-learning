@@ -331,9 +331,17 @@ def local_train(
     lr: float,
     device: torch.device,
     grad_clip: float = 1.0,
+    drift_mu: float = 0.0,
 ) -> None:
     trainable = [p for p in model.parameters() if p.requires_grad]
     opt = torch.optim.SGD(trainable, lr=lr)
+    # Factor-wise drift correction (FedProx-style). Anchor each trainable
+    # parameter to its global value at the start of the round (the just-
+    # broadcast server factor) and penalize local drift via (mu/2)||w - w_t||^2.
+    # In RoLoRA only one factor is trainable per round, so this corrects client
+    # drift on exactly the alternating factor at zero extra communication -- the
+    # within-factor heterogeneity gap RoLoRA's exact aggregation leaves open.
+    anchors = [p.detach().clone() for p in trainable] if drift_mu > 0 else None
     model.train()
     seen = 0
     while seen < steps:
@@ -341,6 +349,9 @@ def local_train(
             x, y = x.to(device), y.to(device)
             opt.zero_grad()
             loss = F.cross_entropy(model(x), y)
+            if anchors is not None:
+                prox = sum(((p - a) ** 2).sum() for p, a in zip(trainable, anchors))
+                loss = loss + 0.5 * drift_mu * prox
             loss.backward()
             if grad_clip > 0:
                 torch.nn.utils.clip_grad_norm_(trainable, grad_clip)
@@ -382,6 +393,7 @@ def run_method(
     sync_policy: str = "full",
     transport: bool = False,
     gauge: bool = False,
+    drift_mu: float = 0.0,
 ) -> tuple[list[float], list[float]]:
     assert method in METHODS
     init_variant = _normalise_init_variant(init_variant)
@@ -439,7 +451,10 @@ def run_method(
         old_a_params = [p.detach().clone() for p in server.adapter_params("A")]
         for client in participating_clients:
             loader = client_to_loader[id(client)]
-            local_train(client, loader, steps=local_steps, lr=lr, device=device, grad_clip=grad_clip)
+            local_train(
+                client, loader, steps=local_steps, lr=lr, device=device,
+                grad_clip=grad_clip, drift_mu=drift_mu,
+            )
 
         for f in active_factors:
             average_factor(server, participating_clients, f)
@@ -482,6 +497,7 @@ def main() -> None:
     p.add_argument("--sync-policy", choices=SYNC_POLICIES, default="full")
     p.add_argument("--transport", action="store_true", help="transport B after RoLoRA A-rounds")
     p.add_argument("--gauge", action="store_true", help="QR-gauge A after A-rounds")
+    p.add_argument("--drift-mu", type=float, default=0.0, help="FedProx-style factor-wise drift correction strength")
     args = p.parse_args()
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
@@ -534,6 +550,7 @@ def main() -> None:
             sync_policy=args.sync_policy,
             transport=args.transport,
             gauge=args.gauge,
+            drift_mu=args.drift_mu,
         )
 
     fig, (ax_loss, ax_acc) = plt.subplots(1, 2, figsize=(10, 4))

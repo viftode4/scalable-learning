@@ -34,6 +34,23 @@ Let a layer's LoRA update be `Δ = A B` in the toy orientation.
   In the toy bank, BBA/BBBA/BBBBA did not beat SVD and only roughly matched
   orthogonal-A, so the current fast evidence does not promote them above init.
 
+- **Factor-wise drift correction (new, 2026-06-15).** Reasoning the paper
+  misses: RoLoRA's alternation makes *aggregation* exact (it removes the
+  cross-factor interference `avg(AB) ≠ avg(A)avg(B)`), but on every round it
+  still runs vanilla FedAvg on the *trained* factor over heterogeneous clients.
+  So **within-factor client drift is completely untouched** — the standard FL
+  problem — and that is the residual gap to the centralized ceiling under skew
+  (toy: RoLoRA ≈84 vs ceiling ≈97). Our own orth-A win is consistent with this:
+  a better-conditioned frozen basis means the trained factor drifts less.
+  The fix: add a FedProx-style proximal anchor `(mu/2)||w − w_t||²` to the
+  single alternating factor each round (`w_t` = the just-broadcast global
+  value). Because only one low-rank factor trains per round, this is cheap and
+  adds **zero communication**. Variants: `rolora_fedprox_lo/…/_hi` (mu sweep)
+  and `orth_fedprox` (stacks the best init with drift correction). FedProx is
+  the *weak* drift corrector; if it shows any signal, the stronger SCAFFOLD-style
+  control-variate version is the next step. Kill if no mu beats vanilla RoLoRA
+  by ≥1 pp over the bank's matched seeds.
+
 - **Basis transport** solves the coordinate mismatch after a basis update:
   `B_new = argmin_B ||A_new B - A_old B_old||_F`. It is only expected to help
   when clients or server state can hold coefficients in a stale basis. Under

@@ -35,6 +35,7 @@ class Variant:
     sync_policy: str = "full"
     transport: bool = False
     gauge: bool = False
+    drift_mu: float = 0.0
     note: str = ""
 
 
@@ -113,6 +114,32 @@ VARIANTS: dict[str, Variant] = {
         init="svd_compensated",
         phase_pattern="BBA",
         note="SVD-compensated init plus BBA; tests whether compensated bases need slower A updates",
+    ),
+    # --- factor-wise drift correction (new idea, 2026-06-15) -----------------
+    # RoLoRA makes aggregation exact but still FedAvgs the trained factor across
+    # heterogeneous clients, so within-factor client drift is untouched -- the
+    # residual heterogeneity gap the paper never addresses. These variants add a
+    # FedProx-style proximal anchor to the single alternating factor each round.
+    "rolora_fedprox_lo": Variant(
+        name="rolora_fedprox_lo",
+        drift_mu=0.02,
+        note="RoLoRA + factor-wise FedProx drift correction (mu=0.02)",
+    ),
+    "rolora_fedprox": Variant(
+        name="rolora_fedprox",
+        drift_mu=0.1,
+        note="RoLoRA + factor-wise FedProx drift correction (mu=0.1)",
+    ),
+    "rolora_fedprox_hi": Variant(
+        name="rolora_fedprox_hi",
+        drift_mu=0.5,
+        note="RoLoRA + factor-wise FedProx drift correction (mu=0.5)",
+    ),
+    "orth_fedprox": Variant(
+        name="orth_fedprox",
+        init="orthogonal_a",
+        drift_mu=0.1,
+        note="orthogonal-A + factor-wise FedProx; stacks best init with drift correction",
     ),
 }
 
@@ -278,6 +305,7 @@ def main() -> None:
                 sync_policy=variant.sync_policy,
                 transport=variant.transport,
                 gauge=variant.gauge,
+                drift_mu=variant.drift_mu,
             )
             runs.append(
                 {
