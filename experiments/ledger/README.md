@@ -137,6 +137,31 @@ Cell: QNLI / RoBERTa-base / C50 / r4 / 20 rounds unless noted.
    mechanism, predictions, novelty check, and kill criteria). Tests:
    `tests/test_sls_lora_transport.py`; smoke: `results/smoke_transport_rolora.log`.
 
+## Improvement ideas — 2026-06-15 (reasoning beyond the paper)
+
+Direction: take RoLoRA's own error decomposition and attack the half it leaves
+open. RoLoRA makes *aggregation* exact (removes cross-factor interference
+`avg(AB) ≠ avg(A)avg(B)`) but still FedAvgs the *trained* factor across
+heterogeneous clients every round, so **within-factor client drift is
+untouched** — the residual gap to the centralized ceiling under skew. The paper
+does not address this (its theory is the simplified linear case; Table 2
+heterogeneity is small-scale empirical), and it is where our only positive
+signal lives (orth-A toy +3.3 pp). Partial participation was dropped as useless:
+the paper's own exactness argument (Eqs 3-4) survives client sampling, so it
+predicts RoLoRA is robust there.
+
+Toy-first validation (cheap filter before RoBERTa compute), in
+`notebooks/mnist_fig2.py` (`drift_mu`) + `scripts/run_toy_improvement_bank.py`
+(variants `rolora_fedprox_lo`/`rolora_fedprox`/`rolora_fedprox_hi`/`orth_fedprox`):
+
+1. **Factor-wise drift correction.** FedProx-style proximal anchor on the single
+   alternating factor each round (zero extra communication). Validating on the
+   `label_shard` heterogeneity toy vs vanilla RoLoRA / orth / svd, 5 seeds.
+   Early 8-round signal: prox is wired (mu=50 collapses learning) but neutral-to-
+   slightly-harmful at small mu; full 60-round result pending. FedProx is the
+   *weak* corrector — if flat, escalate to SCAFFOLD-style control variates.
+   See `.plans/toy-improvement-bank-20260613.md`.
+
 ## Next runs (in order)
 
 1. **Let BBA+orthogonal-A finish and refresh figures:** rerun
