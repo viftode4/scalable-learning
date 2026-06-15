@@ -293,3 +293,44 @@ def describe_phase_controller(environ: Mapping[str, str] | None = None) -> str:
     if warmup_rounds:
         return f"b_warmup_rounds={warmup_rounds}"
     return "default_BA"
+
+
+# Which round index drives the A/B phase decision. The default ("step_count")
+# uses the trainer's local training counter, which only advances when a client
+# is sampled -- under partial participation (sample_client_rate < 1) two
+# clients in the SAME global round then hold different counters and freeze
+# different factors, so the server averages a mix of A- and B-updates and the
+# RoLoRA exactness argument (paper Eqs. 3-4) breaks. Opting into "global" makes
+# the phase track the global communication round (the paper's odd/even
+# definition), so every sampled client agrees on the phase. Default preserves
+# byte-for-byte the behaviour of all prior full-participation runs.
+_GLOBAL_ROUND_SOURCES = {
+    "global", "global_round", "round", "server", "state", "comm", "comm_round",
+}
+
+
+def phase_round_source_is_global(
+    environ: Mapping[str, str] | None = None,
+) -> bool:
+    env = os.environ if environ is None else environ
+    raw = env.get("SLS_PHASE_ROUND_SOURCE")
+    if raw is None:
+        return False
+    return str(raw).strip().lower() in _GLOBAL_ROUND_SOURCES
+
+
+def resolve_phase_round(
+    step_count: int,
+    global_round: int | None,
+    environ: Mapping[str, str] | None = None,
+) -> int:
+    """Return the round index the phase decision should use.
+
+    ``step_count`` (default) keeps every prior result identical. ``global``
+    source returns ``global_round`` so all clients sampled in the same round
+    resolve to the same phase; it falls back to ``step_count`` when the global
+    round is unavailable (e.g. eval-only calls before the client sets it).
+    """
+    if phase_round_source_is_global(environ) and global_round is not None:
+        return int(global_round)
+    return int(step_count)

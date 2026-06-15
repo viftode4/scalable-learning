@@ -390,6 +390,14 @@ class Client(BaseClient):
                         logger.warning(
                             f"[sls-rolora] mech probe failed: "
                             f"{_sls_mech_err}")
+                # sls-rolora: hand the global comm round to the trainer so the
+                # A/B phase can track it under SLS_PHASE_ROUND_SOURCE=global
+                # (partial participation). No-op for the default step_count
+                # phase path. Guarded so non-LLM trainers are unaffected.
+                try:
+                    self.trainer._sls_global_round = int(self.state)
+                except (AttributeError, TypeError, ValueError):
+                    pass
                 sample_size, model_para_all, results = self.trainer.train()
                 if self.ID == 1 and sls_monitor_enabled() and \
                         _sls_pre_state is not None:

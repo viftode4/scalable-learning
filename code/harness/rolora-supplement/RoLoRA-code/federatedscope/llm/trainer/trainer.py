@@ -27,6 +27,7 @@ from federatedscope.llm.trainer.sls_lora_lr import lora_lr_optimizer_target
 from federatedscope.llm.trainer.sls_phase_schedule import (
     describe_phase_controller,
     phase_for_round_from_env,
+    resolve_phase_round,
 )
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,12 @@ class LLMTrainer(GeneralTorchTrainer):
         super(LLMTrainer, self).__init__(*args, **kwargs)
         print("Load CustomSeq2SeqTrainer...")
         self.step_count = 0
+        # sls-rolora: the global communication round, set by the client before
+        # each train() call. Used for the A/B phase decision when
+        # SLS_PHASE_ROUND_SOURCE=global so partial-participation cohorts agree
+        # on the phase. None until the client sets it (default phase path uses
+        # step_count and is unaffected).
+        self._sls_global_round = None
         # sls-rolora: baseline-mode switch (rolora | lora | ffa_lora).
         # Read once from the SLS_ALTERNATION_MODE env var; default 'rolora'
         # preserves the upstream behaviour.
@@ -213,11 +220,17 @@ class LLMTrainer(GeneralTorchTrainer):
                           f"cls={_sq['classifier']**0.5:.6f} "
                           f"A={_sq['lora_A']**0.5:.6f} "
                           f"B={_sq['lora_B']**0.5:.6f}")
+                # Round index that drives the A/B phase. Default == step_count
+                # (every prior run unchanged); SLS_PHASE_ROUND_SOURCE=global
+                # uses the global comm round set by the client so partial-
+                # participation cohorts agree on the phase.
+                phase_round = resolve_phase_round(
+                    self.step_count, self._sls_global_round)
                 if self.alternation_mode == 'rolora':
-                    phase = phase_for_round_from_env(self.step_count)
+                    phase = phase_for_round_from_env(phase_round)
                     train_b = phase == 'B'
-                    print(f"[sls-rolora] RoLoRA round {self.step_count}: "
-                          f"train {phase} "
+                    print(f"[sls-rolora] RoLoRA round {phase_round} "
+                          f"(step={self.step_count}): train {phase} "
                           f"({describe_phase_controller()})")
                     for name, param in ctx.model.named_parameters():
                         if 'lora_A' in name:
@@ -259,7 +272,7 @@ class LLMTrainer(GeneralTorchTrainer):
                         if 'classifier' in name:
                             param.requires_grad = True
                 if sls_monitor_enabled():
-                    self._sls_monitor_round = int(self.step_count)
+                    self._sls_monitor_round = int(phase_round)
                     self._sls_monitor_phase = phase if 'phase' in locals() \
                         else self.alternation_mode
                     self._sls_monitor_before_state = state_from_mapping(
