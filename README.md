@@ -51,10 +51,14 @@ Local copy: [`docs/research/paper-rolora.pdf`](docs/research/paper-rolora.pdf) �
 3. **Adaptive server-side optimization** — lightweight federated optimizer in place of plain averaging.
 
 All three preserve RoLoRA's alternating structure. **Current status** (see the
-[scoreboard](docs/results-scoreboard.md) for evidence): orthogonal-A init is our
-one positive signal (+3.3 pp on the heterogeneity toy); the others are flat on
-the IID proxy or already closed by the paper's Fig 6, and the standout cross-cut
-finding is the init×schedule interaction the paper never tests.
+[scoreboard](docs/results-scoreboard.md) for evidence): our improvement is
+**Phase-Controlled RoLoRA** — orthogonal-A init + a B-prioritised (BBA) phase
+schedule + a product-preserving gauge fix — reaching **0.885 vs vanilla 0.851**
+on the RoBERTa-base proxy, explained by a single mechanism (A-rounds damage the
+B-round function; BBA, basis transport, and orth-A all fix it, and init×schedule
+interact in a way Fig 6 never tests). SVD init, LoRA+, partial participation, and
+FedProx drift are flat or closed by the paper; the lift needs the decisive
+default-init+BBA cell and a third seed to clear the baseline noise.
 
 ## Source documents
 - [`docs/research/paper-rolora.pdf`](docs/research/paper-rolora.pdf) — the paper.

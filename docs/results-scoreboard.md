@@ -3,85 +3,121 @@
 Single honest entry point for the RoLoRA reproduction + improvement project.
 Start here, then follow the links. Updated 2026-06-15.
 
-The one-line story: **reproduction is on track but cluster-pending; on the
-improvement side, every IID experiment is flat and the only thing that moves is
-better initialisation under heterogeneity.** Several "obvious" improvement ideas
-turned out to be closed by the paper's own results or theory — those are
-recorded here so we don't re-run them.
+**One-line story:** our improvement is **Phase-Controlled RoLoRA** — RoLoRA +
+orthogonal-A init + a B-prioritised phase schedule (BBA) + a product-preserving
+gauge fix — which reaches **0.885 vs vanilla 0.851** on the RoBERTa-base proxy.
+The reason it works is a single mechanism we can point at (A-rounds damage the
+function learned in B-rounds), and that same mechanism explains why basis
+transport gives the same lift and why init and schedule *interact* — an
+interaction the paper's Fig 6 never tests. Reproduction is on track but
+cluster-pending. Several other ideas are genuinely closed by the paper's own
+theory/results and are recorded so we don't re-run them.
 
 ## How to read this
 
-- **Toy** = MNIST 2-layer model, fast CPU filter (`notebooks/toy/`,
-  `mnist_fig2_compare.py`, `toy/sweep.py`). Cheap triage, *not* a paper claim.
 - **Proxy** = RoBERTa-base / QNLI / 50 clients / rank 4 / 20 rounds on the
-  authors' supplement harness. Real model, sub-Table-1 scale. Vanilla RoLoRA
-  baseline here is **0.851 ± 0.030** (seed envelope ~0.82–0.88), so a real
-  improvement has to clear that noise across ≥3 seeds.
-- **Paper-scale** = RoBERTa-Large Table 1. Cluster-only; see the reproduction
-  row below.
+  authors' supplement harness. Real model, sub-Table-1 scale. This is where our
+  *proper* improvement runs live. Vanilla RoLoRA baseline = **0.851 ± 0.030**
+  (3 seeds; envelope ~0.82–0.88), so a clean claim must clear that noise.
+- **Toy** = MNIST 2-layer model, fast CPU filter (`notebooks/toy/`,
+  `mnist_fig2_compare.py`, `toy/sweep.py`). Triage only, *not* a paper claim.
+- **Paper-scale** = RoBERTa-Large Table 1. Cluster-only; see reproduction below.
 
 ## Reproduction
 
 | Item | Status | Evidence |
 |---|---|---|
-| Supplement harness runs locally (3 modes) | ✅ | `make supplement-smoke-all`; `experiments/ledger/README.md` |
-| Optimizer audit (shipped SGD lr=0.005 → chance; AdamW lr=5e-4 → 0.86–0.88) | ✅ documented | `docs/decisions/0006-supplement-reproducibility-gap.md`, README banner |
+| Supplement harness runs locally (3 modes) | ✅ | `make supplement-smoke-all` |
+| Optimizer audit (shipped SGD lr=0.005 → chance; AdamW lr=5e-4 → 0.86–0.88) | ✅ documented | `docs/decisions/0006-supplement-reproducibility-gap.md` |
 | MNIST Figure-2 ordering (RoLoRA > LoRA > FFA-LoRA) | ✅ | `make mnist-paper`; `notebooks/toy/` |
 | Cluster Table-1 reproduction (RoBERTa-Large) | ⏳ pending | corrected `slurm/repro_qnli_*`; first clean C2 cell is the open gate |
 
-## Improvement experiments
+## Our improvement — Phase-Controlled RoLoRA (PC-RoLoRA)
 
-Verdict legend: ✅ helps · ➖ neutral / within noise · ❌ ruled out · ⏳ pending.
+### The mechanism (the actual contribution)
 
-| Idea | Where it lives | Toy | Proxy (real model) | Verdict |
-|---|---|---|---|---|
-| **Orthogonal-A init** | `toy` preset `rolora_orth_a`; supplement `SLS_LORA_INIT=orthogonal_a` | **+3.3 pp** under heterogeneity (87.2 vs 83.9, 5 seeds) | ~0.829 vs 0.821, within noise | ✅ on heterogeneity / ➖ IID — our **best signal** |
-| **SVD-compensated init (PiSSA-style)** | `SLS_LORA_INIT=svd_compensated` | strong on the rank-16 bank (64.2 vs 56.1) | 0.852–0.865, ➖ neutral | ➖ does not transfer to the real-model proxy |
-| **LoRA+ (asymmetric A/B LR)** | preset `rolora_plus_lr`; `SLS_LORA_LR_A/B` | λ=2 → 0.848 vs 0.844, marginal | not run — paper Fig 6 already shows balanced LR wins on the real model | ❌ closed by the paper's own Fig 6 |
-| **Phase schedule (BBA etc.)** | `SLS_PHASE_PATTERN` | roughly matches orth-A, no extra gain | BBA+orth-A 0.885 vs vanilla 0.851 — an **init×schedule interaction** Fig 6 never tests | ➖ as a standalone knob; the interaction is a finding *about* the paper, not an improvement |
-| **Basis transport** (re-express B after an A-round) | supplement `SLS_LORA_TRANSPORT=ls`, `sls_lora_transport.py` | pruned from the toy (non-winner) | ~0.878, one seed, ➖ | ➖ neutral on IID; built for a problem IID doesn't have |
-| **Factor-wise drift correction (FedProx)** | preset `rolora_prox`; tested independently this session | **flat**: 56.07 vs 56.08, inside ±4.4 noise | not run | ➖ FedProx is the weak corrector; SCAFFOLD-style control variates are the untried stronger version |
-| **Server momentum (FedAvgM)** | preset `rolora_mom` | implemented, multi-seed comparison not yet recorded | not run | ⏳ pending a clean toy/sweep run |
-| **Partial participation** | n/a | — | — | ❌ ruled out by RoLoRA's exactness argument (Eqs 3-4 survive client sampling) — see `docs/decisions/0007-partial-participation-ruled-out.md` |
+RoLoRA's **A-rounds damage the function learned in the B-rounds**: when A is
+re-aggregated, B's frozen coefficients are now expressed against a moved basis,
+so the adapter `B·A` is corrupted. Every proxy arm that helped is a fix for
+exactly this:
 
-### The shape of the result
+- **BBA schedule** — cluster B-rounds, fewer disruptive A-rounds.
+- **Basis transport** — re-express B after each A-round (`SLS_LORA_TRANSPORT=ls`).
+- **Orthogonal-A init** — a better-conditioned basis, so the A-round damage is
+  smaller to begin with.
 
-- **IID is dead ground.** Init tricks, schedules, transport, and drift
-  correction are all flat on the IID proxy. RoLoRA is already near-optimal there.
-- **Heterogeneity is where things move**, and the lever that moves them is
-  **initialisation quality** (orth-A +3.3 pp). This matches the paper's own
-  analysis (FFA-LoRA's error scales with A's init angle).
-- **Why some ideas are closed, not just untested:** Fig 6 already ablates
-  asymmetric A/B LR and B-prioritised schedules (balanced wins); the exactness
-  argument already covers partial participation. Reasoning these out on paper
-  saved real compute.
+Two results pin the mechanism down:
+1. **Transport ≈ BBA, and they don't stack.** Transport lifts plain balanced-AB
+   from 0.851 → **0.878** (recovering most of BBA's gain), but transport stacked
+   on BBA = 0.883 ≈ BBA alone (0.885). Both are fixing the *same* A-round damage
+   by different routes — exactly the prediction in `.plans/lora-basis-transport.md` (P2).
+2. **Init × schedule interaction.** BBA helps *specifically under orth-A init*.
+   The paper's Fig 6 only ablates schedules under *default* init and concludes
+   balanced wins; it never tests the interaction, so this is genuinely ours.
+
+The more novel framing is **APC-RoLoRA** (adaptive phase controller): instead of
+a fixed BBA, choose which factor to train from observed dynamics (active-factor
+update norm, aggregation drift, recent val gain, no-starvation). See
+`docs/current-roadmap.md` §10–11.
+
+### Proxy results (RoBERTa-base, QNLI, c50/r4/20 rounds — final server test_acc)
+
+| Arm | Result | vs 0.851 ± 0.030 |
+|---|---|---|
+| vanilla RoLoRA (baseline) | 0.851 ± 0.030 (3 seeds) | — |
+| orth-A init alone | 0.829 (s0) | within noise |
+| **BBA + orth-A** | **0.885 / 0.881** (s0/s1) | **+~3.4 pp**, edge of envelope |
+| BBA + orth-A + gauge | 0.883 (s0) | matches BBA |
+| adaptive_refresh + orth-A (APC) | 0.866 / 0.864 / 0.871 | between vanilla and BBA |
+| transport (balanced AB) | 0.878 (s0) | recovers most of BBA's gain |
+| transport + BBA + orth-A | 0.883 (s0) | no stacking benefit |
+| SVD-compensated init | 0.852 / 0.865 / 0.854 | neutral |
+| SVD + BBA | 0.860 / **0.766 💥** | unstable |
+| transport + SVD | 0.854 (s0) | neutral |
+
+Evidence: `evidence/share_csv_for_chat_20260608/improvement_server_curves/*.csv`,
+`evidence/improvement_diagnostics_20260604/`, `results/overnight_proxy_*` (logs,
+gitignored). Toy confirmation: orth-A gives **+3.3 pp** under extreme
+heterogeneity (`results_extra/orth_a_n5_r100_log5.json`).
+
+### Honest caveat
+
+The best arms (BBA+orth-A, +gauge, +transport) cluster at **0.883–0.885 vs
+0.851 ± 0.030** — a real lift, but ~1 std above a noisy baseline at **2 seeds**.
+To turn this into a clean report claim it needs two cheap proxy runs:
+1. **default-init + BBA** — proves it's an init×schedule *interaction* and not a
+   Fig-6 non-replication. This cell was queued long ago and never run.
+2. **BBA + orth-A seed 2** — third seed for the headline arm.
+
+## Ruled out / closed (recorded so we don't re-run them)
+
+| Idea | Verdict |
+|---|---|
+| SVD-compensated init | ➖ neutral on proxy; SVD+BBA collapses (0.766) |
+| LoRA+ (asymmetric A/B LR) | ❌ closed by the paper's Fig 6 (balanced wins) |
+| Partial participation | ❌ closed by RoLoRA's exactness argument (Eqs 3-4 survive sampling) — `docs/decisions/0007-*` |
+| Factor-wise drift correction (FedProx, `rolora_prox`) | ➖ flat on the toy (56.07 vs 56.08); FedProx is the weak corrector |
+| Server momentum (FedAvgM, `rolora_mom`) | ⏳ implemented, never run — the one untested lever |
 
 ## Where everything lives
 
 | Thing | Path |
 |---|---|
-| Toy harness (canonical) | `notebooks/toy/` · `notebooks/mnist_fig2_compare.py` · `notebooks/toy/sweep.py` |
-| Toy variants registry | `notebooks/toy/config.py` (`PRESETS`) |
-| Supplement harness + `SLS_*` switches | `code/harness/rolora-supplement/RoLoRA-code/federatedscope/` |
-| Experiment configs | `experiments/configs/` |
-| Committed results (CSVs, figures, JSON) | `evidence/`, `results_extra/` (toy heterogeneity) |
-| Scratch run logs (gitignored) | `results/` |
-| Per-idea reasoning records | `.plans/`, `docs/decisions/` |
+| Supplement harness + `SLS_*` switches (orth init, phase pattern, gauge, transport, A/B LR, monitor) | `code/harness/rolora-supplement/RoLoRA-code/federatedscope/` |
+| Proxy configs | `experiments/configs/` |
+| Proxy improvement curves (CSV) | `evidence/share_csv_for_chat_20260608/`, `evidence/improvement_diagnostics_20260604/` |
+| Toy harness + variants | `notebooks/toy/` (`config.py` PRESETS) · `mnist_fig2_compare.py` · `toy/sweep.py` |
+| Toy heterogeneity evidence | `results_extra/` |
+| Per-idea reasoning | `.plans/`, `docs/decisions/`, `docs/current-roadmap.md` |
 | Dense run log | `experiments/ledger/README.md` |
-| Improvement idea banks | `docs/current-roadmap.md`, `docs/deep-research-improvements.md` |
 
-## Open / next
+## Open / next (in priority order)
 
-1. A clean toy/sweep run of `rolora_mom` and `rolora_kitchen_sink` to close the
-   momentum row (`uv run python -m toy.sweep --variants base_rolora,rolora_mom,rolora_kitchen_sink`).
-2. The first clean cluster Table-1 cell (corrected AdamW + round count).
-3. If a toy lever clears the bar, the matched RoBERTa-base proxy confirmation
-   (≥3 seeds, must beat 0.851 ± 0.030).
+1. **default-init + BBA** proxy cell + **BBA+orth-A seed 2** — closes the
+   PC-RoLoRA claim (the decisive runs).
+2. `rolora_mom` toy sweep — the one untested proposal axis (server optimizer).
+3. First clean cluster Table-1 cell (corrected AdamW + round count).
 
-## Reproduce the toy comparison
-
-```bash
-uv run python -m toy.sweep --seeds 0,1,2          # multi-seed grid → results/*.csv
-uv run python notebooks/mnist_fig2_compare.py \
-  --clients 10 --labels-per-client 1              # single-seed overlay plot
-```
+> ⚠️ Provenance note: the proxy numbers above are from runs up to 2026-06-12
+> (newest local: basis transport). If newer proxy/W&B runs exist that aren't in
+> this repo, fold them in before treating this as final.
