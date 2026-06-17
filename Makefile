@@ -1,4 +1,4 @@
-.PHONY: sync test lint check mnist mnist-paper mnist-smoke mnist-compare mnist-stress mnist-ceiling local-smoke full-local table1-pilot table1-pilot-all table1-pilot-summary table1-medium table1-medium-all table1-medium-summary roberta-large-feasibility roberta-large-feasibility-summary diagnostics-summary supplement install-supplement supplement-smoke supplement-smoke-all data clean
+.PHONY: sync test lint check mnist mnist-paper mnist-smoke mnist-compare mnist-stress mnist-ceiling local-smoke full-local table1-pilot table1-pilot-all table1-pilot-summary table1-medium table1-medium-all table1-medium-summary roberta-large-feasibility roberta-large-feasibility-summary diagnostics-summary results-aggregate promote-runs supplement install-supplement supplement-smoke supplement-smoke-all data clean
 
 MODE ?= rolora
 SUPPLEMENT_ZIP ?=
@@ -86,6 +86,12 @@ roberta-large-feasibility-summary:
 diagnostics-summary:
 	uv run python scripts/summarize_supplement.py --prefix $(PREFIX) --diagnostics
 
+results-aggregate:
+	uv run python scripts/aggregate_all_results.py
+
+promote-runs:
+	uv run python scripts/aggregate_all_results.py --promote
+
 local-smoke:
 	uv run python scripts/local_suite.py smoke
 
@@ -96,7 +102,7 @@ data:
 	uv run python scripts/prep_glue.py --task mnli
 
 clean:
-	rm -rf slurm-*.out .pytest_cache .ruff_cache exp *.ckpt
+	rm -rf slurm-*.out .pytest_cache .ruff_cache exp *.ckpt checkpoints/*.ckpt
 	find notebooks scripts tests -type d -name __pycache__ -prune -exec rm -rf {} +
 	rm -rf results/*
-	touch results/.gitkeep
+	touch results/.gitkeep checkpoints/.gitkeep

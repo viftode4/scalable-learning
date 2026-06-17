@@ -3,6 +3,13 @@
 Single honest entry point for the RoLoRA reproduction + improvement project.
 Start here, then follow the links. Updated 2026-06-15.
 
+> **Verified numbers + every run's log live in the [`runs/` registry](../runs/README.md)
+> → [`runs/REGISTRY.md`](../runs/REGISTRY.md).** Every accuracy in this scoreboard is
+> reproduced there directly from the raw logs / evidence CSVs / W&B export (run
+> `make promote-runs` to refresh after any new run). If a number here and there ever
+> disagree, the registry is authoritative. Spread note: the registry reports mean ±
+> **CI95**; some older docs use population std — same per-seed data, different error bars.
+
 **One-line story:** our improvement is **Phase-Controlled RoLoRA** — RoLoRA +
 orthogonal-A init + a B-prioritised phase schedule (BBA) + a product-preserving
 gauge fix — which reaches **0.885 vs vanilla 0.851** on the RoBERTa-base proxy.
@@ -119,5 +126,6 @@ To turn this into a clean report claim it needs two cheap proxy runs:
 3. First clean cluster Table-1 cell (corrected AdamW + round count).
 
 > ⚠️ Provenance note: the proxy numbers above are from runs up to 2026-06-12
-> (newest local: basis transport). If newer proxy/W&B runs exist that aren't in
-> this repo, fold them in before treating this as final.
+> (newest local: basis transport). All of them are re-extracted from primary
+> sources in [`runs/REGISTRY.md`](../runs/REGISTRY.md); regenerate with
+> `make promote-runs` after any new run so this stays current.

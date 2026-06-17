@@ -1,0 +1,15 @@
+{
+  "run": "proxy_bba_orth_gauge_c50_r4_lr1e-2_seed0",
+  "task": "qnli_roberta-base_c50_r4_20rounds",
+  "final_test_acc": 0.882848,
+  "best_test_acc": 0.882848,
+  "final_round": 19,
+  "n_rounds": 20,
+  "status": "ok",
+  "primary_source": "results/overnight_proxy_bba_orth_gauge_c50_r4_lr1e-2_seed0.log",
+  "git_sha": "f14db84",
+  "sls_lora_init": "orthogonal_a",
+  "sls_phase_pattern": "BBA",
+  "has_log": true,
+  "has_config": true
+}

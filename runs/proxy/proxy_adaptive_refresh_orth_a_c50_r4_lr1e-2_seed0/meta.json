@@ -1,0 +1,15 @@
+{
+  "run": "proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed0",
+  "task": "qnli_roberta-base_c50_r4_20rounds",
+  "final_test_acc": 0.865642,
+  "best_test_acc": 0.865642,
+  "final_round": 19,
+  "n_rounds": 20,
+  "status": "ok",
+  "primary_source": "evidence/improvement_diagnostics_20260604/proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed0/server_metrics.csv",
+  "git_sha": "f14db84",
+  "sls_lora_init": "orthogonal_a",
+  "sls_phase_pattern": null,
+  "has_log": true,
+  "has_config": true
+}

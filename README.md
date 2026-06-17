@@ -51,7 +51,9 @@ Local copy: [`docs/research/paper-rolora.pdf`](docs/research/paper-rolora.pdf) �
 3. **Adaptive server-side optimization** — lightweight federated optimizer in place of plain averaging.
 
 All three preserve RoLoRA's alternating structure. **Current status** (see the
-[scoreboard](docs/results-scoreboard.md) for evidence): our improvement is
+[scoreboard](docs/results-scoreboard.md) for the narrative and the
+[`runs/` registry](runs/README.md) for every run's log + metrics verified from
+raw sources — `make promote-runs`): our improvement is
 **Phase-Controlled RoLoRA** — orthogonal-A init + a B-prioritised (BBA) phase
 schedule + a product-preserving gauge fix — reaching **0.885 vs vanilla 0.851**
 on the RoBERTa-base proxy, explained by a single mechanism (A-rounds damage the
@@ -70,11 +72,13 @@ default-init+BBA cell and a third seed to clear the baseline noise.
 ```
 docs/        Source documents, kickoff agenda, decision log, setup guides, templates
 code/        Our code + harness checkouts (FedSA-LoRA submodule, RoLoRA supplement)
-experiments/ YAML configs that map to runs
+experiments/ YAML configs (configs/) + the dense run ledger (ledger/)
+runs/        Shared, committed run registry — every real run's log+metrics+config (see runs/README.md)
 notebooks/   Toy MNIST harness: toy/ package + mnist_fig2_compare.py + toy/sweep.py
-scripts/     Setup and run utilities (dataset prep, supplement extraction/smoke/summary)
+scripts/     Setup and run utilities; scripts/queues/ holds the overnight sweep launchers
 slurm/       DelftBlue / DAIC job templates
-results/     Output artifacts (gitignored)
+results/     Local run scratch — full logs + wandb (gitignored; promote into runs/ to share)
+checkpoints/ Saved model weights (gitignored)
 report/      LaTeX writeup
 tests/       pytest suite (aggregation math, invariants)
 ```

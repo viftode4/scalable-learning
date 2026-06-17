@@ -49,8 +49,13 @@ slurm_logs/
 *.ckpt
 *.pt
 wandb/
-runs/
 mlruns/
+
+# Committed run registry: runs/ IS tracked (shareable per-run log+metrics+config).
+# Re-include the logs that the global *.log / *.out rules above would drop.
+# Checkpoints/wandb never land here, and stay ignored via *.ckpt / wandb/ anyway.
+!runs/**/*.log
+!runs/**/*.out
 # HuggingFace cache accidentally created under supplement data dir
 code/harness/rolora-supplement/RoLoRA-code/sst2/models--*/
 code/harness/rolora-supplement/RoLoRA-code/sst2/.locks/

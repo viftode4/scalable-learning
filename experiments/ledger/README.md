@@ -131,7 +131,7 @@ Cell: QNLI / RoBERTa-base / C50 / r4 / 20 rounds unless noted.
    ```
    If lr=5e-3 stabilizes SVD init, retest SVD+BBA at that LR before declaring the
    SVD×BBA combination dead.
-6. **Basis-transport prediction runs (P1–P3):** `bash results/run_transport_queue.sh`.
+6. **Basis-transport prediction runs (P1–P3):** `bash scripts/queues/run_transport_queue.sh`.
    Implemented 2026-06-11 (`SLS_LORA_TRANSPORT=ls`, server-side function-preserving
    coefficient transport after A-rounds; see `.plans/lora-basis-transport.md` for
    mechanism, predictions, novelty check, and kill criteria). Tests:

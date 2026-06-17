@@ -26,7 +26,7 @@ early_stop:
 federate:
   mode: standalone
   total_round_num: 20
-  save_to: "proxy-qnli-roberta-base-c50-r4-lr1e-2.ckpt"
+  save_to: "checkpoints/proxy-qnli-roberta-base-c50-r4-lr1e-2.ckpt"
   client_num: 50
   share_local_model: True
 

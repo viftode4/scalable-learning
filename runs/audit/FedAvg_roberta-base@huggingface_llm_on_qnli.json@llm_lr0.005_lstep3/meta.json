@@ -1,0 +1,10 @@
+{
+  "run": "FedAvg_roberta-base@huggingface_llm_on_qnli.json@llm_lr0.005_lstep3",
+  "kind": "fedavg_optimizer_audit",
+  "final_test_acc": 0.5053999633900788,
+  "best_test_acc": 0.5053999633900788,
+  "final_round": 2,
+  "config": "lr=0.005 local_steps=3",
+  "status": "chance / did not learn",
+  "primary_source": "exp/FedAvg_roberta-base@huggingface_llm_on_qnli.json@llm_lr0.005_lstep3/eval_results.log"
+}

@@ -43,7 +43,7 @@ coefficients across a basis update.
 - **P3** svd_compensated at lr=1e-2 + transport: the SVD seed-1-style
   collapse (~0.66) was basis thrash, so transport should stabilize it.
 
-Queue: `results/run_transport_queue.sh` (P1/P2/P3, seed 0 each, W&B group
+Queue: `scripts/queues/run_transport_queue.sh` (P1/P2/P3, seed 0 each, W&B group
 `qnli_c50_r4_transport`). Evaluate exactly like prior arms: local
 `*__server_metrics.csv` rounds 0–19 as primary evidence, per-A-round deltas
 from phase markers as the mechanism plot.
@@ -66,7 +66,7 @@ from phase markers as the mechanism plot.
 - [ ] Supplement smoke with `SLS_LORA_TRANSPORT=ls`
   (`results/smoke_transport_rolora.log`, expect `[sls-transport]` marker on
   the A-round).
-- [ ] Run `results/run_transport_queue.sh` (P1 → P2 → P3) and ledger results.
+- [ ] Run `scripts/queues/run_transport_queue.sh` (P1 → P2 → P3) and ledger results.
 
 ## Surprises & Discoveries
 

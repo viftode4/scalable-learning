@@ -157,7 +157,7 @@ Re-confirm against any newer FedLoRA partial-participation work before drafting.
     cohort-agreement property; full SLS suite (35 tests) green.
   - Configs: `proxy_qnli_roberta_base_c50_r4_lr1e-2_pp.yaml` (p=0.3, lda α=0.5)
     and `smoke_supplement_pp.yaml`.
-  - De-risk queue: `results/run_pp_derisk_queue.sh` (3 gating cells).
+  - De-risk queue: `scripts/queues/run_pp_derisk_queue.sh` (3 gating cells).
   - Verified LDA train split IS label-aware (the `base_translator:144` warning
     is only about val/test prior alignment, which we don't depend on).
 - 2026-06-15: **Splitter hang found and fixed (smoke caught it).** The generic

@@ -152,7 +152,7 @@ not in prose.
 - Verification after device/controller/diagnostic changes:
   - `uv run pytest -q tests/test_sls_phase_schedule.py tests/test_sls_orthogonal_lora_init.py tests/test_sls_lora_lr_groups.py` → 11 passed.
   - `uv run ruff check ...` → passed.
-  - `bash -n scripts/run_supplement_arm.sh scripts/smoke_supplement.sh results/run_queued_proxy_phase_bba_orth_a_seed0.sh` → passed.
+  - `bash -n scripts/run_supplement_arm.sh scripts/smoke_supplement.sh scripts/queues/run_queued_proxy_phase_bba_orth_a_seed0.sh` → passed.
   - `py_compile` for modified supplement modules → passed.
   - `git diff --check` → passed.
 
