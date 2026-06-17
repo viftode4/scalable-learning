@@ -333,3 +333,131 @@ Recommended choice: **95% CI** (matches the registry house convention and all fo
 | 23 | **SVD LR sweep — ALREADY RUNNING.** Promote SVD@5e-3 (83.43/82.72/85.14) to registry §1–2 when complete, then upgrade #13's "preliminary/appears" wording to a firm statement. Only the SVD@2e-2 point is still incomplete. | MINOR | passive (already in flight) | Improvements /15, Answers /10 |
 
 **Sequencing note.** Do Tier 0 first (pure marks-per-hour, all text/plotting, no compute). Launch experiment #21 (default+BBA) and seed #22 **immediately and in parallel** since they are the only compute-bound items and #21 gates the Novelty story — kick them off before the Tier-1 writing so they land in time. The SVD sweep (#23) is already in flight; just fold the result in (#13) and promote when done. Items #4, #5, #21 together are the throughline from §1: surface the negative cell, state significance honestly, and fill the one missing 2×2 corner.
+
+---
+
+## 6. Team-contributions statement — audit & rewrite
+
+The report's "Team contributions" paragraph was self-authored (by D. Popovici)
+and is the hard-gate rubric item. We audited it against the repository record.
+
+**Original text.** *"Daniel Popovici led the initial report structure, reproduction
+setup, results interpretation, and toy/baseline analysis. Vlad Iftode led the
+improvement implementation and runs, including the language-model proxy
+experiments. Sorin Zele contributed to the proposal and report writing,
+presentation/report integration, final editing, feedback incorporation, and
+submission coordination."*
+
+**Repository evidence (git authorship).** Vlad Iftode 51 commits (two emails),
+Daniel Popovici 11 (all 2026-05-20 → 06-01), Sorin Zele 0 (no repo footprint;
+appears only in author lists — his work is in Overleaf/slides, invisible to git).
+
+| Claim | Verdict vs evidence |
+|---|---|
+| Daniel — "toy/baseline analysis" | ✅ accurate (his commits: toy notebook, baseline + orthogonal-A toy results, plots) |
+| Daniel — "reproduction setup" | ⚠️ partly supported (he authored SLURM/queue scripts + wandb wiring + setup-script fix) — but "setup" ≠ the reproduction itself |
+| Daniel — "initial report structure" | ✅ confirmed (Daniel made the initial draft) |
+| Daniel — "results interpretation" | ❓ vague/unverifiable; dropped in the rewrite |
+| Vlad — "improvement implementation and runs" | ❌ **badly undersells**: omits the proxy reproduction *execution*, the LR sweeps, the **reproducibility audit** (the panel's strongest reproduction finding — credited to no one), and the consolidated run registry — all overwhelmingly his per git |
+| Sorin — six soft items | ❓ entirely unverifiable from the repo (0 commits); plausible (Overleaf/slides) but the team must confirm |
+
+**Problem.** It is mis-weighted, not fabricated: vague "led" verbs frame the
+early-phase author as project-wide technical lead, the heaviest *verifiable* lift
+(reproduction execution + audit + registry) is compressed into one clause, and
+the biggest single piece of work (the reproducibility audit) is uncredited.
+
+**Rewrite (artifact-anchored; replaces the paragraph).**
+
+```latex
+\paragraph{Team contributions.} Daniel Popovici produced the initial report
+draft and structure, built the reproduction scaffolding (SLURM/queue submission
+scripts, Weights \& Biases logging, environment setup), and implemented the
+MNIST toy model with its baseline and orthogonal-$A$ experiments and
+accuracy/heterogeneity plots. Vlad Iftode executed the language-model
+reproduction on the RoBERTa-base/QNLI proxy and implemented and ran all
+improvement variants (orthogonal-$A$ initialisation, the BBA schedule,
+SVD-compensated initialisation, and adaptive refresh) including the
+learning-rate sweeps; he also performed the reproducibility audit of the
+released artifact and assembled the consolidated run registry and aggregation
+tooling behind the reported numbers. Sorin Zele led the proposal and report
+writing, the presentation, report/presentation integration, final editing,
+feedback incorporation, and submission coordination.
+```
+
+**To confirm before pasting:** (1) Sorin's line ("led … report writing + presentation")
+— dial to "contributed to" if overstated; git cannot see Overleaf. (2) The rubric
+requires per-member contributions **on a presentation slide too**, not only here.
+
+---
+
+## 7. Grounding caveat — how much of this review is verified
+
+This panel was a **verification-and-prioritisation pass over a pre-supplied
+defect list**, not an independent fresh read of the paper. Each reviewer was
+seeded with a ground-truth block that already named the major defects (the
+"facts reviewers should weaponize"), and verifiers were told to open the PDF
+only when a claim hinged on wording they couldn't confirm from the summary. So
+the panel is reliable where it rests on `runs/REGISTRY.md` / ADR-0006 raw
+numbers, and weaker where it makes claims about *external* facts. Grounding
+status of the load-bearing claims:
+
+| Claim in this review | Grounding | Status |
+|---|---|---|
+| All per-seed proxy numbers, 2×2 cells, error-bar recomputations, LR sweeps | `runs/REGISTRY.md` raw logs | ✅ verified |
+| Reproducibility-audit numbers (0.8766 / 0.8688 / 0.8607; SGD ~0.52) | ADR-0006 table | ✅ verified |
+| `5·10⁻⁵` typo, "19 rounds", and prose quotes ("strongest proxy result"; "promising direction rather than a closed result"; "needs one additional seed and a default-initialisation schedule control") | paper text (`pdftotext`), spot-checked | ✅ verified — quotes are accurate |
+| Significance tests | **recomputed from raw seeds** | ✅ verified: main Welch **t=2.10, df=2.08, p=0.166**; toy Welch **t=3.05, p=0.019**, paired **t=2.57, p=0.062**, variance **F=2.44** (sd 2.04pp → 1.31pp) — review's figures were correct, not hallucinated |
+| Original-paper anchor RoLoRA QNLI 50-client | original paper Table 1 | ✅ verified = **90.00 ± 0.63** (review wrote ±0.61 — **fix the decimal**) |
+| **"Baselines collapse contradicts the original (which learns QNLI)"** | original paper Table 1 | ⚠️ **OVER-STATED — reframe (see below)** |
+| FedSA-LoRA citation (ICLR 2025, Pengxin-Guo) / arXiv 2410.01463 | web-verified | ✅ verified: Guo et al., *Selective Aggregation for Low-Rank Adaptation in Federated Learning*, ICLR 2025, **arXiv:2410.01463** — id and venue are correct |
+
+**The one real correction — baseline-collapse framing.** The original paper's
+Table 1 (RoBERTa-**Large** 355M, **best** test accuracy over an **8-point LR
+sweep** {5e-4 … 1e-1}, full participation) reports, at **50 clients**:
+
+| 50-client | LoRA | FFA-LoRA | RoLoRA |
+|---|---|---|---|
+| QNLI | 78.13 ± 5.13 | 85.05 ± 0.34 | 90.00 ± 0.63 |
+| MNLI | **52.64 ± 15.07 (≈ chance!)** | 69.97 ± 5.57 | 85.28 ± 1.04 |
+
+So "the original's baselines *learn* QNLI" is only half true: the original's own
+50-client baselines are **already degrading hard** — LoRA QNLI is 78 % with a
+±5 spread, and LoRA on 50-client **MNLI sits at 52.6 % (chance) with ±15
+variance.** Our collapse therefore **amplifies a trend the original itself
+shows**; it does not flatly contradict it. The correct §4.1.2/§5.2 framing (and
+it is *more* favourable to the report): *"The original observes the same
+direction — at 50 clients its LoRA baseline is already unstable (QNLI 78 ± 5)
+and collapses to chance on MNLI (52.6 ± 15). Our harsher proxy — RoBERTa-base
+(125M) vs Large, final-round vs best-over-sweep accuracy, and a 20-round budget
+— pushes the QNLI baselines to the floor as well; this is amplified regime
+fragility, not a discrepancy."* This also supplies the apples-to-oranges caveat
+roadmap #15 wants: the original reports **best-over-8-LRs on RoBERTa-Large**, we
+report **final-round on RoBERTa-base**.
+
+---
+
+## 8. Independent cold read (un-primed close read of the actual prose)
+
+The panel in §1–5 was primed with a defect list, so it could not surface issues
+nobody pointed it at. This section is a fresh sentence-level read of the rendered
+PDF text — **only findings NOT already in §1–5**, each quoted from the paper.
+
+| # | Sev | Where | New finding (quoted) | Fix |
+|---|---|---|---|---|
+| C1 | MAJOR | §2.5.2 | "it instead fixes a ratio λ = ηB/ηA > 1 (empirically **λ ≈ 24**)" — this is a flattened superscript: the LoRA+ paper's value is **2⁴ = 16**, confirmed by §4.2.1's own "λ = 16 … the LoRA+ default-scale choice". Same defect class as the `5·10⁻⁵` typo. | LaTeX `\lambda\approx 2^4` (=16) |
+| C2 | MAJOR | §3.1 | "These experiments are deliberately lightweight: **the model is small and the runs locally (experiments done on a MacBook Air)**." — broken sentence (missing verb) **and** informal for a paper. | "…the model is small and the runs are cheap enough to execute locally on a laptop." Move the hardware note to Appendix A. |
+| C3 | MAJOR | §5 vs §6 | The Discussion and the Conclusion **restate the same five results with the same numbers** (84.0→87.2; 85.1→85.7; 88.32/2 seeds; λ=2/4/16 → 0.831/0.815/0.659; FedProx 0.837 vs 0.840). ~Half a column of pure duplication. | Merge §5/§6 or cut §6 to a short forward-looking close; reclaim the space for the reproducibility audit (§2(d)) — turns wasted space into rubric points. |
+| C4 | MAJOR | Table 1 | The "Language-model proxy **improvements**" table lists only RoLoRA + the four improvement arms; **the FedAvg-LoRA (51.9) and FFA-LoRA (52.0) baselines never appear in any table** — the headline 33-pp reproduction gap lives only in prose and Fig 2. | Add the two baseline rows (or a small companion table) so the 85.1-vs-52 gap is tabulated, not just narrated. |
+| C5 | MINOR | §4.2.1 | The headline toy improvement number, **87.2%, is never stated in §4.2.1** where the orthogonal-A toy result is actually presented ("improves both mean accuracy and run-to-run variance" — qualitative only); the number appears only in the abstract, §5.1, and §6. | State "≈84.0% → 87.2%" in §4.2.1 at the point of first presentation. |
+| C6 | MINOR | refs | "non-heterogeneous" (§3.1, = IID) and "**non-homogeneous**" (§4.2.1, = non-IID) are two nonstandard double-negative coinages that are easy to confuse. | Use "IID / homogeneous" and "non-IID / heterogeneous" consistently. |
+| C7 | MINOR | refs [1],[9] | [1] RoLoRA is cited as "**arXiv preprint** arXiv:2502.01755" though it is the NeurIPS 2025 paper being reproduced — cite the venue; [9] Ravan uses "**et al.**" *inside the reference list* (incomplete author list). | Cite [1] as NeurIPS 2025; complete [9]'s authors. |
+| C8 | NIT | §2.3 / Alg 1 | Algorithm 1 loops "**for t = 0, 2, 4, …, T**" while labelling its first inner step "**Odd phase: update B**" (t is even); the round/cycle index vs. the odd/even-round prose is internally confusing, and the upload/broadcast lines (4, 9) are split mid-step. | Make the loop index match the "odd round = B, even round = A" prose, or relabel to "phase 1 / phase 2 of cycle t". |
+| C9 | MINOR | Abstract | The abstract **leads with the (weaker) improvement numbers and never states the strongest, cleanest result** — the reproduction gap (baselines collapse to ~52%, RoLoRA 85.1%, ~33 pp). Reproduction is 10/60 and this is the most defensible finding. | Add one sentence to the abstract stating the reproduced gap before the improvement results. |
+
+**Bottom line on the cold read:** no new *blocker* — the panel's primed list did
+catch the grade-gating issues. But the close read found a **second flattened-
+superscript typo (C1, λ≈2⁴)**, a **broken/informal sentence (C2)**, and three
+real structural wins (**C3** §5/§6 duplication, **C4** baselines absent from any
+table, **C9** abstract omits the reproduction headline) — all cheap, all in the
+"Report quality 15/60" correctness/completeness bucket. These are additive to the
+Tier-0 list in §5.
