@@ -441,6 +441,30 @@ def promote_all() -> list[str]:
         })
         actions.append(f"proxy/{r.display}")
 
+    # SVD-compensated initialisation learning-rate sweep (W8 follow-up).
+    # `_canon_proxy_key` collapses the off-1e-2 lrs into one section-1 proxy row,
+    # so these arms get no per-run folder above. Promote the whole sweep here so
+    # teammates get the per-round server_metrics.csv + log for every lr.
+    for r in collect_svd_lr_sweep():
+        log = REPO / r.source
+        dest = RUNS / "svd_lr_sweep" / r.key
+        dest.mkdir(parents=True, exist_ok=True)
+        header = log_header(log) if log.exists() else {}
+        if log.exists():
+            shutil.copy2(log, dest / "run.log")
+            _write_metrics_csv(server_rows_from_log(log), dest / "server_metrics.csv")
+        meta_json(dest, {
+            "run": r.key, "kind": "svd_compensated_lr_sweep",
+            "task": "qnli_roberta-base_c50_r4_20rounds",
+            "final_test_acc": r.final, "best_test_acc": r.best,
+            "final_round": r.final_round, "n_rounds": r.n_rounds,
+            "status": r.status(), "primary_source": r.source,
+            "git_sha": header.get("git_sha"),
+            "sls_lora_init": header.get("sls_lora_init"),
+            "has_log": log.exists(),
+        })
+        actions.append(f"svd_lr_sweep/{r.key}")
+
     # FedAvg optimizer-audit eval logs
     for r in collect_fedavg_audit():
         dest = RUNS / "audit" / r.key

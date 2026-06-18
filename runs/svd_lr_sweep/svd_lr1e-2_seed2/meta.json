@@ -1,0 +1,14 @@
+{
+  "run": "svd_lr1e-2_seed2",
+  "kind": "svd_compensated_lr_sweep",
+  "task": "qnli_roberta-base_c50_r4_20rounds",
+  "final_test_acc": 0.854293,
+  "best_test_acc": 0.854476,
+  "final_round": 19,
+  "n_rounds": 20,
+  "status": "ok",
+  "primary_source": "results/overnight_proxy_svd_compensated_c50_r4_lr1e-2_seed2.log",
+  "git_sha": "b06b63d",
+  "sls_lora_init": "svd_compensated",
+  "has_log": true
+}
