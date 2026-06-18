@@ -1,0 +1,55 @@
+
+===== 2026-06-17 20:30:27 CEST START proxy_svd_compensated_c50_r4_lr5e-3_seed0 (lr=0.005 rounds=default) =====
+[run] mode=rolora tag=proxy_svd_compensated_c50_r4_lr5e-3_seed0 py=/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/.venv-supplement/bin/python -> /Users/vliftode/personal/scalable-learning/results/overnight_proxy_svd_compensated_c50_r4_lr5e-3_seed0.log
+      overrides: seed 0 train.optimizer.lr 0.005
+[done] proxy_svd_compensated_c50_r4_lr5e-3_seed0 (exit 0)
+===== 2026-06-17 21:54:01 CEST END proxy_svd_compensated_c50_r4_lr5e-3_seed0 rc=0 =====
+
+===== 2026-06-17 21:54:01 CEST START proxy_svd_compensated_c50_r4_lr5e-3_seed1 (lr=0.005 rounds=default) =====
+[run] mode=rolora tag=proxy_svd_compensated_c50_r4_lr5e-3_seed1 py=/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/.venv-supplement/bin/python -> /Users/vliftode/personal/scalable-learning/results/overnight_proxy_svd_compensated_c50_r4_lr5e-3_seed1.log
+      overrides: seed 1 train.optimizer.lr 0.005
+[done] proxy_svd_compensated_c50_r4_lr5e-3_seed1 (exit 0)
+===== 2026-06-17 23:14:15 CEST END proxy_svd_compensated_c50_r4_lr5e-3_seed1 rc=0 =====
+
+===== 2026-06-17 23:14:15 CEST START proxy_svd_compensated_c50_r4_lr5e-3_seed2 (lr=0.005 rounds=default) =====
+[run] mode=rolora tag=proxy_svd_compensated_c50_r4_lr5e-3_seed2 py=/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/.venv-supplement/bin/python -> /Users/vliftode/personal/scalable-learning/results/overnight_proxy_svd_compensated_c50_r4_lr5e-3_seed2.log
+      overrides: seed 2 train.optimizer.lr 0.005
+[done] proxy_svd_compensated_c50_r4_lr5e-3_seed2 (exit 0)
+===== 2026-06-18 00:33:30 CEST END proxy_svd_compensated_c50_r4_lr5e-3_seed2 rc=0 =====
+
+===== 2026-06-18 00:33:30 CEST START proxy_svd_compensated_c50_r4_lr2e-2_seed0 (lr=0.02 rounds=default) =====
+[run] mode=rolora tag=proxy_svd_compensated_c50_r4_lr2e-2_seed0 py=/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/.venv-supplement/bin/python -> /Users/vliftode/personal/scalable-learning/results/overnight_proxy_svd_compensated_c50_r4_lr2e-2_seed0.log
+      overrides: seed 0 train.optimizer.lr 0.02
+[done] proxy_svd_compensated_c50_r4_lr2e-2_seed0 (exit 0)
+===== 2026-06-18 02:00:06 CEST END proxy_svd_compensated_c50_r4_lr2e-2_seed0 rc=0 =====
+
+===== 2026-06-18 02:00:06 CEST START proxy_svd_compensated_c50_r4_lr2e-2_seed1 (lr=0.02 rounds=default) =====
+[run] mode=rolora tag=proxy_svd_compensated_c50_r4_lr2e-2_seed1 py=/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/.venv-supplement/bin/python -> /Users/vliftode/personal/scalable-learning/results/overnight_proxy_svd_compensated_c50_r4_lr2e-2_seed1.log
+      overrides: seed 1 train.optimizer.lr 0.02
+[done] proxy_svd_compensated_c50_r4_lr2e-2_seed1 (exit 0)
+===== 2026-06-18 03:32:49 CEST END proxy_svd_compensated_c50_r4_lr2e-2_seed1 rc=0 =====
+
+===== 2026-06-18 03:32:49 CEST START proxy_svd_compensated_c50_r4_lr2e-2_seed2 (lr=0.02 rounds=default) =====
+[run] mode=rolora tag=proxy_svd_compensated_c50_r4_lr2e-2_seed2 py=/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/.venv-supplement/bin/python -> /Users/vliftode/personal/scalable-learning/results/overnight_proxy_svd_compensated_c50_r4_lr2e-2_seed2.log
+      overrides: seed 2 train.optimizer.lr 0.02
+[done] proxy_svd_compensated_c50_r4_lr2e-2_seed2 (exit 0)
+===== 2026-06-18 04:53:58 CEST END proxy_svd_compensated_c50_r4_lr2e-2_seed2 rc=0 =====
+
+===== 2026-06-18 04:53:58 CEST SVD LR SWEEP DONE failures=0 =====
+
+Final-accuracy tables (paired against existing vanilla baselines):
+--- SVD lr=5e-3 ---
+| mode | round | test_acc | val_acc | marker |
+|---|---:|---:|---:|---|
+| seed0 | 20 | 0.834862 | 0.800000 | [sls-rolora] RoLoRA round 19 (step=19): train A (default_BA) |
+| seed1 | 20 | 0.853211 | 0.800000 | [sls-rolora] RoLoRA round 19 (step=19): train A (default_BA) |
+| seed2 | 20 | 0.880734 | 0.850000 | [sls-rolora] RoLoRA round 19 (step=19): train A (default_BA) |
+--- SVD lr=2e-2 ---
+| mode | round | test_acc | val_acc | marker |
+|---|---:|---:|---:|---|
+| seed0 | 20 | 0.532110 | 0.600000 | [sls-rolora] RoLoRA round 19 (step=19): train A (default_BA) |
+| seed1 | 20 | 0.788991 | 0.800000 | [sls-rolora] RoLoRA round 19 (step=19): train A (default_BA) |
+| seed2 | 20 | 0.568807 | 0.600000 | [sls-rolora] RoLoRA round 19 (step=19): train A (default_BA) |
+
+Compare against: docs/improvement-handoff-2026-06-13.md (svd@1e-2 = 85.70 ± 0.59,
+vanilla@1e-2 = 85.10 ± 2.97) and proxy_plot_summary.md (vanilla@5e-3, @2e-2).

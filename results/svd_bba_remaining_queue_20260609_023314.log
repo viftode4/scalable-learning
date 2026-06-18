@@ -1,0 +1,4 @@
+
+===== 2026-06-09 02:33:14 CEST START proxy_svd_compensated_bba_c50_r4_lr1e-2_seed0 seed=0 phase=BBA =====
+[run] mode=rolora tag=proxy_svd_compensated_bba_c50_r4_lr1e-2_seed0 py=/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/.venv-supplement/bin/python -> /Users/vliftode/personal/scalable-learning/results/overnight_proxy_svd_compensated_bba_c50_r4_lr1e-2_seed0.log
+      overrides: seed 0

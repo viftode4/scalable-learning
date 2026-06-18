@@ -1,0 +1,13 @@
+
+===== 2026-06-12 15:51:46 CEST START proxy_transport_bba_orth_a_c50_r4_lr1e-2_seed0 seed=0 phase=BBA init=orthogonal_a =====
+[run] mode=rolora tag=proxy_transport_bba_orth_a_c50_r4_lr1e-2_seed0 py=/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/.venv-supplement/bin/python -> /Users/vliftode/personal/scalable-learning/results/overnight_proxy_transport_bba_orth_a_c50_r4_lr1e-2_seed0.log
+      overrides: seed 0
+[done] proxy_transport_bba_orth_a_c50_r4_lr1e-2_seed0 (exit 0)
+===== 2026-06-12 19:57:08 CEST END proxy_transport_bba_orth_a_c50_r4_lr1e-2_seed0 rc=0 =====
+
+===== 2026-06-12 19:57:08 CEST START proxy_transport_svd_compensated_c50_r4_lr1e-2_seed0 seed=0 phase=default init=svd_compensated =====
+[run] mode=rolora tag=proxy_transport_svd_compensated_c50_r4_lr1e-2_seed0 py=/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/.venv-supplement/bin/python -> /Users/vliftode/personal/scalable-learning/results/overnight_proxy_transport_svd_compensated_c50_r4_lr1e-2_seed0.log
+      overrides: seed 0
+[done] proxy_transport_svd_compensated_c50_r4_lr1e-2_seed0 (exit 0)
+===== 2026-06-12 21:18:22 CEST END proxy_transport_svd_compensated_c50_r4_lr1e-2_seed0 rc=0 =====
+===== 2026-06-12 21:18:22 CEST TRANSPORT REMAINING QUEUE DONE failures=0 =====

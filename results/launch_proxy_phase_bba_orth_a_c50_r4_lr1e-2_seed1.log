@@ -1,0 +1,2 @@
+[run] mode=rolora tag=proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed1 py=/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/.venv-supplement/bin/python -> /Users/vliftode/personal/scalable-learning/results/overnight_proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed1.log
+      overrides: seed 1

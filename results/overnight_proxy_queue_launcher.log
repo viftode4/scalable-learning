@@ -1,0 +1,5 @@
+# 2026-06-03T23:18:51Z queue_start repo=/Users/vliftode/personal/scalable-learning git=f14db84
+# 2026-06-03T23:18:51Z queue_log=/Users/vliftode/personal/scalable-learning/results/overnight_proxy_queue_20260603T231851Z.log
+# 2026-06-03T23:18:51Z wandb_entity=scalable-learning-7 wandb_project=sls-rolora-repro group=qnli_c50_r4_improvements
+# 2026-06-03T23:18:51Z tests_smokes_are_wandb_disabled_in scripts/smoke_supplement.sh
+# 2026-06-03T23:18:51Z waiting_for_existing_process pid=37837

@@ -1,0 +1,51 @@
+
+===== 2026-06-15 17:20:25 CEST START pp_a1_faithful_p1.0_a0.5_seed0 seed=0 rate=1.0 source=global =====
+[run] mode=rolora tag=pp_a1_faithful_p1.0_a0.5_seed0 py=/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/.venv-supplement/bin/python -> /Users/vliftode/personal/scalable-learning/results/overnight_pp_a1_faithful_p1.0_a0.5_seed0.log
+      overrides: seed 0 federate.sample_client_rate 1.0
+[done] pp_a1_faithful_p1.0_a0.5_seed0 (exit 0)
+===== 2026-06-15 18:43:37 CEST END pp_a1_faithful_p1.0_a0.5_seed0 rc=0 =====
+
+===== 2026-06-15 18:43:37 CEST START pp_a1_faithful_p0.3_a0.5_seed0 seed=0 rate=0.3 source=global =====
+[run] mode=rolora tag=pp_a1_faithful_p0.3_a0.5_seed0 py=/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/.venv-supplement/bin/python -> /Users/vliftode/personal/scalable-learning/results/overnight_pp_a1_faithful_p0.3_a0.5_seed0.log
+      overrides: seed 0 federate.sample_client_rate 0.3
+[FAIL] pp_a1_faithful_p0.3_a0.5_seed0; tail:
+[33;20m2026-06-15 19:10:58,805 (context:226) WARNING: cur_mode `test` mismatch mode `val`, will use `val` to calculate `ctx.var`.[0m
+[33;20m2026-06-15 19:10:58,806 (context:226) WARNING: cur_mode `test` mismatch mode `val`, will use `val` to calculate `ctx.var`.[0m
+[38;5;39m2026-06-15 19:10:58,876 (client:643) INFO: {'Role': 'Client #40', 'Round': 17, 'Results_raw': {'test_loss': 266.298972, 'test_total': 297, 'test_avg_loss': 0.89663, 'test_acc': 0.289562, 'val_loss': 27.122776, 'val_total': 26, 'val_avg_loss': 1.043184, 'val_acc': 0.076923}}[0m
+[33;20m2026-06-15 19:10:59,259 (context:226) WARNING: cur_mode `test` mismatch mode `val`, will use `val` to calculate `ctx.var`.[0m
+[33;20m2026-06-15 19:10:59,259 (context:226) WARNING: cur_mode `test` mismatch mode `val`, will use `val` to calculate `ctx.var`.[0m
+[38;5;39m2026-06-15 19:10:59,271 (client:643) INFO: {'Role': 'Client #41', 'Round': 17, 'Results_raw': {'test_loss': 49.775022, 'test_total': 97, 'test_avg_loss': 0.513145, 'test_acc': 0.845361, 'val_loss': 1.095855, 'val_total': 1, 'val_avg_loss': 1.095855, 'val_acc': 0.0}}[0m
+[33;20m2026-06-15 19:10:59,461 (context:226) WARNING: cur_mode `test` mismatch mode `val`, will use `val` to calculate `ctx.var`.[0m
+[33;20m2026-06-15 19:10:59,461 (context:226) WARNING: cur_mode `test` mismatch mode `val`, will use `val` to calculate `ctx.var`.[0m
+[38;5;39m2026-06-15 19:10:59,496 (client:643) INFO: {'Role': 'Client #42', 'Round': 17, 'Results_raw': {'test_loss': 54.743062, 'test_total': 60, 'test_avg_loss': 0.912384, 'test_acc': 0.266667, 'val_loss': 13.15669, 'val_total': 12, 'val_avg_loss': 1.096391, 'val_acc': 0.0}}[0m
+[33;20m2026-06-15 19:11:00,844 (context:226) WARNING: cur_mode `test` mismatch mode `val`, will use `val` to calculate `ctx.var`.[0m
+[33;20m2026-06-15 19:11:00,844 (context:226) WARNING: cur_mode `test` mismatch mode `val`, will use `val` to calculate `ctx.var`.[0m
+[38;5;39m2026-06-15 19:11:00,890 (client:643) INFO: {'Role': 'Client #43', 'Round': 17, 'Results_raw': {'test_loss': 381.477885, 'test_total': 431, 'test_avg_loss': 0.8851, 'test_acc': 0.306265, 'val_loss': 19.737072, 'val_total': 18, 'val_avg_loss': 1.096504, 'val_acc': 0.0}}[0m
+[33;20m2026-06-15 19:11:00,973 (context:226) WARNING: cur_mode `test` mismatch mode `val`, will use `val` to calculate `ctx.var`.[0m
+[33;20m2026-06-15 19:11:00,974 (context:226) WARNING: cur_mode `test` mismatch mode `val`, will use `val` to calculate `ctx.var`.[0m
+[38;5;39m2026-06-15 19:11:01,059 (client:643) INFO: {'Role': 'Client #44', 'Round': 17, 'Results_raw': {'test_loss': 21.206677, 'test_total': 25, 'test_avg_loss': 0.848267, 'test_acc': 0.36, 'val_loss': 37.287306, 'val_total': 34, 'val_avg_loss': 1.096685, 'val_acc': 0.0}}[0m
+[33;20m2026-06-15 19:11:01,133 (context:226) WARNING: cur_mode `test` mismatch mode `val`, will use `val` to calculate `ctx.var`.[0m
+[33;20m2026-06-15 19:11:01,133 (context:226) WARNING: cur_mode `test` mismatch mode `val`, will use `val` to calculate `ctx.var`.[0m
+[38;5;39m2026-06-15 19:11:01,471 (client:643) INFO: {'Role': 'Client #45', 'Round': 17, 'Results_raw': {'test_loss': 21.238775, 'test_total': 20, 'test_avg_loss': 1.061939, 'test_acc': 0.05, 'val_loss': 69.546273, 'val_total': 110, 'val_avg_loss': 0.632239, 'val_acc': 0.672727}}[0m
+[33;20m2026-06-15 19:11:01,869 (context:226) WARNING: cur_mode `test` mismatch mode `val`, will use `val` to calculate `ctx.var`.[0m
+[33;20m2026-06-15 19:11:01,869 (context:226) WARNING: cur_mode `test` mismatch mode `val`, will use `val` to calculate `ctx.var`.[0m
+[38;5;39m2026-06-15 19:11:01,906 (client:643) INFO: {'Role': 'Client #46', 'Round': 17, 'Results_raw': {'test_loss': 126.504779, 'test_total': 116, 'test_avg_loss': 1.090558, 'test_acc': 0.008621, 'val_loss': 7.516881, 'val_total': 10, 'val_avg_loss': 0.751688, 'val_acc': 0.5}}[0m
+[33;20m2026-06-15 19:11:02,791 (context:226) WARNING: cur_mode `test` mismatch mode `val`, will use `val` to calculate `ctx.var`.[0m
+[33;20m2026-06-15 19:11:02,791 (context:226) WARNING: cur_mode `test` mismatch mode `val`, will use `val` to calculate `ctx.var`.[0m
+[38;5;39m2026-06-15 19:11:02,979 (client:643) INFO: {'Role': 'Client #47', 'Round': 17, 'Results_raw': {'test_loss': 235.9412, 'test_total': 280, 'test_avg_loss': 0.842647, 'test_acc': 0.367857, 'val_loss': 25.206991, 'val_total': 62, 'val_avg_loss': 0.406564, 'val_acc': 1.0}}[0m
+[33;20m2026-06-15 19:11:03,027 (context:226) WARNING: cur_mode `test` mismatch mode `val`, will use `val` to calculate `ctx.var`.[0m
+[33;20m2026-06-15 19:11:03,027 (context:226) WARNING: cur_mode `test` mismatch mode `val`, will use `val` to calculate `ctx.var`.[0m
+[38;5;39m2026-06-15 19:11:03,106 (client:643) INFO: {'Role': 'Client #48', 'Round': 17, 'Results_raw': {'test_loss': 9.992597, 'test_total': 11, 'test_avg_loss': 0.908418, 'test_acc': 0.272727, 'val_loss': 18.358959, 'val_total': 18, 'val_avg_loss': 1.019942, 'val_acc': 0.111111}}[0m
+[33;20m2026-06-15 19:11:03,292 (context:226) WARNING: cur_mode `test` mismatch mode `val`, will use `val` to calculate `ctx.var`.[0m
+[33;20m2026-06-15 19:11:03,293 (context:226) WARNING: cur_mode `test` mismatch mode `val`, will use `val` to calculate `ctx.var`.[0m
+[38;5;39m2026-06-15 19:11:03,410 (client:643) INFO: {'Role': 'Client #49', 'Round': 17, 'Results_raw': {'test_loss': 22.274483, 'test_total': 48, 'test_avg_loss': 0.464052, 'test_acc': 0.916667, 'val_loss': 26.795311, 'val_total': 32, 'val_avg_loss': 0.837353, 'val_acc': 0.375}}[0m
+[33;20m2026-06-15 19:11:04,474 (context:226) WARNING: cur_mode `test` mismatch mode `val`, will use `val` to calculate `ctx.var`.[0m
+[33;20m2026-06-15 19:11:04,475 (context:226) WARNING: cur_mode `test` mismatch mode `val`, will use `val` to calculate `ctx.var`.[0m
+[38;5;39m2026-06-15 19:11:04,500 (client:643) INFO: {'Role': 'Client #50', 'Round': 17, 'Results_raw': {'test_loss': 136.976272, 'test_total': 320, 'test_avg_loss': 0.428051, 'test_acc': 0.96875, 'val_loss': 6.296418, 'val_total': 7, 'val_avg_loss': 0.899488, 'val_acc': 0.285714}}[0m
+[sls-rolora] RoLoRA round 18 (step=5): train B (default_BA)
+[sls-monitor] {'kind': 'fit_start', 'total_param_count': 1331716, 'total_trainable_params': 1257988, 'lora_product_norm': 0.34927283, 'lora_A_norm': 5.66227662, 'lora_A_params': 73728, 'lora_A_trainable_params': 0, 'lora_B_norm': 0.58471969, 'lora_B_params': 73728, 'lora_B_trainable_params': 73728, 'classifier_norm': 21.76692074, 'classifier_params': 1184260, 'classifier_trainable_params': 1184260, 'round': 18, 'phase': 'B', 'mode': 'rolora'}
+[sls-monitor] {'kind': 'fit_end', 'total_param_count': 1331716, 'total_trainable_params': 1257988, 'lora_product_norm': 0.35231739, 'lora_A_norm': 5.66227662, 'lora_A_params': 73728, 'lora_A_trainable_params': 0, 'lora_B_norm': 0.58996904, 'lora_B_params': 73728, 'lora_B_trainable_params': 73728, 'classifier_norm': 21.76705936, 'classifier_params': 1184260, 'classifier_trainable_params': 1184260, 'update_lora_A_norm': 0.0, 'update_lora_A_params': 0, 'update_lora_B_norm': 0.06681343, 'update_lora_B_params': 73728, 'update_classifier_norm': 0.17119501, 'update_classifier_params': 1184260, 'round': 18, 'phase': 'B', 'mode': 'rolora'}
+[38;5;39m2026-06-15 19:11:08,264 (client:431) INFO: {'Role': 'Client #13', 'Round': 18, 'Results_raw': {'train_loss': 103.206648, 'train_total': 624, 'train_avg_loss': 0.165395, 'train_acc': 0.929487}}[0m
+[sls-rolora] RoLoRA round 18 (step=8): train B (default_BA)
+[sls-monitor] {'kind': 'fit_start', 'total_param_count': 1331716, 'total_trainable_params': 1257988, 'lora_product_norm': 0.35231739, 'lora_A_norm': 5.66227662, 'lora_A_params': 73728, 'lora_A_trainable_params': 0, 'lora_B_norm': 0.58996904, 'lora_B_params': 73728, 'lora_B_trainable_params': 73728, 'classifier_norm': 21.76692074, 'classifier_params': 1184260, 'classifier_trainable_params': 1184260, 'round': 18, 'phase': 'B', 'mode': 'rolora'}
+scripts/run_supplement_arm.sh: line 89: 81813 Terminated: 15          NO_COLOR=1 SLS_ALTERNATION_MODE="$MODE" "$PY" scripts/run_supplement.py --cfg "$CONFIG" outdir "$ARM_OUTDIR" ${OVERRIDES[@]+"${OVERRIDES[@]}"}

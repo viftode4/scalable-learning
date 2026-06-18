@@ -1,0 +1,77 @@
+# 2026-06-03T23:18:51Z queue_start repo=/Users/vliftode/personal/scalable-learning git=f14db84
+# 2026-06-03T23:18:51Z queue_log=/Users/vliftode/personal/scalable-learning/results/overnight_proxy_queue_20260603T231851Z.log
+# 2026-06-03T23:18:51Z wandb_entity=scalable-learning-7 wandb_project=sls-rolora-repro group=qnli_c50_r4_improvements
+# 2026-06-03T23:18:51Z tests_smokes_are_wandb_disabled_in scripts/smoke_supplement.sh
+# 2026-06-03T23:18:51Z waiting_for_existing_process pid=37837
+# 2026-06-03T23:19:30Z queue_start repo=/Users/vliftode/personal/scalable-learning git=f14db84
+# 2026-06-03T23:19:30Z queue_log=/Users/vliftode/personal/scalable-learning/results/overnight_proxy_queue_20260603T231930Z.log
+# 2026-06-03T23:19:30Z wandb_entity=scalable-learning-7 wandb_project=sls-rolora-repro group=qnli_c50_r4_improvements
+# 2026-06-03T23:19:30Z tests_smokes_are_wandb_disabled_in scripts/smoke_supplement.sh
+# 2026-06-03T23:19:31Z waiting_for_existing_process pid=37837
+# 2026-06-03T23:27:31Z existing_process_finished pid=37837
+# 2026-06-03T23:27:31Z start tag=proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed0 seed=0 init=orthogonal_a policy=adaptive_refresh pattern=none
+[run] mode=rolora tag=proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed0 py=/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/.venv-supplement/bin/python -> /Users/vliftode/personal/scalable-learning/results/overnight_proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed0.log
+      overrides: seed 0
+[done] proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed0 (exit 0)
+# 2026-06-04T00:31:52Z finish tag=proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed0
+# 2026-06-04T00:31:52Z start tag=proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed1 seed=1 init=orthogonal_a policy=adaptive_refresh pattern=none
+[run] mode=rolora tag=proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed1 py=/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/.venv-supplement/bin/python -> /Users/vliftode/personal/scalable-learning/results/overnight_proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed1.log
+      overrides: seed 1
+[done] proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed1 (exit 0)
+# 2026-06-04T01:37:36Z finish tag=proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed1
+# 2026-06-04T01:37:36Z start tag=proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed2 seed=2 init=orthogonal_a policy=adaptive_refresh pattern=none
+[run] mode=rolora tag=proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed2 py=/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/.venv-supplement/bin/python -> /Users/vliftode/personal/scalable-learning/results/overnight_proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed2.log
+      overrides: seed 2
+[done] proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed2 (exit 0)
+# 2026-06-04T02:43:51Z finish tag=proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed2
+# 2026-06-04T02:43:51Z start tag=proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed2 seed=2 init=orthogonal_a policy=default pattern=BBA
+[run] mode=rolora tag=proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed2 py=/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/.venv-supplement/bin/python -> /Users/vliftode/personal/scalable-learning/results/overnight_proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed2.log
+      overrides: seed 2
+[FAIL] proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed2; tail:
+  File "/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/federatedscope/llm/trainer/sls_phase_schedule.py", line 218, in phase_for_round_from_env
+    state = load_phase_state(env) if normalise_phase_policy(policy) else None
+  File "/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/federatedscope/llm/trainer/sls_phase_schedule.py", line 45, in normalise_phase_policy
+    raise ValueError(
+ValueError: SLS_PHASE_POLICY must be one of ['abr', 'adaptive_basis_refresh', 'adaptive_refresh']; got 'default'
+Traceback (most recent call last):
+  File "/Users/vliftode/personal/scalable-learning/scripts/run_supplement.py", line 40, in <module>
+    exec(compile(code, str(main_path), "exec"), {"__name__": "__main__", "__file__": str(main_path)})
+  File "/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/federatedscope/main.py", line 71, in <module>
+    _ = runner.run()
+  File "/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/federatedscope/core/fed_runner.py", line 401, in run
+    self._run_simulation()
+  File "/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/federatedscope/core/fed_runner.py", line 484, in _run_simulation
+    self._handle_msg(msg)
+  File "/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/federatedscope/core/fed_runner.py", line 425, in _handle_msg
+    self.client[each_receiver].msg_handlers[msg.msg_type](msg)
+  File "/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/federatedscope/core/workers/client.py", line 392, in callback_funcs_for_model_para
+    sample_size, model_para_all, results = self.trainer.train()
+  File "/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/federatedscope/core/auxiliaries/decorators.py", line 7, in wrapper
+    num_samples_train, model_para, result_metric = func(
+  File "/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/federatedscope/core/trainers/trainer.py", line 238, in train
+    num_samples = self._run_routine(MODE.TRAIN, hooks_set,
+  File "/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/federatedscope/core/trainers/context.py", line 345, in wrapper
+    res = func(self, mode, hooks_set, dataset_name)
+  File "/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/federatedscope/core/trainers/trainer.py", line 272, in _run_routine
+    hook(self.ctx)
+  File "/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/federatedscope/llm/trainer/trainer.py", line 211, in _hook_on_fit_start_init
+    phase = phase_for_round_from_env(self.step_count)
+  File "/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/federatedscope/llm/trainer/sls_phase_schedule.py", line 218, in phase_for_round_from_env
+    state = load_phase_state(env) if normalise_phase_policy(policy) else None
+  File "/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/federatedscope/llm/trainer/sls_phase_schedule.py", line 45, in normalise_phase_policy
+    raise ValueError(
+ValueError: SLS_PHASE_POLICY must be one of ['abr', 'adaptive_basis_refresh', 'adaptive_refresh']; got 'default'
+wandb: updating run metadata
+wandb: uploading wandb-metadata.json; updating run metadata
+wandb: uploading config.yaml; uploading output.log; uploading wandb-summary.json
+wandb: 🚀 View run proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed2 at: https://wandb.ai/scalable-learning-7/sls-rolora-repro/runs/fiezfxxg
+wandb: ⭐️ View project at: https://wandb.ai/scalable-learning-7/sls-rolora-repro
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./results/wandb/run-20260604_044439-fiezfxxg/logs
+# 2026-06-04T08:29:39Z queue_start repo=/Users/vliftode/personal/scalable-learning git=f14db84
+# 2026-06-04T08:29:39Z queue_log=/Users/vliftode/personal/scalable-learning/results/overnight_proxy_queue_20260604T082939Z.log
+# 2026-06-04T08:29:39Z wandb_entity=scalable-learning-7 wandb_project=sls-rolora-repro group=qnli_c50_r4_improvements
+# 2026-06-04T08:29:39Z tests_smokes_are_wandb_disabled_in scripts/smoke_supplement.sh
+# 2026-06-04T08:29:39Z start tag=proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed0 seed=0 init=orthogonal_a policy=adaptive_refresh pattern=none
+[run] mode=rolora tag=proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed0 py=/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/.venv-supplement/bin/python -> /Users/vliftode/personal/scalable-learning/results/overnight_proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed0.log
+      overrides: seed 0

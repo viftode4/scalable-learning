@@ -44,6 +44,9 @@ data/
 exp/
 results/*
 !results/.gitkeep
+# Share the raw run logs themselves (teammates want them); the rest of
+# results/ (wandb scratch, checkpoints, pids, json state) stays local.
+!results/*.log
 slurm-*.out
 slurm_logs/
 *.ckpt

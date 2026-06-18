@@ -1,0 +1,7 @@
+# 2026-06-03T23:18:25Z queue_start repo=/Users/vliftode/personal/scalable-learning git=f14db84
+# 2026-06-03T23:18:25Z queue_log=/Users/vliftode/personal/scalable-learning/results/overnight_proxy_queue_20260603T231825Z.log
+# 2026-06-03T23:18:25Z wandb_entity=scalable-learning-7 wandb_project=sls-rolora-repro group=qnli_c50_r4_improvements
+# 2026-06-03T23:18:25Z tests_smokes_are_wandb_disabled_in scripts/smoke_supplement.sh
+# 2026-06-03T23:18:25Z start tag=proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed0 seed=0 init=orthogonal_a policy=adaptive_refresh pattern=none
+[run] mode=rolora tag=proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed0 py=/Users/vliftode/personal/scalable-learning/code/harness/rolora-supplement/RoLoRA-code/.venv-supplement/bin/python -> /Users/vliftode/personal/scalable-learning/results/overnight_proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2_seed0.log
+      overrides: seed 0

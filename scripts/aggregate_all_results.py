@@ -705,8 +705,9 @@ def render(stamp: str) -> str:
     # 6. Full file index
     lines.append("## 6. Full log / artifact index")
     lines.append("")
-    lines.append(f"{len(index)} result-bearing files. Paths are repo-relative; "
-             "`results/` and `exp/` are gitignored (local artifacts).")
+    lines.append(f"{len(index)} result-bearing files. Paths are repo-relative. "
+             "The `results/*.log` run logs are committed; the rest of `results/` "
+             "(wandb/checkpoints/pids/state) and `exp/` stay gitignored as local scratch.")
     lines.append("")
     lines.append("| Path | KB | Modified | Role |")
     lines.append("|---|---:|---|---|")

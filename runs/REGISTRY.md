@@ -167,7 +167,7 @@ _split=label_shard, clients=10, labels_per_client=1, rank=16, rounds=60, lr=0.02
 
 ## 6. Full log / artifact index
 
-106 result-bearing files. Paths are repo-relative; `results/` and `exp/` are gitignored (local artifacts).
+106 result-bearing files. Paths are repo-relative. The `results/*.log` run logs are committed; the rest of `results/` (wandb/checkpoints/pids/state) and `exp/` stay gitignored as local scratch.
 
 | Path | KB | Modified | Role |
 |---|---:|---|---|
