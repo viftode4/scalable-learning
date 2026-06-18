@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RoLoRA Deck</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&amp;family=Lato:wght@400;700;900&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer="" src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer="" src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<style>
+  html,body{margin:0;padding:0;}
+  body{font-family:'Lato',sans-serif;-webkit-font-smoothing:antialiased;}
+  :root{
+    --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.42'/%3E%3C/svg%3E");
+  }
+  .slide-light{
+    background:
+      var(--grain),
+      radial-gradient(circle at 13% 24%, rgba(224,96,80,0.30), transparent 42%),
+      radial-gradient(circle at 94% 56%, rgba(232,150,86,0.42), transparent 40%),
+      radial-gradient(circle at 60% 86%, rgba(66,108,212,0.50), transparent 54%),
+      linear-gradient(135deg,#e1e5ec 0%,#d2d7e0 100%);
+    background-size:160px 160px, cover, cover, cover, cover;
+    color:#34343a;
+  }
+  .slide-hero{
+    background:
+      var(--grain),
+      radial-gradient(circle at 8% 18%, rgba(224,96,80,0.34), transparent 40%),
+      radial-gradient(circle at 96% 30%, rgba(232,150,86,0.40), transparent 38%),
+      radial-gradient(circle at 78% 92%, rgba(122,92,180,0.30), transparent 46%),
+      radial-gradient(circle at 30% 78%, rgba(66,108,212,0.52), transparent 52%),
+      linear-gradient(135deg,#e4e8ef 0%,#d4d9e2 100%);
+    background-size:160px 160px, cover, cover, cover, cover, cover;
+    color:#34343a;
+  }
+  .slide-dark{
+    background:
+      var(--grain),
+      radial-gradient(circle at 88% 14%, rgba(232,150,86,0.40), transparent 34%),
+      radial-gradient(circle at 82% 50%, rgba(66,108,212,0.46), transparent 46%),
+      radial-gradient(circle at 5% 90%, rgba(54,152,140,0.38), transparent 42%),
+      radial-gradient(circle at 42% 60%, rgba(122,92,180,0.28), transparent 60%),
+      #383838;
+    background-size:160px 160px, cover, cover, cover, cover, cover;
+    color:#f3f3f5;
+  }
+  .katex{color:inherit;}
+  ul.b{margin:0;padding-left:1.1em;}
+  ul.b>li{margin-bottom:18px;line-height:1.34;}
+  ul.b ul{margin-top:12px;padding-left:1.15em;list-style:circle;}
+  ul.b ul>li{margin-bottom:9px;opacity:0.92;}
+  .blip{position:absolute;width:32px;height:32px;border-radius:50%;
+    background:radial-gradient(circle at 34% 30%,#cfe0ff,#3f7fe0);box-shadow:0 0 18px rgba(80,130,230,0.5);}
+  table.t{border-collapse:collapse;width:100%;}
+  table.t th,table.t td{text-align:left;padding:16px 18px;}
+  table.t th{font-weight:800;font-size:27px;letter-spacing:0.01em;}
+  table.t td{font-size:30px;}
+  .figure-card{background:rgba(255,255,255,0.82);border:1.5px solid rgba(60,60,70,0.28);border-radius:22px;padding:18px 20px;box-sizing:border-box;box-shadow:0 14px 38px rgba(0,0,0,0.12);}
+  .figure-card img{display:block;width:100%;height:auto;max-height:100%;object-fit:contain;}
+  .dark-figure{background:rgba(255,255,255,0.94);border:1.5px solid rgba(255,255,255,0.35);border-radius:22px;padding:18px 20px;box-sizing:border-box;box-shadow:0 18px 42px rgba(0,0,0,0.22);}
+  .dark-figure img{display:block;width:100%;height:auto;max-height:100%;object-fit:contain;}
+  .timeline{display:flex;align-items:center;gap:16px;margin-top:20px;}
+  .step{background:rgba(255,255,255,0.62);border:1.5px solid rgba(60,60,70,0.28);border-radius:18px;padding:30px 22px;min-height:178px;flex:1;box-sizing:border-box;}
+  .step-title{font-family:'Archivo';font-weight:900;font-size:27px;color:#34343a;margin-bottom:8px;}
+  .step-copy{font-size:25px;line-height:1.28;color:#444a59;}
+</style>
+</helmet>
+
+<x-import component-from-global-scope="deck-stage" from="./deck-stage.js" width="1920" height="1080" hint-size="100%,100%" no-rail="" data-uneditable="">
+
+<!-- 01 — TITLE -->
+<section class="slide-hero" data-label="Title" data-screen-label="01" data-speaker-notes="30s. Reproduction and extension of RoLoRA (Chen et al., NeurIPS 2025). Federated LoRA: a shared frozen factor enables exact aggregation via alternating A/B updates.">
+  <div style="position:relative;width:100%;height:100%;padding:104px 110px 88px;box-sizing:border-box;display:flex;align-items:center;gap:64px;">
+    <div style="flex:1.25;">
+      <div style="font-size:26px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:#5a6175;margin-bottom:30px;">Reproduction &amp; Extension · NeurIPS 2025</div>
+      <h1 style="font-family:'Archivo';font-weight:900;font-size:108px;line-height:0.98;letter-spacing:-0.025em;margin:0;color:#2f2f35;">Reproducing<br>&amp; Extending<br>RoLoRA</h1>
+      <p style="font-size:36px;line-height:1.3;margin:34px 0 0;max-width:760px;color:#444a59;">Alternating optimization of LoRA for robust federated fine-tuning</p>
+      <div style="margin-top:46px;font-size:30px;font-weight:700;color:#34343a;">Daniel Popovici · Vlad Iftode · Sorin Zele</div>
+      <div style="margin-top:10px;font-size:24px;font-style:italic;color:#5a6175;">Reproduction and extension of Chen et al., NeurIPS 2025</div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:26px;">
+      <div style="background:#29c2dd;color:#0a2a30;font-family:'Archivo';font-weight:800;font-size:34px;padding:22px 56px;border-radius:20px;box-shadow:0 10px 30px rgba(0,0,0,0.18);">Server</div>
+      <div style="font-size:24px;color:#5a6175;letter-spacing:0.04em;">averages one factor per round</div>
+      <div style="width:2px;height:34px;background:#9aa1b2;"></div>
+      <div style="display:flex;gap:26px;">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:14px;">
+          <div style="background:#e2a6ef;color:#3a1542;font-family:'Archivo';font-weight:800;font-size:26px;padding:18px 26px;border-radius:16px;">Client 1</div>
+          <div style="font-family:'Archivo';font-weight:900;font-size:30px;color:#29c2dd;">A</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:14px;">
+          <div style="background:#e2a6ef;color:#3a1542;font-family:'Archivo';font-weight:800;font-size:26px;padding:18px 26px;border-radius:16px;">Client 2</div>
+          <div style="font-family:'Archivo';font-weight:900;font-size:30px;color:#e2a6ef;">B</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:14px;">
+          <div style="background:#e2a6ef;color:#3a1542;font-family:'Archivo';font-weight:800;font-size:26px;padding:18px 26px;border-radius:16px;">Client N</div>
+          <div style="font-family:'Archivo';font-weight:900;font-size:30px;color:#29c2dd;">A</div>
+        </div>
+      </div>
+      <div style="margin-top:10px;font-size:26px;color:#444a59;">freeze one factor, train the other &nbsp;<b style="color:#29c2dd;">A</b> ⇄ <b style="color:#c060d6;">B</b></div>
+    </div>
+  </div>
+</section>
+
+<!-- 02 — ONE SLIDE -->
+<section class="slide-dark" data-label="In one slide" data-screen-label="02" data-speaker-notes="1 min. The headline: RoLoRA's exact aggregation makes it robust under heterogeneity. Best extension reaches 88.32% but is preliminary (two seeds).">
+  <div style="position:relative;width:100%;height:100%;padding:92px 110px 76px;box-sizing:border-box;display:flex;flex-direction:column;">
+    <h2 style="font-family:'Archivo';font-weight:900;font-size:64px;line-height:1.02;letter-spacing:-0.02em;margin:0 0 50px;color:#f4f4f6;max-width:1300px;">Exact aggregation is RoLoRA's main advantage</h2>
+    <div style="display:flex;gap:34px;flex:1;">
+      <div style="flex:1;background:rgba(20,20,22,0.42);border:1.5px solid rgba(255,255,255,0.4);border-radius:30px;padding:42px 40px;display:flex;flex-direction:column;justify-content:center;">
+        <div style="font-size:25px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#9fc7ff;">Non-IID MNIST</div>
+        <div style="font-family:'Archivo';font-weight:900;font-size:104px;line-height:1;margin:18px 0 8px;color:#29c2dd;">84.0%</div>
+        <div style="font-size:29px;color:#cfcfd6;">RoLoRA &nbsp;<span style="color:#8a8a92;">vs ≈ 62% baselines</span></div>
+      </div>
+      <div style="flex:1;background:rgba(20,20,22,0.42);border:1.5px solid rgba(255,255,255,0.4);border-radius:30px;padding:42px 40px;display:flex;flex-direction:column;justify-content:center;">
+        <div style="font-size:25px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#9fc7ff;">RoBERTa-base / QNLI</div>
+        <div style="font-family:'Archivo';font-weight:900;font-size:104px;line-height:1;margin:18px 0 8px;color:#29c2dd;">85.1%</div>
+        <div style="font-size:29px;color:#cfcfd6;">RoLoRA &nbsp;<span style="color:#8a8a92;">vs ≈ 52% baselines</span></div>
+      </div>
+      <div style="flex:1;background:rgba(40,30,52,0.5);border:1.5px solid rgba(226,166,239,0.55);border-radius:30px;padding:42px 40px;display:flex;flex-direction:column;justify-content:center;position:relative;">
+        <span class="blip" style="top:26px;right:30px;background:radial-gradient(circle at 34% 30%,#f6d6ff,#c060d6);box-shadow:0 0 18px rgba(192,96,214,0.5);"></span>
+        <div style="font-size:25px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#e6abf2;">Best extension</div>
+        <div style="font-family:'Archivo';font-weight:900;font-size:104px;line-height:1;margin:18px 0 8px;color:#e6abf2;">88.32%</div>
+        <div style="font-size:26px;color:#cfcfd6;">Orthogonal A init + BBA schedule</div>
+        <div style="font-size:23px;font-style:italic;color:#9a9aa2;margin-top:6px;">Promising, but preliminary — two seeds</div>
+      </div>
+    </div>
+    <div style="margin-top:38px;font-size:31px;line-height:1.36;color:#e6e6ea;border-left:3px solid #29c2dd;padding-left:26px;max-width:1500px;">
+      We reproduced RoLoRA's robustness and found that <b>basis conditioning combined with phase control</b> is the most promising extension.
+    </div>
+  </div>
+</section>
+
+<!-- 03 — LORA PRIMER -->
+<section class="slide-light" data-label="LoRA primer" data-screen-label="03" data-speaker-notes="1 min. Introduce LoRA before the aggregation problem: the pretrained weight is frozen, and training only learns the low-rank adapter factors A and B. This is what makes communication cheap, but it also creates the factor-averaging issue on the next slide.">
+  <div style="position:relative;width:100%;height:100%;padding:86px 100px 68px;box-sizing:border-box;display:flex;flex-direction:column;">
+    <h2 style="font-family:'Archivo';font-weight:900;font-size:64px;line-height:1.02;letter-spacing:-0.02em;margin:0 0 20px;color:#34343a;">LoRA trains a low-rank update, not the full model</h2>
+    <div style="font-size:32px;line-height:1.34;color:#444a59;max-width:1500px;margin-bottom:34px;">The pretrained weight \(W_0\) stays frozen. Fine-tuning learns two small matrices whose product becomes the task-specific update.</div>
+    <div style="display:flex;gap:42px;flex:1;align-items:stretch;">
+      <div style="flex:1.1;background:rgba(255,255,255,0.62);border:1.5px solid rgba(60,60,70,0.32);border-radius:28px;padding:42px 48px;display:flex;flex-direction:column;justify-content:center;">
+        <div style="font-size:34px;color:#5a6175;margin-bottom:22px;">Adapted weight</div>
+        <div style="font-size:55px;color:#34343a;">\[W = W_0 + \alpha AB\]</div>
+        <div style="font-size:31px;line-height:1.34;color:#444a59;margin-top:20px;">Only \(A\) and \(B\) move during training; \(W_0\) is reused by every client.</div>
+      </div>
+      <div style="flex:0.9;display:flex;flex-direction:column;justify-content:center;gap:24px;">
+        <div style="display:grid;grid-template-columns:1.1fr 0.55fr 1.1fr;gap:18px;align-items:center;">
+          <div style="background:#29c2dd;color:#0a2a30;border-radius:22px;padding:34px 20px;text-align:center;font-family:'Archivo';font-weight:900;font-size:42px;">\(A\)</div>
+          <div style="font-size:58px;text-align:center;color:#5a6175;">×</div>
+          <div style="background:#e2a6ef;color:#3a1542;border-radius:22px;padding:34px 20px;text-align:center;font-family:'Archivo';font-weight:900;font-size:42px;">\(B\)</div>
+        </div>
+        <div style="display:flex;gap:18px;">
+          <div style="flex:1;background:rgba(255,255,255,0.55);border:1.5px solid rgba(41,163,189,0.45);border-radius:20px;padding:24px;">
+            <div style="font-family:'Archivo';font-weight:800;font-size:28px;color:#1d8ba3;">Small payload</div>
+            <div style="font-size:27px;line-height:1.3;color:#444a59;margin-top:10px;">Send \(A+B\), not all of \(W\).</div>
+          </div>
+          <div style="flex:1;background:rgba(255,255,255,0.55);border:1.5px solid rgba(160,60,160,0.4);border-radius:20px;padding:24px;">
+            <div style="font-family:'Archivo';font-weight:800;font-size:28px;color:#c060d6;">Federated catch</div>
+            <div style="font-size:27px;line-height:1.3;color:#444a59;margin-top:10px;">The server aggregates factors, not products.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 04 — AGGREGATION PROBLEM -->
+<section class="slide-light" data-label="The problem" data-screen-label="04" data-speaker-notes="1m30s. Averaging A and B separately is not the same as averaging the products. Cross-client terms A_iB_j corrupt the update; the error grows with heterogeneity.">
+  <div style="position:relative;width:100%;height:100%;padding:88px 100px 70px;box-sizing:border-box;display:flex;flex-direction:column;">
+    <h2 style="font-family:'Archivo';font-weight:900;font-size:58px;line-height:1.04;letter-spacing:-0.02em;margin:0 0 8px;color:#34343a;max-width:1500px;">LoRA cuts communication but creates an aggregation problem</h2>
+    <div style="font-size:32px;color:#444a59;margin-bottom:30px;max-width:1500px;">The server wants to average each client's effective update. FedAvg-LoRA averages factors separately, which creates mixed client products.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:34px;flex:1;">
+      <div style="background:rgba(255,255,255,0.66);border:1.5px solid rgba(52,152,120,0.6);border-radius:26px;padding:36px 40px;display:flex;flex-direction:column;justify-content:center;">
+        <div style="font-size:28px;font-weight:800;color:#2f8a5e;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:18px;">What the server should average</div>
+        <div style="font-size:52px;">\[\frac{1}{N}\sum_{i=1}^{N} A_i B_i\]</div>
+        <div style="font-size:30px;line-height:1.34;color:#444a59;margin-top:18px;">Every product \(A_iB_i\) belongs to one trained client model.</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.66);border:1.5px solid rgba(200,70,60,0.55);border-radius:26px;padding:36px 40px;display:flex;flex-direction:column;justify-content:center;">
+        <div style="font-size:28px;font-weight:800;color:#c0463c;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:18px;">What FedAvg-LoRA computes</div>
+        <div style="font-size:45px;">\[\Big(\tfrac{1}{N}\textstyle\sum_i A_i\Big)\Big(\tfrac{1}{N}\textstyle\sum_i B_i\Big)=\bar A\,\bar B\]</div>
+        <div style="font-size:30px;line-height:1.34;color:#444a59;margin-top:18px;">This introduces terms like \(A_1B_2\): one client's basis with another client's coefficients.</div>
+      </div>
+    </div>
+    <div style="margin-top:28px;font-size:34px;line-height:1.28;color:#34343a;border-left:4px solid #c0463c;padding-left:26px;">
+      The gap is small when clients look alike, but grows under non-IID data and many clients.
+    </div>
+  </div>
+</section>
+
+<!-- 05 — ROLORA EXACT -->
+<section class="slide-dark" data-label="RoLoRA = exact" data-screen-label="05" data-speaker-notes="1m30s. Freeze one shared factor, train the other. Because the frozen factor is shared, it factors out of the average — aggregation is exact. Both factors still get learned, alternately, and only one is transmitted per round. Method comparison table is in the backup.">
+  <div style="position:relative;width:100%;height:100%;padding:88px 100px 70px;box-sizing:border-box;display:flex;flex-direction:column;">
+    <h2 style="font-family:'Archivo';font-weight:900;font-size:64px;line-height:1.02;letter-spacing:-0.02em;margin:0 0 36px;color:#f4f4f6;">RoLoRA makes each aggregation step exact</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:38px;flex:1;">
+      <div style="background:rgba(20,20,22,0.42);border:2px solid rgba(41,194,221,0.62);border-radius:30px;padding:42px 44px;display:flex;flex-direction:column;justify-content:center;">
+        <div style="font-size:34px;font-weight:900;color:#29c2dd;letter-spacing:0.04em;margin-bottom:14px;">B-PHASE</div>
+        <div style="font-size:32px;color:#cfcfd6;margin-bottom:20px;line-height:1.28;">All clients share \(A^t\), freeze it, update \(B_i\).</div>
+        <div style="font-size:41px;color:#f4f4f6;">\[\frac{1}{N}\sum_i A^tB_i^{t+1}=A^t\!\Big(\tfrac{1}{N}\textstyle\sum_i B_i^{t+1}\Big)\]</div>
+      </div>
+      <div style="background:rgba(40,30,52,0.5);border:2px solid rgba(226,166,239,0.58);border-radius:30px;padding:42px 44px;display:flex;flex-direction:column;justify-content:center;">
+        <div style="font-size:34px;font-weight:900;color:#e6abf2;letter-spacing:0.04em;margin-bottom:14px;">A-PHASE</div>
+        <div style="font-size:32px;color:#cfcfd6;margin-bottom:20px;line-height:1.28;">All clients share \(B^{t+1}\), freeze it, update \(A_i\).</div>
+        <div style="font-size:41px;color:#f4f4f6;">\[\frac{1}{N}\sum_i A_i^{t+1}B^{t+1}=\Big(\tfrac{1}{N}\textstyle\sum_i A_i^{t+1}\Big)B^{t+1}\]</div>
+      </div>
+    </div><div style="margin-top:38px;display:flex;align-items:center;justify-content:center;gap:22px;">
+      
+      <span style="background:#e2a6ef;color:#3a1542;font-family:'Archivo';font-weight:900;font-size:42px;width:96px;height:96px;border-radius:24px;display:flex;align-items:center;justify-content:center;">B</span><span style="color:#9aa1b2;font-size:44px;">→</span>
+      <span style="background:#29c2dd;color:#0a2a30;font-family:'Archivo';font-weight:900;font-size:42px;width:96px;height:96px;border-radius:24px;display:flex;align-items:center;justify-content:center;">A</span>
+      <span style="color:#9aa1b2;font-size:44px;">→</span>
+      <span style="background:#e2a6ef;color:#3a1542;font-family:'Archivo';font-weight:900;font-size:42px;width:96px;height:96px;border-radius:24px;display:flex;align-items:center;justify-content:center;">B</span>
+      <span style="color:#9aa1b2;font-size:44px;">→</span>
+      <span style="background:#29c2dd;color:#0a2a30;font-family:'Archivo';font-weight:900;font-size:42px;width:96px;height:96px;border-radius:24px;display:flex;align-items:center;justify-content:center;">A</span>
+      
+      </div><div style="font-size: 31px; color: #d8d8df; line-height: 1.28; max-width: 560px; margin-left: 540px; width: 724px; height: 90px; margin-top: 10px">One shared frozen factor can be factored out of the client average.</div>
+    
+  </div>
+</section>
+
+<!-- 06 — RESEARCH QUESTIONS -->
+<section class="slide-light" data-label="Research plan" data-screen-label="06" data-speaker-notes="1 min. Frame the work as two tracks. Track one is the controlled MNIST toy model: reproduce, stress heterogeneity, screen improvements. Track two is RoBERTa-base on QNLI: reproduce the trend at language-model scale, then test the promising basis/schedule variants.">
+  <div style="position:relative;width:100%;height:100%;padding:84px 100px 70px;box-sizing:border-box;display:flex;flex-direction:column;">
+    <h2 style="font-family:'Archivo';font-weight:900;font-size:64px;line-height:1.02;letter-spacing:-0.02em;margin:0 0 32px;color:#34343a;">Reproduce first, then improve on two tracks</h2>
+    <div style="background:rgba(255,255,255,0.50);border:1.5px solid rgba(41,163,189,0.42);border-radius:26px;padding:32px 34px;margin-bottom:30px;">
+      <div style="font-family:'Archivo';font-weight:900;font-size:34px;color:#1d8ba3;">Track 1 · MNIST trained toy model</div>
+      <div class="timeline">
+        <div class="step"><div class="step-title">Reproduce</div><div class="step-copy">FedAvg-LoRA, FFA-LoRA, RoLoRA</div></div>
+        <div style="font-size:34px;color:#9aa1b2;">→</div>
+        <div class="step"><div class="step-title">Stress heterogeneity</div><div class="step-copy">IID vs one label per client</div></div>
+        <div style="font-size:34px;color:#9aa1b2;">→</div>
+        <div class="step"><div class="step-title">Screen ideas</div><div class="step-copy">Orthogonal \(A\), LoRA+, FedProx</div></div>
+      </div>
+    </div>
+    <div style="background:rgba(255,255,255,0.50);border:1.5px solid rgba(160,60,160,0.42);border-radius:26px;padding:32px 34px;">
+      <div style="font-family:'Archivo';font-weight:900;font-size:34px;color:#c060d6;">Track 2 · RoBERTa-base / QNLI</div>
+      <div class="timeline">
+        <div class="step"><div class="step-title">Reduced reproduction</div><div class="step-copy">50 clients, 20 rounds, LR sweep</div></div>
+        <div style="font-size:34px;color:#9aa1b2;">→</div>
+        <div class="step"><div class="step-title">Check scale</div><div class="step-copy">Does RoLoRA still separate?</div></div>
+        <div style="font-size:34px;color:#9aa1b2;">→</div>
+        <div class="step"><div class="step-title">Test variants</div><div class="step-copy">SVD init, adaptive refresh, BBA</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 07 — EXPERIMENTAL DESIGN -->
+<section class="slide-dark" data-label="Experimental design" data-screen-label="07" data-speaker-notes="1m30s. A controlled MNIST toy model and a reduced RoBERTa/QNLI proxy. Note clearly: the LM experiment preserves the many-client setting but is not a full reproduction of the original RoBERTa-large GLUE grid.">
+  <div style="position:relative;width:100%;height:100%;padding:84px 100px 64px;box-sizing:border-box;display:flex;flex-direction:column;">
+    <h2 style="font-family:'Archivo';font-weight:900;font-size:60px;line-height:1.02;letter-spacing:-0.02em;margin:0 0 28px;color:#f4f4f6;">A controlled testbed and a realistic proxy</h2>
+    <div style="display:flex;gap:36px;flex:1;">
+      <table class="t" style="flex:2.1;color:#f3f3f5;align-self:flex-start;">
+        <thead><tr style="border-bottom:2px solid rgba(255,255,255,0.45);">
+          <th></th><th style="color:#29c2dd;">MNIST toy model</th><th style="color:#e6abf2;">Language-model proxy</th>
+        </tr></thead>
+        <tbody style="font-size:27px;">
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.12);"><td style="color:#9aa1b2;">Model</td><td>\(\mathrm{ReLU}(xAB)\,W_{\mathrm{out}}\)</td><td>RoBERTa-base, 125M</td></tr>
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.12);"><td style="color:#9aa1b2;">Dataset</td><td>MNIST</td><td>QNLI</td></tr>
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.12);"><td style="color:#9aa1b2;">Clients</td><td>10</td><td>50</td></tr>
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.12);"><td style="color:#9aa1b2;">LoRA rank</td><td>16</td><td>4</td></tr>
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.12);"><td style="color:#9aa1b2;">Heterogeneity</td><td>IID &amp; one label / client</td><td>Many-client partition</td></tr>
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.12);"><td style="color:#9aa1b2;">Training</td><td>5 local epochs, batch 64</td><td>20 communication rounds</td></tr>
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.12);"><td style="color:#9aa1b2;">Repetitions</td><td>5 seeds</td><td>3 seeds (main variants)</td></tr>
+          <tr><td style="color:#9aa1b2;">Implementation</td><td>Our reimplementation</td><td>Authors' released code</td></tr>
+        </tbody>
+      </table>
+      <div style="flex:1;display:flex;flex-direction:column;gap:24px;">
+        <div style="background:rgba(20,20,22,0.42);border:1.5px solid rgba(255,255,255,0.4);border-radius:24px;padding:30px 32px;">
+          <div style="font-size:24px;font-weight:700;color:#9fc7ff;text-transform:uppercase;letter-spacing:0.04em;">QNLI learning-rate sweep</div>
+          <div style="font-size:30px;margin:14px 0 8px;color:#f4f4f6;">\[\{5{\times}10^{-3},\,10^{-2},\,2{\times}10^{-2}\}\]</div>
+          <div style="font-size:26px;color:#cfcfd6;">Best common LR: <b style="color:#29c2dd;">\(10^{-2}\)</b></div>
+        </div>
+        <div style="background:rgba(122,92,180,0.20);border:1.8px solid rgba(226,166,239,0.48);border-radius:26px;padding:34px 34px;font-size:31px;line-height:1.34;color:#f0f0f4;flex:1;display:flex;flex-direction:column;justify-content:center;">
+          <div style="font-family:'Archivo';font-weight:900;font-size:32px;color:#e6abf2;margin-bottom:18px;">Reduced proxy, not full grid</div>
+          <div>The original used RoBERTa-large, five GLUE tasks, multiple client counts, 30 rounds and 8 learning rates.</div>
+          <div style="margin-top:18px;">Ours preserves the many-client setting, but is constrained by DelftBlue's 4-hour job limit.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 08 — MNIST RESULTS -->
+<section class="slide-light" data-label="MNIST results" data-screen-label="08" data-speaker-notes="1m45s. This is the trained two-layer MNIST toy model, not just a schematic. Figure 1b from the report shows the one-label-per-client setting. Extreme non-IID exposes the cost of incorrect aggregation — RoLoRA gains about 22 points over both baselines.">
+  <div style="position:relative;width:100%;height:100%;padding:84px 100px 64px;box-sizing:border-box;display:flex;flex-direction:column;">
+    <div style="font-size:25px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#5a6175;margin-bottom:12px;">MNIST reproduction</div>
+    <h2 style="font-family:'Archivo';font-weight:900;font-size:60px;line-height:1.02;letter-spacing:-0.02em;margin:0 0 26px;color:#34343a;">The trained MNIST toy model exposes heterogeneity</h2>
+    <div style="display:grid;grid-template-columns:0.86fr 1.34fr;gap:38px;flex:1;align-items:stretch;">
+      <div style="background:rgba(255,255,255,0.55);border:1.5px solid rgba(60,60,70,0.28);border-radius:24px;padding:38px 38px;display:flex;flex-direction:column;justify-content:center;">
+        <div style="font-family:'Archivo';font-weight:900;font-size:34px;color:#34343a;margin-bottom:20px;">What is being trained?</div>
+        <ul class="b" style="font-size:32px;color:#444a59;">
+          <li>Two-layer model: \(\mathrm{ReLU}(xAB)W_{\mathrm{out}}\).</li>
+          <li>Only the LoRA factors \(A,B\) are trained.</li>
+          <li>10 clients, rank 16, five seeds.</li>
+          <li>One label per client is the hard non-IID case.</li>
+        </ul>
+        <div style="margin-top:28px;display:flex;align-items:baseline;gap:16px;">
+          <span style="font-family:'Archivo';font-weight:900;font-size:78px;color:#e07a3c;line-height:1;">+22</span>
+          <span style="font-size:31px;line-height:1.18;color:#34343a;">points over both baselines</span>
+        </div>
+      </div>
+      <div class="figure-card" style="display:flex;flex-direction:column;">
+        <div style="font-family:'Archivo';font-weight:800;font-size:28px;color:#34343a;margin-bottom:8px;">Figure 1b · Heterogeneous split: one label per client</div>
+        <img src="./figures/final_baselines_noniid_acc_ci95.png" alt="MNIST heterogeneous non-IID accuracy plot" style="flex:1;min-height:0;">
+      </div>
+    </div>
+    <div style="margin-top:20px;font-size:25px;color:#5a6175;">Curves are test accuracy over communication rounds; shaded bands are 95% confidence intervals.</div>
+  </div>
+</section>
+
+<!-- 09 — QNLI RESULTS -->
+<section class="slide-dark" data-label="QNLI results" data-screen-label="09" data-speaker-notes="1m45s. Use Figure 2 from the report. Same ordering on RoBERTa-base/QNLI: both baselines sit near chance, while RoLoRA separates around rounds 6-7 and keeps improving. We reproduce the trend and ordering, not the paper's absolute accuracies.">
+  <div style="position:relative;width:100%;height:100%;padding:84px 100px 64px;box-sizing:border-box;display:flex;flex-direction:column;">
+    <h2 style="font-family:'Archivo';font-weight:900;font-size:58px;line-height:1.02;letter-spacing:-0.02em;margin:0 0 6px;color:#f4f4f6;">The same ordering holds on RoBERTa / QNLI</h2>
+    <div style="font-size:32px;color:#bdbdc6;margin-bottom:28px;">RoLoRA keeps learning while both baselines remain near chance.</div>
+    <div style="display:grid;grid-template-columns:1.25fr 0.75fr;gap:40px;flex:1;align-items:stretch;">
+      <div class="dark-figure" style="display:flex;flex-direction:column;">
+        <div style="font-family:'Archivo';font-weight:800;font-size:27px;color:#34343a;margin-bottom:8px;">Figure 2 · QNLI, RoBERTa-base, 50 clients</div>
+        <img src="./figures/roberta_base_qnli.png" alt="RoBERTa-base QNLI accuracy over communication rounds" style="flex:1;min-height:0;">
+      </div>
+      <div style="display:flex;flex-direction:column;justify-content:center;gap:28px;">
+        <div style="display:flex;align-items:baseline;gap:18px;">
+          <span style="font-family:'Archivo';font-weight:900;font-size:96px;color:#e6abf2;line-height:0.9;">+33</span>
+          <span style="font-size:34px;line-height:1.1;color:#e8e8ec;">point final gap</span>
+        </div>
+        <ul class="b" style="font-size:33px;color:#e0e0e6;">
+          <li>RoLoRA separates around rounds 6–7.</li>
+          <li>It keeps improving throughout training.</li>
+          <li>The trend survives the smaller model and shorter schedule.</li>
+        </ul>
+        <div style="font-size:30px;line-height:1.34;color:#cfcfd6;border-left:4px solid #e6abf2;padding-left:24px;">We reproduce the <b>trend and method ordering</b>, not the original paper's absolute accuracies.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 10 — THREE IDEAS -->
+<section class="slide-light" data-label="Three ideas" data-screen-label="10" data-speaker-notes="1m15s. Three complementary directions: condition the shared basis, treat the two phases unequally, and limit local drift.">
+  <div style="position:relative;width:100%;height:100%;padding:84px 100px 64px;box-sizing:border-box;display:flex;flex-direction:column;">
+    <h2 style="font-family:'Archivo';font-weight:900;font-size:64px;line-height:1.02;letter-spacing:-0.02em;margin:0 0 34px;color:#34343a;">Three complementary ideas for improving RoLoRA</h2>
+    <div style="display:flex;gap:30px;flex:1;">
+      <div style="flex:1;background:rgba(255,255,255,0.55);border:1.5px solid rgba(60,60,70,0.3);border-radius:26px;padding:34px 32px;display:flex;flex-direction:column;">
+        <div style="font-family:'Archivo';font-weight:900;font-size:70px;color:#29a3bd;line-height:1;">1</div>
+        <div style="font-family:'Archivo';font-weight:800;font-size:34px;color:#34343a;margin:8px 0 16px;">Condition the shared basis</div>
+        <div style="font-size:31px;line-height:1.32;color:#444a59;">Toy: orthogonal init of \(A\), \(\;A^\top A = I_r\).<br>RoBERTa: SVD-compensated init from \(W_0\).</div>
+        <div style="font-size:28px;line-height:1.32;color:#5a6175;margin-top:auto;padding-top:20px;"><i>A better-conditioned subspace reduces early client divergence.</i></div>
+      </div>
+      <div style="flex:1;background:rgba(255,255,255,0.55);border:1.5px solid rgba(60,60,70,0.3);border-radius:26px;padding:34px 32px;display:flex;flex-direction:column;">
+        <div style="font-family:'Archivo';font-weight:900;font-size:70px;color:#c060d6;line-height:1;">2</div>
+        <div style="font-family:'Archivo';font-weight:800;font-size:34px;color:#34343a;margin:8px 0 16px;">Treat the two phases unequally</div>
+        <div style="font-size:30px;line-height:1.3;color:#444a59;">Step size \(\lambda=\tfrac{\eta_B}{\eta_A}&gt;1\) (LoRA+).<br>BBA schedule \(B,B,A,\dots\), or adaptive refresh of \(A\) when \(B\) stalls.</div>
+        <div style="font-size:28px;line-height:1.32;color:#5a6175;margin-top:auto;padding-top:20px;"><i>Once \(A\) is stable, extra \(B\)-updates can fit better coefficients.</i></div>
+      </div>
+      <div style="flex:1;background:rgba(255,255,255,0.55);border:1.5px solid rgba(60,60,70,0.3);border-radius:26px;padding:34px 32px;display:flex;flex-direction:column;">
+        <div style="font-family:'Archivo';font-weight:900;font-size:70px;color:#e07a3c;line-height:1;">3</div>
+        <div style="font-family:'Archivo';font-weight:800;font-size:34px;color:#34343a;margin:8px 0 16px;">Limit local drift</div>
+        <div style="font-size:31px;line-height:1.32;color:#444a59;">FedProx term on the active factor:</div>
+        <div style="font-size:34px;margin:12px 0;color:#34343a;">\[F_i(w)+\tfrac{\mu}{2}\lVert w-w^t\rVert^2\]</div>
+        <div style="font-size:28px;line-height:1.32;color:#5a6175;margin-top:auto;padding-top:8px;"><i>Keeping local factors near the broadcast factor may improve stability.</i></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 11 — TOY RESULTS -->
+<section class="slide-dark" data-label="Toy results" data-screen-label="11" data-speaker-notes="1m45s. Use Figure 3 from the report. On the toy model, only better initialization clearly helps: orthogonal A raises final accuracy and tightens the spread. LoRA+ and FedProx do not help; larger LoRA+ ratios were progressively worse in screening.">
+  <div style="position:relative;width:100%;height:100%;padding:84px 100px 64px;box-sizing:border-box;display:flex;flex-direction:column;">
+    <h2 style="font-family:'Archivo';font-weight:900;font-size:60px;line-height:1.02;letter-spacing:-0.02em;margin:0 0 28px;color:#f4f4f6;">On the toy model, only conditioning clearly helps</h2>
+    <div style="display:grid;grid-template-columns:1.18fr 0.82fr;gap:38px;flex:1;align-items:stretch;">
+      <div class="dark-figure" style="display:flex;flex-direction:column;">
+        <div style="font-family:'Archivo';font-weight:800;font-size:27px;color:#34343a;margin-bottom:8px;">Figure 3 · Improvement screen on heterogeneous MNIST</div>
+        <img src="./figures/final_baselines_plus_improvs_bar_ci95.png" alt="MNIST improvement bar plot" style="flex:1;min-height:0;">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:20px;justify-content:center;">
+        <div style="background:rgba(41,194,221,0.12);border:1.5px solid rgba(41,194,221,0.45);border-radius:24px;padding:30px 32px;">
+          <div style="font-family:'Archivo';font-weight:900;font-size:34px;color:#29c2dd;margin-bottom:12px;">Clean win</div>
+          <div style="font-size:31px;line-height:1.32;color:#f0f0f4;">Orthogonal \(A\) improves mean accuracy from 84.0% to 87.2% and narrows the spread.</div>
+        </div>
+        <div style="background:rgba(224,90,74,0.12);border:1.5px solid rgba(224,120,100,0.42);border-radius:24px;padding:30px 32px;">
+          <div style="font-family:'Archivo';font-weight:900;font-size:34px;color:#e8917e;margin-bottom:12px;">No gain</div>
+          <div style="font-size:31px;line-height:1.32;color:#f0f0f4;">LoRA+ \((\lambda=2)\) and FedProx \((\mu=0.01)\) both finish below plain RoLoRA.</div>
+        </div>
+        <div style="font-size:28px;line-height:1.34;color:#cfcfd6;border-left:4px solid #e6abf2;padding-left:24px;">When this toy run finishes, the story is narrow: the basis matters; extra constraints do not.</div>
+      </div>
+    </div>
+    <div style="margin-top:22px;font-size:23px;color:#9aa1b2;">Extreme non-IID split · 10 clients · rank 16 · five seeds · 95% confidence intervals</div>
+  </div>
+</section>
+
+<!-- 12 — QNLI EXTENSION -->
+<section class="slide-light" data-label="QNLI extension" data-screen-label="12" data-speaker-notes="2 min. This slide is still provisional. On QNLI, SVD conditioning alone is within RoLoRA's run-to-run spread; adaptive refresh plus orthogonal A reaches 86.67%; orthogonal A + BBA currently gives the best observed 88.32%, but the final BBA seed is still pending and significance is unresolved.">
+  <div style="position:relative;width:100%;height:100%;padding:80px 100px 60px;box-sizing:border-box;display:flex;flex-direction:column;">
+    <h2 style="font-family:'Archivo';font-weight:900;font-size:56px;line-height:1.02;letter-spacing:-0.02em;margin:0 0 28px;color:#34343a;">QNLI extensions are promising, but not finished</h2>
+    <div style="display:flex;gap:40px;flex:1;">
+      <div style="flex:1.25;display:flex;flex-direction:column;gap:14px;justify-content:center;">
+        <div style="display:flex;align-items:center;gap:22px;">
+          <div style="width:430px;font-size:28px;">RoLoRA <span style="color:#8a8a92;font-size:23px;">· 3 seeds</span></div>
+          <div style="flex:1;height:42px;background:rgba(0,0,0,0.06);border-radius:8px;"><div style="width:74%;height:100%;background:#9aa1b2;border-radius:8px;"></div></div>
+          <div style="width:160px;text-align:right;font-size:27px;">85.10<span style="color:#8a8a92;font-size:22px;">±2.97</span></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:22px;">
+          <div style="width:430px;font-size:28px;">SVD-compensated <span style="color:#8a8a92;font-size:23px;">· 3 seeds</span></div>
+          <div style="flex:1;height:42px;background:rgba(0,0,0,0.06);border-radius:8px;"><div style="width:76%;height:100%;background:#7fb4c4;border-radius:8px;"></div></div>
+          <div style="width:160px;text-align:right;font-size:27px;">85.70<span style="color:#8a8a92;font-size:22px;">±0.82</span></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:22px;">
+          <div style="width:430px;font-size:28px;">Adaptive refresh + orth \(A\) <span style="color:#8a8a92;font-size:23px;">· 3 seeds</span></div>
+          <div style="flex:1;height:42px;background:rgba(0,0,0,0.06);border-radius:8px;"><div style="width:86%;height:100%;background:#29a3bd;border-radius:8px;"></div></div>
+          <div style="width:160px;text-align:right;font-size:27px;">86.67<span style="color:#8a8a92;font-size:22px;">±0.43</span></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:22px;">
+          <div style="width:430px;font-size:28px;font-weight:800;color:#c060d6;">Orthogonal \(A\) + BBA <span style="font-size:23px;font-weight:400;color:#a06; ">· 2 seeds</span></div>
+          <div style="flex:1;height:42px;background:rgba(0,0,0,0.06);border-radius:8px;border:2px dashed #c060d6;box-sizing:border-box;"><div style="width:100%;height:100%;background:repeating-linear-gradient(45deg,#e2a6ef,#e2a6ef 10px,#d68fe6 10px,#d68fe6 20px);border-radius:6px;"></div></div>
+          <div style="width:160px;text-align:right;font-size:27px;font-weight:800;color:#c060d6;">88.32<span style="font-size:22px;">±0.43</span></div>
+        </div>
+        <div style="font-size:22px;color:#7a5a86;margin-top:4px;font-style:italic;">Hatched bar = still provisional. Best observed improvement over RoLoRA: +3.22 pp.</div>
+      </div>
+      <div style="flex:0.85;background:rgba(255,255,255,0.6);border:1.5px solid rgba(160,60,160,0.45);border-radius:26px;padding:32px 32px;display:flex;flex-direction:column;justify-content:center;">
+        <div style="font-family:'Archivo';font-weight:800;font-size:27px;color:#c060d6;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:14px;">Critical qualification</div>
+        <div style="font-size:32px;line-height:1.18;text-align:center;color:#34343a;margin:4px 0 18px;font-family:'Archivo';font-weight:800;">Still running</div>
+        <div style="font-size:27px;line-height:1.38;color:#34343a;">The report treats the BBA result as <b>unconfirmed</b> until:</div>
+        <ul class="b" style="font-size:26px;color:#444a59;margin-top:12px;">
+          <li>the third BBA seed completes;</li>
+          <li>no default-init + BBA control;</li>
+          <li>we can separate init, schedule, and their interaction.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 13 — WHY TRANSFER -->
+<section class="slide-dark" data-label="Discussion" data-screen-label="13" data-speaker-notes="1m45s. Rephrase the discussion: RoLoRA already solves the aggregation interference, so add-ons only help if they address something left over. Basis conditioning helps when the starting basis is weak; B-prioritized schedules may help once A is stable; LoRA+ and FedProx target failure modes RoLoRA mostly already controls.">
+  <div style="position:relative;width:100%;height:100%;padding:80px 100px 60px;box-sizing:border-box;display:flex;flex-direction:column;">
+    <h2 style="font-family:'Archivo';font-weight:900;font-size:58px;line-height:1.02;letter-spacing:-0.02em;margin:0 0 30px;color:#f4f4f6;">The extensions only help when they target what RoLoRA leaves open</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:30px;flex:1;align-items:start;">
+      <div style="background:rgba(41,194,221,0.1);border:1.5px solid rgba(41,194,221,0.4);border-radius:24px;padding:34px 36px;">
+        <div style="font-family:'Archivo';font-weight:900;font-size:35px;color:#29c2dd;margin-bottom:18px;">Where there is room to move</div>
+        <ul class="b" style="font-size:33px;color:#e6e6ea;">
+          <li><b>Basis quality:</b> the toy model has no pretrained \(W_0\), so orthogonal \(A\) gives a better starting subspace.</li>
+          <li><b>Frequency:</b> once \(A\) is stable, extra \(B\)-rounds can fit coefficients without constantly moving the basis.</li>
+        </ul>
+      </div>
+      <div style="background:rgba(224,90,74,0.1);border:1.5px solid rgba(224,120,100,0.4);border-radius:24px;padding:34px 36px;">
+        <div style="font-family:'Archivo';font-weight:900;font-size:35px;color:#e8917e;margin-bottom:18px;">Where add-ons miss the failure mode</div>
+        <ul class="b" style="font-size:33px;color:#e6e6ea;">
+          <li><b>SVD init alone:</b> energetic \(W_0\) directions need not be the QNLI-useful directions.</li>
+          <li><b>LoRA+:</b> it fixes simultaneous factor training, but RoLoRA separates the phases.</li>
+          <li><b>FedProx:</b> it dampens local drift, while RoLoRA already restricts and syncs each round.</li>
+        </ul>
+      </div>
+    </div>
+    <div style="margin-top:26px;font-size:32px;line-height:1.34;color:#f0f0f4;border-left:4px solid #e6abf2;padding-left:26px;">
+      Our reading: RoLoRA mostly fixes aggregation. The remaining opportunity is to stabilize the basis and spend phases where they matter.
+    </div>
+  </div>
+</section>
+
+<!-- 14 — CLAIMS / LIMITS -->
+<section class="slide-light" data-label="Claims &amp; limits" data-screen-label="14" data-speaker-notes="1m30s. Make this cleaner: left side is supported by our experiments; right side is scope limitations. The middle preliminary result is removed because the final BBA run may change it.">
+  <div style="position:relative;width:100%;height:100%;padding:80px 100px 56px;box-sizing:border-box;display:flex;flex-direction:column;">
+    <h2 style="font-family:'Archivo';font-weight:900;font-size:58px;line-height:1.02;letter-spacing:-0.02em;margin:0 0 30px;color:#34343a;">What we can claim, and what stays preliminary</h2>
+    <div style="display:grid;grid-template-columns:1.12fr 0.88fr;gap:34px;flex:1;">
+      <div style="background:rgba(255,255,255,0.58);border:1.8px solid rgba(52,152,120,0.55);border-radius:26px;padding:36px 40px;">
+        <div style="font-family:'Archivo';font-weight:900;font-size:36px;color:#2f8a5e;margin-bottom:20px;">Supported by our experiments</div>
+        <ul class="b" style="font-size:34px;color:#34343a;">
+          <li>RoLoRA's qualitative robustness reproduces on the toy model and QNLI proxy.</li>
+          <li>The advantage is clearest under heterogeneous clients.</li>
+          <li>Orthogonal \(A\) gives a clear toy-model gain.</li>
+          <li>LoRA+ step-size asymmetry and FedProx do not help in our toy screen.</li>
+          <li>Basis conditioning plus \(B\)-prioritized frequency is promising, pending the final run.</li>
+        </ul>
+      </div>
+      <div style="background:rgba(255,255,255,0.58);border:1.8px solid rgba(224,120,60,0.55);border-radius:26px;padding:36px 40px;">
+        <div style="font-family:'Archivo';font-weight:900;font-size:36px;color:#d8682c;margin-bottom:20px;">Scope limitations</div>
+        <ul class="b" style="font-size:34px;color:#34343a;">
+          <li>One GLUE task, not five.</li>
+          <li>One client count (50).</li>
+          <li>RoBERTa-base, not large.</li>
+          <li>20 rounds, not 30; 3 LRs, not 8.</li>
+          <li>4-hour limit on DelftBlue's <code>a100-small</code>.</li>
+          <li>Final BBA seed and schedule-only control are still missing.</li>
+        </ul>
+      </div>
+    </div>
+    <div style="margin-top:24px;font-size:28px;line-height:1.36;color:#34343a;border-left:3px solid #e07a3c;padding-left:24px;">
+      The language-model experiments <b>validate trends</b> — they should not be read as a full reproduction of the original experimental grid.
+    </div>
+  </div>
+</section>
+
+<!-- 15 — Q&A -->
+<section class="slide-hero" data-label="Questions" data-screen-label="15" data-speaker-notes="1 min. Thanks. Next experiments: complete the third BBA seed, run BBA with default init, extend to full GLUE, test RoBERTa-large and other client distributions.">
+  <div style="position:relative;width:100%;height:100%;padding:100px 110px 84px;box-sizing:border-box;display:flex;align-items:center;gap:60px;">
+    <div style="flex:1.1;">
+      <h1 style="font-family:'Archivo';font-weight:900;font-size:128px;line-height:0.95;letter-spacing:-0.025em;margin:0;color:#2f2f35;">Questions?</h1>
+      <div style="margin-top:40px;font-size:34px;line-height:1.3;color:#34343a;background:rgba(255,255,255,0.45);border:1.5px solid rgba(60,60,70,0.32);border-radius:20px;padding:26px 32px;display:inline-block;">
+        Shared frozen factor &nbsp;⟹&nbsp; exact federated aggregation
+      </div>
+    </div>
+    <div style="flex:0.9;background:rgba(255,255,255,0.5);border:1.5px solid rgba(60,60,70,0.3);border-radius:28px;padding:40px 40px;position:relative;">
+      <span class="blip" style="top:28px;right:32px;"></span>
+      <div style="font-family:'Archivo';font-weight:800;font-size:28px;color:#34343a;margin-bottom:22px;">Possible next experiments</div>
+      <ul class="b" style="font-size:30px;color:#444a59;">
+        <li>Complete the third BBA seed.</li>
+        <li>Run BBA with default initialization.</li>
+        <li>Extend to the full GLUE suite.</li>
+        <li>Test RoBERTa-large and more client distributions.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- B1 — BACKUP: METHOD COMPARISON -->
+<section class="slide-dark" data-label="Backup · Methods" data-screen-label="B1" data-speaker-notes="Backup. Full method comparison.">
+  <div style="position:relative;width:100%;height:100%;padding:88px 100px 70px;box-sizing:border-box;display:flex;flex-direction:column;">
+    <div style="font-size:24px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#9aa1b2;margin-bottom:12px;">Backup A</div>
+    <h2 style="font-family:'Archivo';font-weight:900;font-size:60px;line-height:1.02;letter-spacing:-0.02em;margin:0 0 40px;color:#f4f4f6;">Method comparison</h2>
+    <table class="t" style="color:#f3f3f5;">
+      <thead><tr style="border-bottom:2px solid rgba(255,255,255,0.45);">
+        <th>Method</th><th>\(A\) updated?</th><th>\(B\) updated?</th><th>Exact aggregation?</th><th>Main weakness</th>
+      </tr></thead>
+      <tbody style="font-size:30px;">
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.13);"><td>FedAvg-LoRA</td><td>Every round</td><td>Every round</td><td style="color:#e8917e;">No</td><td>Cross-client interference</td></tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.13);"><td>FFA-LoRA</td><td>Never</td><td>Every round</td><td style="color:#7fd6a0;">Yes</td><td>Fixed random basis</td></tr>
+        <tr style="background:rgba(41,194,221,0.14);"><td style="font-weight:800;color:#29c2dd;">RoLoRA</td><td>Alternate rounds</td><td>Alternate rounds</td><td style="color:#7fd6a0;font-weight:700;">Yes</td><td>Half the adapter moves / round</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- B2 — BACKUP: DEVIATIONS -->
+<section class="slide-light" data-label="Backup · Deviations" data-screen-label="B2" data-speaker-notes="Backup. How our proxy deviates from the original study.">
+  <div style="position:relative;width:100%;height:100%;padding:88px 100px 70px;box-sizing:border-box;display:flex;flex-direction:column;">
+    <div style="font-size:24px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#5a6175;margin-bottom:12px;">Backup B</div>
+    <h2 style="font-family:'Archivo';font-weight:900;font-size:60px;line-height:1.02;letter-spacing:-0.02em;margin:0 0 40px;color:#34343a;">Reproduction deviations</h2>
+    <table class="t" style="color:#34343a;background:rgba(255,255,255,0.5);border-radius:20px;overflow:hidden;">
+      <thead><tr style="border-bottom:2px solid rgba(60,60,70,0.35);">
+        <th style="color:#5a6175;">Original study</th><th style="color:#1d8ba3;">Our proxy</th>
+      </tr></thead>
+      <tbody style="font-size:31px;">
+        <tr style="border-bottom:1px solid rgba(60,60,70,0.12);"><td>RoBERTa-large, 355M</td><td>RoBERTa-base, 125M</td></tr>
+        <tr style="border-bottom:1px solid rgba(60,60,70,0.12);"><td>Five GLUE tasks</td><td>QNLI only</td></tr>
+        <tr style="border-bottom:1px solid rgba(60,60,70,0.12);"><td>Multiple client counts</td><td>50 clients</td></tr>
+        <tr style="border-bottom:1px solid rgba(60,60,70,0.12);"><td>30 communication rounds</td><td>20 communication rounds</td></tr>
+        <tr style="border-bottom:1px solid rgba(60,60,70,0.12);"><td>Eight learning rates</td><td>Three learning rates</td></tr>
+        <tr><td>Full experimental grid</td><td>Trend reproduction</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- B3 — BACKUP: MISSING CONTROL -->
+<section class="slide-dark" data-label="Backup · Control" data-screen-label="B3" data-speaker-notes="Backup. The 2x2 design that would isolate the source of the 88.32% result.">
+  <div style="position:relative;width:100%;height:100%;padding:84px 100px 64px;box-sizing:border-box;display:flex;flex-direction:column;">
+    <div style="font-size:24px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#9aa1b2;margin-bottom:12px;">Backup C</div>
+    <h2 style="font-family:'Archivo';font-weight:900;font-size:58px;line-height:1.02;letter-spacing:-0.02em;margin:0 0 30px;color:#f4f4f6;">The missing control for the best result</h2>
+    <div style="display:flex;gap:44px;flex:1;align-items:center;">
+      <table class="t" style="flex:1.4;color:#f3f3f5;">
+        <thead><tr style="border-bottom:2px solid rgba(255,255,255,0.45);">
+          <th>Initialization</th><th>Schedule</th><th>Status</th>
+        </tr></thead>
+        <tbody style="font-size:30px;">
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.13);"><td>Default</td><td>AB</td><td style="color:#7fd6a0;">Completed</td></tr>
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.13);"><td>Orthogonal</td><td>AB</td><td style="color:#e6c87a;">Needed at identical LM scale</td></tr>
+          <tr style="background:rgba(224,90,74,0.16);border-bottom:1px solid rgba(255,255,255,0.13);"><td>Default</td><td>BBA</td><td style="color:#e8917e;font-weight:800;">Missing key control</td></tr>
+          <tr style="background:rgba(41,194,221,0.14);"><td>Orthogonal</td><td>BBA</td><td style="color:#29c2dd;">Completed, two seeds</td></tr>
+        </tbody>
+      </table>
+      <div style="flex:1;display:flex;flex-direction:column;gap:16px;">
+        <div style="font-size:28px;color:#cfcfd6;">This design separates:</div>
+        <ul class="b" style="font-size:28px;color:#eaeaee;">
+          <li>initialization effect;</li>
+          <li>schedule effect;</li>
+          <li>initialization × schedule interaction.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- B4 — BACKUP: TEAM -->
+<section class="slide-light" data-label="Backup · Team" data-screen-label="B4" data-speaker-notes="Backup. Team contributions.">
+  <div style="position:relative;width:100%;height:100%;padding:88px 100px 70px;box-sizing:border-box;display:flex;flex-direction:column;">
+    <div style="font-size:24px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#5a6175;margin-bottom:12px;">Backup D</div>
+    <h2 style="font-family:'Archivo';font-weight:900;font-size:60px;line-height:1.02;letter-spacing:-0.02em;margin:0 0 44px;color:#34343a;">Team contributions</h2>
+    <div style="display:flex;gap:30px;flex:1;">
+      <div style="flex:1;background:rgba(255,255,255,0.55);border:1.5px solid rgba(41,163,189,0.5);border-radius:26px;padding:36px 34px;">
+        <div style="font-family:'Archivo';font-weight:900;font-size:30px;color:#1d8ba3;">Daniel Popovici</div>
+        <div style="font-size:28px;line-height:1.4;color:#444a59;margin-top:18px;">Reproduction setup and runs, toy-model implementation, toy baselines and improvements, initial report writing.</div>
+      </div>
+      <div style="flex:1;background:rgba(255,255,255,0.55);border:1.5px solid rgba(160,60,160,0.45);border-radius:26px;padding:36px 34px;">
+        <div style="font-family:'Archivo';font-weight:900;font-size:30px;color:#c060d6;">Vlad Iftode</div>
+        <div style="font-size:28px;line-height:1.4;color:#444a59;margin-top:18px;">Improvement implementation and runs, including the language-model proxy experiments.</div>
+      </div>
+      <div style="flex:1;background:rgba(255,255,255,0.55);border:1.5px solid rgba(224,120,60,0.5);border-radius:26px;padding:36px 34px;">
+        <div style="font-family:'Archivo';font-weight:900;font-size:30px;color:#d8682c;">Sorin Zele</div>
+        <div style="font-size:28px;line-height:1.4;color:#444a59;margin-top:18px;">Proposal and report writing, presentation integration, final editing, feedback incorporation, and submission coordination.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  componentDidMount() {
+    this._tries = 0;
+    const opts = {
+      delimiters: [
+        { left: '\\[', right: '\\]', display: true },
+        { left: '\\(', right: '\\)', display: false }
+      ],
+      throwOnError: false
+    };
+    const run = () => {
+      if (window.renderMathInElement) {
+        try { window.renderMathInElement(document.body, opts); } catch (e) {}
+        if (this._tries < 4) { this._tries++; setTimeout(run, 500); }
+      } else if (this._tries < 40) {
+        this._tries++; setTimeout(run, 150);
+      }
+    };
+    run();
+  }
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
