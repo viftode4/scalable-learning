@@ -249,6 +249,27 @@ def collect_wandb_sweep() -> list[Run]:
     return sorted(runs, key=lambda r: r.key)
 
 
+def collect_svd_lr_sweep() -> list[Run]:
+    """SVD-compensated initialisation across the lr {5e-3, 1e-2, 2e-2} sweep.
+
+    ``_canon_proxy_key`` deliberately strips the lr infix, so the off-1e-2 SVD
+    seeds get deduped out of the section-1 proxy table. This collector keeps them
+    grouped by lr — the evidence answering the W8 reviewer's request to verify,
+    by tuning the learning rate, that SVD's improvement over RoLoRA is limited.
+    """
+    runs: list[Run] = []
+    pat = re.compile(r"_(lr[^_]+)_seed(\d+)\.log$")
+    for log in sorted((REPO / "results").glob(
+            "overnight_proxy_svd_compensated_c50_r4_lr*_seed*.log")):
+        m = pat.search(log.name)
+        if not m:
+            continue
+        run = run_from_log(log, key=f"svd_{m.group(1)}_seed{m.group(2)}")
+        if run:
+            runs.append(run)
+    return sorted(runs, key=lambda r: r.key)
+
+
 def collect_fedavg_audit() -> list[Run]:
     """Centralized/FedAvg optimizer-audit runs (exp/FedAvg_*qnli*/eval_results.log)."""
     runs: list[Run] = []
@@ -478,6 +499,7 @@ def fmt_mean(mean, std, scale=100.0):
 def render(stamp: str) -> str:
     proxy = collect_proxy()
     sweep = collect_wandb_sweep()
+    svd_sweep = collect_svd_lr_sweep()
     audit = collect_fedavg_audit()
     table1 = collect_table1_local()
     toy = collect_toy()
@@ -577,6 +599,42 @@ def render(stamp: str) -> str:
         bests = [r.best for r in rs if r.best is not None]
         lines.append(f"| `{g}` | {len(rs)} | {agg_str(finals)} | {agg_str(bests)} |")
     lines.append("")
+
+    # 2b. SVD-compensated initialisation learning-rate sweep (W8 follow-up)
+    if svd_sweep:
+        lines.append("### SVD-compensated initialisation — learning-rate sweep")
+        lines.append("")
+        lines.append("Answers the week-8 reviewer's request to verify, by tuning the "
+                 "learning rate, that SVD-compensated initialisation gives only a limited "
+                 "improvement over plain RoLoRA. Source: "
+                 "`results/overnight_proxy_svd_compensated_c50_r4_lr*_seed*.log`. "
+                 "Per-seed finals are shown because the high-LR arm is unstable, so its "
+                 "mean alone is misleading.")
+        lines.append("")
+        # vanilla RoLoRA mean per lr, from the W&B sweep, for the Δ column
+        van_by_lr: dict[str, list[float]] = {}
+        for r in sweep:
+            m = re.match(r"rolora_(lr[^_]+)_seed", r.key)
+            if m and r.final is not None:
+                van_by_lr.setdefault(m.group(1), []).append(r.final)
+        svd_by_lr: dict[str, list[Run]] = {}
+        for r in svd_sweep:
+            lr = r.key.split("_")[1]            # svd_lr5e-3_seed0 -> lr5e-3
+            svd_by_lr.setdefault(lr, []).append(r)
+        lines.append("| LR | n | Per-seed final % | SVD mean % | vanilla RoLoRA same LR % | stability |")
+        lines.append("|---|---:|---|---:|---:|---|")
+        for lr in sorted(svd_by_lr, key=lambda k: float(k[2:])):
+            rs = sorted(svd_by_lr[lr], key=lambda r: r.key)
+            finals = [r.final for r in rs if r.final is not None]
+            per_seed = " / ".join(f"{v * 100:.2f}" for v in finals)
+            collapsed = sum(1 for v in finals if v < 0.60)
+            stab = (f"unstable — {collapsed}/{len(finals)} seed(s) at chance"
+                    if collapsed else "stable")
+            van = van_by_lr.get(lr)
+            van_str = f"{statistics.mean(van) * 100:.2f}" if van else "—"
+            lines.append(f"| {lr[2:]} | {len(finals)} | {per_seed} | {agg_str(finals)} | "
+                     f"{van_str} | {stab} |")
+        lines.append("")
 
     # 3. FedAvg optimizer audit
     lines.append("## 3. FedAvg / optimizer reproducibility audit (centralized-style)")
