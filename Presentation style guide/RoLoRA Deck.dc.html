@@ -128,13 +128,13 @@
       <div style="flex:1;background:rgba(40,30,52,0.5);border:1.5px solid rgba(226,166,239,0.55);border-radius:30px;padding:42px 40px;display:flex;flex-direction:column;justify-content:center;position:relative;">
         <span class="blip" style="top:26px;right:30px;background:radial-gradient(circle at 34% 30%,#f6d6ff,#c060d6);box-shadow:0 0 18px rgba(192,96,214,0.5);"></span>
         <div style="font-size:25px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#e6abf2;">Best extension</div>
-        <div style="font-family:'Archivo';font-weight:900;font-size:104px;line-height:1;margin:18px 0 8px;color:#e6abf2;">88.32%</div>
+        <div style="font-family:'Archivo';font-weight:900;font-size:104px;line-height:1;margin:18px 0 8px;color:#e6abf2;">87.60%</div>
         <div style="font-size:26px;color:#cfcfd6;">Orthogonal A init + BBA schedule</div>
-        <div style="font-size:23px;font-style:italic;color:#9a9aa2;margin-top:6px;">Promising, but preliminary — two seeds</div>
+        <div style="font-size:23px;font-style:italic;color:#9a9aa2;margin-top:6px;">Promising, but not significant — 3 seeds</div>
       </div>
     </div>
     <div style="margin-top:38px;font-size:31px;line-height:1.36;color:#e6e6ea;border-left:3px solid #29c2dd;padding-left:26px;max-width:1500px;">
-      We reproduced RoLoRA's robustness and found that <b>basis conditioning combined with phase control</b> is the most promising extension.
+      Basis conditioning plus B-prioritized scheduling is promising, mainly through lower variance.
     </div>
   </div>
 </section>
@@ -148,13 +148,19 @@
       <div style="flex:1.1;background:rgba(255,255,255,0.62);border:1.5px solid rgba(60,60,70,0.32);border-radius:28px;padding:42px 48px;display:flex;flex-direction:column;justify-content:center;">
         <div style="font-size:34px;color:#5a6175;margin-bottom:22px;">Adapted weight</div>
         <div style="font-size:55px;color:#34343a;">\[W = W_0 + \alpha AB\]</div>
-        <div style="font-size:31px;line-height:1.34;color:#444a59;margin-top:20px;">Only \(A\) and \(B\) move during training; \(W_0\) is reused by every client.</div>
+        <div style="font-size:31px;line-height:1.34;color:#444a59;margin-top:20px;">The two factors are low-rank: \(A\) is <b>tall and narrow</b> \((d\times r)\) and \(B\) is <b>short and wide</b> \((r\times d)\). Only they move during training; \(W_0\) is reused by every client.</div>
       </div>
       <div style="flex:0.9;display:flex;flex-direction:column;justify-content:center;gap:24px;">
-        <div style="display:grid;grid-template-columns:1.1fr 0.55fr 1.1fr;gap:18px;align-items:center;">
-          <div style="background:#29c2dd;color:#0a2a30;border-radius:22px;padding:34px 20px;text-align:center;font-family:'Archivo';font-weight:900;font-size:42px;">\(A\)</div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:30px;">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
+            <div style="background:#29c2dd;color:#0a2a30;border-radius:18px;width:92px;height:208px;display:flex;align-items:center;justify-content:center;font-family:'Archivo';font-weight:900;font-size:42px;">\(A\)</div>
+            <div style="font-size:24px;color:#5a6175;">\(d\times r\) · tall &amp; narrow</div>
+          </div>
           <div style="font-size:58px;text-align:center;color:#5a6175;">×</div>
-          <div style="background:#e2a6ef;color:#3a1542;border-radius:22px;padding:34px 20px;text-align:center;font-family:'Archivo';font-weight:900;font-size:42px;">\(B\)</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
+            <div style="background:#e2a6ef;color:#3a1542;border-radius:18px;width:232px;height:92px;display:flex;align-items:center;justify-content:center;font-family:'Archivo';font-weight:900;font-size:42px;">\(B\)</div>
+            <div style="font-size:24px;color:#5a6175;">\(r\times d\) · short &amp; wide</div>
+          </div>
         </div>
         <div style="display:flex;gap:18px;">
           <div style="flex:1;background:rgba(255,255,255,0.55);border:1.5px solid rgba(41,163,189,0.45);border-radius:20px;padding:24px;">
@@ -348,21 +354,29 @@
       <div style="flex:1;background:rgba(255,255,255,0.55);border:1.5px solid rgba(60,60,70,0.3);border-radius:26px;padding:34px 32px;display:flex;flex-direction:column;">
         <div style="font-family:'Archivo';font-weight:900;font-size:70px;color:#29a3bd;line-height:1;">1</div>
         <div style="font-family:'Archivo';font-weight:800;font-size:34px;color:#34343a;margin:8px 0 16px;">Condition the shared basis</div>
-        <div style="font-size:31px;line-height:1.32;color:#444a59;">Toy: orthogonal init of \(A\), \(\;A^\top A = I_r\).<br>RoBERTa: SVD-compensated init from \(W_0\).</div>
-        <div style="font-size:28px;line-height:1.32;color:#5a6175;margin-top:auto;padding-top:20px;"><i>A better-conditioned subspace reduces early client divergence.</i></div>
+        <ul class="b" style="font-size:29px;color:#444a59;margin:0;">
+          <li>Toy: orthogonal init of \(A\), \(\;A^\top A = I_r\).</li>
+          <li>RoBERTa: SVD-compensated init from \(W_0\).</li>
+          <li>A better-conditioned subspace reduces early client divergence.</li>
+        </ul>
       </div>
       <div style="flex:1;background:rgba(255,255,255,0.55);border:1.5px solid rgba(60,60,70,0.3);border-radius:26px;padding:34px 32px;display:flex;flex-direction:column;">
         <div style="font-family:'Archivo';font-weight:900;font-size:70px;color:#c060d6;line-height:1;">2</div>
         <div style="font-family:'Archivo';font-weight:800;font-size:34px;color:#34343a;margin:8px 0 16px;">Treat the two phases unequally</div>
-        <div style="font-size:30px;line-height:1.3;color:#444a59;">Step size \(\lambda=\tfrac{\eta_B}{\eta_A}&gt;1\) (LoRA+).<br>BBA schedule \(B,B,A,\dots\), or adaptive refresh of \(A\) when \(B\) stalls.</div>
-        <div style="font-size:28px;line-height:1.32;color:#5a6175;margin-top:auto;padding-top:20px;"><i>Once \(A\) is stable, extra \(B\)-updates can fit better coefficients.</i></div>
+        <ul class="b" style="font-size:29px;color:#444a59;margin:0;">
+          <li>Step size \(\lambda=\tfrac{\eta_B}{\eta_A}&gt;1\) (LoRA+).</li>
+          <li>BBA schedule \(B,B,A,\dots\), or adaptive refresh of \(A\) when \(B\) stalls.</li>
+          <li>Once \(A\) is stable, extra \(B\)-updates can fit better coefficients.</li>
+        </ul>
       </div>
       <div style="flex:1;background:rgba(255,255,255,0.55);border:1.5px solid rgba(60,60,70,0.3);border-radius:26px;padding:34px 32px;display:flex;flex-direction:column;">
         <div style="font-family:'Archivo';font-weight:900;font-size:70px;color:#e07a3c;line-height:1;">3</div>
         <div style="font-family:'Archivo';font-weight:800;font-size:34px;color:#34343a;margin:8px 0 16px;">Limit local drift</div>
-        <div style="font-size:31px;line-height:1.32;color:#444a59;">FedProx term on the active factor:</div>
-        <div style="font-size:34px;margin:12px 0;color:#34343a;">\[F_i(w)+\tfrac{\mu}{2}\lVert w-w^t\rVert^2\]</div>
-        <div style="font-size:28px;line-height:1.32;color:#5a6175;margin-top:auto;padding-top:8px;"><i>Keeping local factors near the broadcast factor may improve stability.</i></div>
+        <ul class="b" style="font-size:29px;color:#444a59;margin:0;">
+          <li>Add a FedProx proximal term on the active factor.</li>
+          <li>It penalizes drift of the local factor from the broadcast one.</li>
+          <li>Keeping local factors near the broadcast factor may improve stability.</li>
+        </ul>
       </div>
     </div>
   </div>
@@ -398,37 +412,20 @@
   <div style="position:relative;width:100%;height:100%;padding:80px 100px 60px;box-sizing:border-box;display:flex;flex-direction:column;">
     <h2 style="font-family:'Archivo';font-weight:900;font-size:56px;line-height:1.02;letter-spacing:-0.02em;margin:0 0 28px;color:#34343a;">QNLI extensions are promising, but not finished</h2>
     <div style="display:flex;gap:40px;flex:1;">
-      <div style="flex:1.25;display:flex;flex-direction:column;gap:14px;justify-content:center;">
-        <div style="display:flex;align-items:center;gap:22px;">
-          <div style="width:430px;font-size:28px;">RoLoRA <span style="color:#8a8a92;font-size:23px;">· 3 seeds</span></div>
-          <div style="flex:1;height:42px;background:rgba(0,0,0,0.06);border-radius:8px;"><div style="width:74%;height:100%;background:#9aa1b2;border-radius:8px;"></div></div>
-          <div style="width:160px;text-align:right;font-size:27px;">85.10<span style="color:#8a8a92;font-size:22px;">±2.97</span></div>
+      <div style="flex:1.25;display:flex;flex-direction:column;">
+        <div class="figure-card" style="display:flex;flex-direction:column;flex:1;">
+          <div style="font-family:'Archivo';font-weight:800;font-size:27px;color:#34343a;margin-bottom:8px;">Figure 4 · QNLI extensions vs RoLoRA (50 clients, RoBERTa-base)</div>
+          <img src="./figures/svd_vs_rolora_qnli.png" alt="QNLI extensions vs RoLoRA accuracy over communication rounds" style="flex:1;min-height:0;">
         </div>
-        <div style="display:flex;align-items:center;gap:22px;">
-          <div style="width:430px;font-size:28px;">SVD-compensated <span style="color:#8a8a92;font-size:23px;">· 3 seeds</span></div>
-          <div style="flex:1;height:42px;background:rgba(0,0,0,0.06);border-radius:8px;"><div style="width:76%;height:100%;background:#7fb4c4;border-radius:8px;"></div></div>
-          <div style="width:160px;text-align:right;font-size:27px;">85.70<span style="color:#8a8a92;font-size:22px;">±0.82</span></div>
-        </div>
-        <div style="display:flex;align-items:center;gap:22px;">
-          <div style="width:430px;font-size:28px;">Adaptive refresh + orth \(A\) <span style="color:#8a8a92;font-size:23px;">· 3 seeds</span></div>
-          <div style="flex:1;height:42px;background:rgba(0,0,0,0.06);border-radius:8px;"><div style="width:86%;height:100%;background:#29a3bd;border-radius:8px;"></div></div>
-          <div style="width:160px;text-align:right;font-size:27px;">86.67<span style="color:#8a8a92;font-size:22px;">±0.43</span></div>
-        </div>
-        <div style="display:flex;align-items:center;gap:22px;">
-          <div style="width:430px;font-size:28px;font-weight:800;color:#c060d6;">Orthogonal \(A\) + BBA <span style="font-size:23px;font-weight:400;color:#a06; ">· 2 seeds</span></div>
-          <div style="flex:1;height:42px;background:rgba(0,0,0,0.06);border-radius:8px;border:2px dashed #c060d6;box-sizing:border-box;"><div style="width:100%;height:100%;background:repeating-linear-gradient(45deg,#e2a6ef,#e2a6ef 10px,#d68fe6 10px,#d68fe6 20px);border-radius:6px;"></div></div>
-          <div style="width:160px;text-align:right;font-size:27px;font-weight:800;color:#c060d6;">88.32<span style="font-size:22px;">±0.43</span></div>
-        </div>
-        <div style="font-size:22px;color:#7a5a86;margin-top:4px;font-style:italic;">Hatched bar = still provisional. Best observed improvement over RoLoRA: +3.22 pp.</div>
       </div>
       <div style="flex:0.85;background:rgba(255,255,255,0.6);border:1.5px solid rgba(160,60,160,0.45);border-radius:26px;padding:32px 32px;display:flex;flex-direction:column;justify-content:center;">
         <div style="font-family:'Archivo';font-weight:800;font-size:27px;color:#c060d6;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:14px;">Critical qualification</div>
-        <div style="font-size:32px;line-height:1.18;text-align:center;color:#34343a;margin:4px 0 18px;font-family:'Archivo';font-weight:800;">Still running</div>
-        <div style="font-size:27px;line-height:1.38;color:#34343a;">The report treats the BBA result as <b>unconfirmed</b> until:</div>
+        <div style="font-size:32px;line-height:1.18;text-align:center;color:#34343a;margin:4px 0 18px;font-family:'Archivo';font-weight:800;">Not significant</div>
+        <div style="font-size:27px;line-height:1.38;color:#34343a;">The report treats the BBA result as <b>unconfirmed</b>:</div>
         <ul class="b" style="font-size:26px;color:#444a59;margin-top:12px;">
-          <li>the third BBA seed completes;</li>
-          <li>no default-init + BBA control;</li>
-          <li>we can separate init, schedule, and their interaction.</li>
+          <li>all arms now have 3 runs.</li>
+          <li>95% intervals overlap RoLoRA;</li>
+          <li>clearest signal is lower run-to-run variance.</li>
         </ul>
       </div>
     </div>
@@ -439,7 +436,7 @@
 <section class="slide-dark" data-label="Discussion" data-screen-label="13" data-speaker-notes="1m45s. Rephrase the discussion: RoLoRA already solves the aggregation interference, so add-ons only help if they address something left over. Basis conditioning helps when the starting basis is weak; B-prioritized schedules may help once A is stable; LoRA+ and FedProx target failure modes RoLoRA mostly already controls.">
   <div style="position:relative;width:100%;height:100%;padding:80px 100px 60px;box-sizing:border-box;display:flex;flex-direction:column;">
     <h2 style="font-family:'Archivo';font-weight:900;font-size:58px;line-height:1.02;letter-spacing:-0.02em;margin:0 0 30px;color:#f4f4f6;">The extensions only help when they target what RoLoRA leaves open</h2>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:30px;flex:1;align-items:start;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:30px;flex:1;align-items:stretch;">
       <div style="background:rgba(41,194,221,0.1);border:1.5px solid rgba(41,194,221,0.4);border-radius:24px;padding:34px 36px;">
         <div style="font-family:'Archivo';font-weight:900;font-size:35px;color:#29c2dd;margin-bottom:18px;">Where there is room to move</div>
         <ul class="b" style="font-size:33px;color:#e6e6ea;">
@@ -457,7 +454,7 @@
       </div>
     </div>
     <div style="margin-top:26px;font-size:32px;line-height:1.34;color:#f0f0f4;border-left:4px solid #e6abf2;padding-left:26px;">
-      Our reading: RoLoRA mostly fixes aggregation. The remaining opportunity is to stabilize the basis and spend phases where they matter.
+      RoLoRA reproduces, but the QNLI proxy is learning-rate and round-budget sensitive; the extension signal is lower variance more than a significant mean gain.
     </div>
   </div>
 </section>
@@ -465,7 +462,7 @@
 <!-- 14 — CLAIMS / LIMITS -->
 <section class="slide-light" data-label="Claims &amp; limits" data-screen-label="14" data-speaker-notes="1m30s. Make this cleaner: left side is supported by our experiments; right side is scope limitations. The middle preliminary result is removed because the final BBA run may change it.">
   <div style="position:relative;width:100%;height:100%;padding:80px 100px 56px;box-sizing:border-box;display:flex;flex-direction:column;">
-    <h2 style="font-family:'Archivo';font-weight:900;font-size:58px;line-height:1.02;letter-spacing:-0.02em;margin:0 0 30px;color:#34343a;">What we can claim, and what stays preliminary</h2>
+    <h2 style="font-family:'Archivo';font-weight:900;font-size:58px;line-height:1.02;letter-spacing:-0.02em;margin:0 0 30px;color:#34343a;">Conclusions</h2>
     <div style="display:grid;grid-template-columns:1.12fr 0.88fr;gap:34px;flex:1;">
       <div style="background:rgba(255,255,255,0.58);border:1.8px solid rgba(52,152,120,0.55);border-radius:26px;padding:36px 40px;">
         <div style="font-family:'Archivo';font-weight:900;font-size:36px;color:#2f8a5e;margin-bottom:20px;">Supported by our experiments</div>
@@ -474,7 +471,7 @@
           <li>The advantage is clearest under heterogeneous clients.</li>
           <li>Orthogonal \(A\) gives a clear toy-model gain.</li>
           <li>LoRA+ step-size asymmetry and FedProx do not help in our toy screen.</li>
-          <li>Basis conditioning plus \(B\)-prioritized frequency is promising, pending the final run.</li>
+          <li>Basis conditioning plus \(B\)-prioritized frequency is promising but not significant; lower variance is the clearest signal.</li>
         </ul>
       </div>
       <div style="background:rgba(255,255,255,0.58);border:1.8px solid rgba(224,120,60,0.55);border-radius:26px;padding:36px 40px;">
@@ -485,7 +482,7 @@
           <li>RoBERTa-base, not large.</li>
           <li>20 rounds, not 30; 3 LRs, not 8.</li>
           <li>4-hour limit on DelftBlue's <code>a100-small</code>.</li>
-          <li>Final BBA seed and schedule-only control are still missing.</li>
+          <li>Single task, reduced scale, few seeds; needs more GLUE tasks, larger backbones, and more seeds.</li>
         </ul>
       </div>
     </div>
@@ -508,10 +505,10 @@
       <span class="blip" style="top:28px;right:32px;"></span>
       <div style="font-family:'Archivo';font-weight:800;font-size:28px;color:#34343a;margin-bottom:22px;">Possible next experiments</div>
       <ul class="b" style="font-size:30px;color:#444a59;">
-        <li>Complete the third BBA seed.</li>
-        <li>Run BBA with default initialization.</li>
-        <li>Extend to the full GLUE suite.</li>
-        <li>Test RoBERTa-large and more client distributions.</li>
+        <li>Add more seeds per arm.</li>
+        <li>Extend beyond QNLI to more GLUE tasks.</li>
+        <li>Test larger backbones and full round budgets.</li>
+        <li>Check whether lower variance persists.</li>
       </ul>
     </div>
   </div>
@@ -569,8 +566,8 @@
         <tbody style="font-size:30px;">
           <tr style="border-bottom:1px solid rgba(255,255,255,0.13);"><td>Default</td><td>AB</td><td style="color:#7fd6a0;">Completed</td></tr>
           <tr style="border-bottom:1px solid rgba(255,255,255,0.13);"><td>Orthogonal</td><td>AB</td><td style="color:#e6c87a;">Needed at identical LM scale</td></tr>
-          <tr style="background:rgba(224,90,74,0.16);border-bottom:1px solid rgba(255,255,255,0.13);"><td>Default</td><td>BBA</td><td style="color:#e8917e;font-weight:800;">Missing key control</td></tr>
-          <tr style="background:rgba(41,194,221,0.14);"><td>Orthogonal</td><td>BBA</td><td style="color:#29c2dd;">Completed, two seeds</td></tr>
+          <tr style="background:rgba(224,90,74,0.16);border-bottom:1px solid rgba(255,255,255,0.13);"><td>Default</td><td>BBA</td><td style="color:#e8917e;font-weight:800;">Not run in LM proxy</td></tr>
+          <tr style="background:rgba(41,194,221,0.14);"><td>Orthogonal</td><td>BBA</td><td style="color:#29c2dd;">Completed, three seeds</td></tr>
         </tbody>
       </table>
       <div style="flex:1;display:flex;flex-direction:column;gap:16px;">
