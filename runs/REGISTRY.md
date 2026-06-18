@@ -14,10 +14,10 @@ Vanilla RoLoRA control = **85.10%** (85.10 ± 2.97, n=3). Δ columns are vs this
 
 | Arm | n | Final test acc % | Δ vs control (pp) |
 |---|---:|---:|---:|
-| `proxy_phase_bba_orth_a_c50_r4_lr1e-2` | 2 | 88.32 ± 0.43 | +3.22 |
 | `proxy_bba_orth_gauge_c50_r4_lr1e-2` | 1 | 88.28 | +3.18 |
 | `proxy_transport_bba_orth_a_c50_r4_lr1e-2` | 1 | 88.27 | +3.17 |
 | `proxy_transport_c50_r4_lr1e-2` | 1 | 87.79 | +2.69 |
+| `proxy_phase_bba_orth_a_c50_r4_lr1e-2` | 3 | 87.60 ± 1.43 | +2.50 |
 | `proxy_adaptive_refresh_orth_a_c50_r4_lr1e-2` | 3 | 86.67 ± 0.43 | +1.57 |
 | `proxy_svd_compensated_bba_c50_r4_lr1e-2` | 1 | 86.03 | +0.93 |
 | `proxy_svd_compensated_c50_r4_lr1e-2` | 3 | 85.70 ± 0.82 | +0.60 |
@@ -35,6 +35,7 @@ Vanilla RoLoRA control = **85.10%** (85.10 ± 2.97, n=3). Δ columns are vs this
 | `proxy_orth_a_c50_r4_lr1e-2_seed0` | 82.94 | ok | `results/overnight_proxy_orth_a_c50_r4_lr1e-2_seed0.log` |
 | `proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed0` | 88.54 | ok | `results/overnight_proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed0.log` |
 | `proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed1` | 88.10 | ok | `results/overnight_proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed1.log` |
+| `proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed2` | 86.16 | ok | `results/overnight_proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed2.log` |
 | `proxy_svd_compensated_bba_c50_r4_lr1e-2_seed0` | 86.03 | ok | `results/overnight_proxy_svd_compensated_bba_c50_r4_lr1e-2_seed0.log` |
 | `proxy_svd_compensated_bba_c50_r4_lr1e-2_seed1` | 76.62 | partial (11 rounds) | `results/overnight_proxy_svd_compensated_bba_c50_r4_lr1e-2_seed1.log` |
 | `proxy_svd_compensated_c50_r4_lr1e-2_seed0` | 85.15 (best 85.41) | ok | `results/overnight_proxy_svd_compensated_c50_r4_lr1e-2_seed0.log` |
@@ -189,7 +190,7 @@ _split=label_shard, clients=10, labels_per_client=1, rank=16, rounds=60, lr=0.02
 | `results/overnight_proxy_orth_a_c50_r4_lr1e-2_seed0.log` | 1006 | 2026-06-03 | proxy QNLI run log |
 | `results/overnight_proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed0.log` | 2115 | 2026-06-03 | proxy QNLI run log |
 | `results/overnight_proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed1.log` | 2115 | 2026-06-03 | proxy QNLI run log |
-| `results/overnight_proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed2.log` | 134 | 2026-06-04 | proxy QNLI run log |
+| `results/overnight_proxy_phase_bba_orth_a_c50_r4_lr1e-2_seed2.log` | 2120 | 2026-06-18 | proxy QNLI run log |
 | `results/overnight_proxy_queue_20260603T231825Z.log` | 1 | 2026-06-03 | proxy QNLI run log |
 | `results/overnight_proxy_queue_20260603T231851Z.log` | 0 | 2026-06-03 | proxy QNLI run log |
 | `results/overnight_proxy_queue_20260603T231930Z.log` | 7 | 2026-06-04 | proxy QNLI run log |
