@@ -37,6 +37,8 @@ Local copy: [`docs/research/paper-rolora.pdf`](docs/research/paper-rolora.pdf) Â
 | Research project (reproduction + improvement) | 60% | weeks 4â€“9; deliverables below |
 | Individual homeworks | 20% | due weeks 4 and 5 |
 
+Official project rubric (report + presentation + Q&A breakdown, member-contribution requirement): [`docs/grading-rubric.md`](docs/grading-rubric.md).
+
 ## Deadlines
 | Week | Deliverable | Status |
 |---|---|---|
